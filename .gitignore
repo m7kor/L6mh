@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.log
+playback-state.json
+favorites.json
+play-counts.json
