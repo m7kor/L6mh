@@ -3,7 +3,7 @@ import { playRandom, attachNowPlayingMessage, getSessionInfo } from '../services
 import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('شيوائي')
+  .setName('عشوائي')
   .setDescription('تشغيل مقاطع عشوائية بشكل مستمر (24/7)');
 
 export async function execute(interaction) {
