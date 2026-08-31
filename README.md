@@ -7,7 +7,7 @@ Discord bot that plays **[وحيد عمر's YouTube channel](https://www.youtube
 | Command | Description |
 |---|---|
 | `/عشوائي` | Pick a random video and play it forever |
-| `/اخر_لطم` | Play the latest video and continue forever |
+| `/اخر_لطمه` | Play the latest video and continue forever |
 | `/كمل` | Resume the last video that was playing |
 
 ## How It Works
