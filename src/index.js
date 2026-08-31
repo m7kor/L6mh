@@ -2,7 +2,7 @@
  * discord-yt-audio-bot — main entry point.
  *
  * Plays YouTube audio in voice channels with continuous playback.
- * Commands: /كمل, /اخر_مقطع, /شيوائي
+ * Commands: /كمل, /اخر_مقطع, /عشوائي
  */
 
 import { readdirSync } from 'node:fs';
