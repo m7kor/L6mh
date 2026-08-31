@@ -6,8 +6,8 @@ Discord bot that plays **[وحيد عمر's YouTube channel](https://www.youtube
 
 | Command | Description |
 |---|---|
-| `/شيوائي` | Pick a random video and play it forever |
-| `/اخر_مقطع` | Play the latest video and continue forever |
+| `/عشوائي` | Pick a random video and play it forever |
+| `/اخر_لطمه` | Play the latest video and continue forever |
 | `/كمل` | Resume the last video that was playing |
 
 ## How It Works
@@ -28,8 +28,8 @@ src/
   config.js           validates environment variables
   deploy-commands.js  registers slash commands with Discord
   commands/
-    random.js         /شيوائي
-    watch.js          /اخر_مقطع
+    random.js         /عشوائي
+    watch.js          /اخر_لطمه
     resume.js         /كمل
   services/
     player.js         playback engine — voice connection, yt-dlp→ffmpeg pipeline, jingles
