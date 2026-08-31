@@ -7,7 +7,7 @@ Discord bot that plays **[وحيد عمر's YouTube channel](https://www.youtube
 | Command | Description |
 |---|---|
 | `/عشوائي` | Pick a random video and play it forever |
-| `/اخر_لطمه` | Play the latest video and continue forever |
+| `/اخر_مقطع` | Play the latest video and continue forever |
 | `/كمل` | Resume the last video that was playing |
 
 ## How It Works
@@ -29,7 +29,7 @@ src/
   deploy-commands.js  registers slash commands with Discord
   commands/
     random.js         /عشوائي
-    watch.js          /اخر_لطمه
+    watch.js          /اخر_مقطع
     resume.js         /كمل
   services/
     player.js         playback engine — voice connection, yt-dlp→ffmpeg pipeline, jingles
@@ -48,6 +48,8 @@ sounds/               mp3 files used as jingles between tracks
 - Node.js 18+
 - FFmpeg (`winget install Gyan.FFmpeg`)
 - yt-dlp (`winget install yt-dlp.yt-dlp`)
+- [bgutil-pot](https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs) running on port 4416 (for YouTube bot protection bypass)
+- yt-dlp plugin for bgutil-pot
 - Discord Bot token + YouTube Data API key
 
 ### Install
