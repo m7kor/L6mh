@@ -539,18 +539,42 @@ export function playSoundEffect(guild, channel, filePath) {
 }
 
 /**
- * Play a random sound from the sounds folder. Used as a jingle at the
- * start and end of each video. Never disconnects — just plays and resolves.
+ * Play a random jingle on the existing connection. Does NOT interrupt
+ * or resume the main stream — just plays the sound and resolves.
  */
 async function playRandomSound(guild, channel) {
+  const session = getSession(guild.id);
   try {
     const sounds = listSounds();
     if (sounds.length === 0) return;
     const name = sounds[Math.floor(Math.random() * sounds.length)];
     const filePath = resolveSoundPath(name);
     if (!filePath) return;
+
+    const alreadyHere = session.connection
+      && session.connection.joinConfig.channelId === channel.id
+      && session.connection.state.status !== VoiceConnectionStatus.Destroyed;
+
+    if (!alreadyHere) return;
+
     logger.info(`[${guild.id}] Jingle: ${name}`);
-    await playSoundEffect(guild, channel, filePath);
+
+    await new Promise((resolve) => {
+      const jinglePlayer = createAudioPlayer();
+      let resource;
+      try {
+        resource = createAudioResource(filePath);
+      } catch {
+        resolve();
+        return;
+      }
+
+      jinglePlayer.on('error', () => resolve());
+      jinglePlayer.on(AudioPlayerStatus.Idle, () => resolve());
+
+      session.connection.subscribe(jinglePlayer);
+      jinglePlayer.play(resource);
+    });
   } catch (err) {
     logger.warn(`[${guild.id}] Random sound failed:`, err.message);
   }
