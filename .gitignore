@@ -3,3 +3,10 @@ node_modules/
 *.log
 playback-state.json
 cookies.txt
+cookies_strip.txt
+helium_cookies.db
+*.db
+check_*.py
+debug_*.py
+export_*.py
+test_*.py
