@@ -587,7 +587,8 @@ async function onTrackFinished(guild, channel) {
     }
 
     let attempt = 0;
-    while (session.continuous && !session.manualStop) {
+    const MAX_ATTEMPTS = 10;
+    while (session.continuous && !session.manualStop && attempt < MAX_ATTEMPTS) {
       try {
         await playRandomSound(guild, channel);
 
@@ -601,12 +602,22 @@ async function onTrackFinished(guild, channel) {
         attempt += 1;
         const delay = Math.min(RETRY_BASE_DELAY_MS * attempt, RETRY_MAX_DELAY_MS);
         logger.error(
-          `[${guild.id}] Failed to play next (attempt ${attempt}):`,
+          `[${guild.id}] Failed to play next (attempt ${attempt}/${MAX_ATTEMPTS}):`,
           err.message,
-          `retrying in ${delay / 1000}s…`,
+          attempt < MAX_ATTEMPTS ? `retrying in ${delay / 1000}s…` : 'giving up.',
         );
-        await sleep(delay);
+        if (attempt < MAX_ATTEMPTS) await sleep(delay);
       }
+    }
+
+    if (attempt >= MAX_ATTEMPTS) {
+      logger.error(`[${guild.id}] Stopped after ${MAX_ATTEMPTS} failed attempts to play next track.`);
+      notify(
+        '🔴 Playback Stopped',
+        `Guild \`${guild.id}\` failed to play a track after ${MAX_ATTEMPTS} attempts. Bot is still running but idle.`,
+        'error',
+      ).catch(() => {});
+      stopPlayback(guild.id, { manual: false });
     }
   } finally {
     session.advancing = false;
@@ -669,30 +680,49 @@ function formatTime(totalSeconds) {
 
 function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) {
   return new Promise((resolve, reject) => {
-    // Pipe yt-dlp directly into ffmpeg — no intermediate URL that can expire.
-    // yt-dlp streams the audio and ffmpeg transcodes to PCM s16le.
+    const STREAM_TIMEOUT_MS = 30_000; // kill everything if no data in 30s
+    let resolved = false;
+    let streamTimeout = null;
+
+    function cleanup() {
+      if (streamTimeout) { clearTimeout(streamTimeout); streamTimeout = null; }
+    }
+
+    function safeReject(err) {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      killProcesses(session);
+      reject(err);
+    }
+
+    function safeResolve(val) {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(val);
+    }
+
+    // Timeout: if no audio data flows within STREAM_TIMEOUT_MS, abort
+    streamTimeout = setTimeout(() => {
+      safeReject(new Error('Stream timeout — no audio data received'));
+    }, STREAM_TIMEOUT_MS);
 
     const ytDlpArgs = [
       '-f', 'bestaudio/best',
       '--no-playlist',
       '--no-warnings',
-      '-o', '-',          // output to stdout
-      '--no-part',        // don't create .part files
+      '-o', '-',
+      '--no-part',
       youtubeUrl,
     ];
-
-    if (startSeconds > 0) {
-      // Seek via ffmpeg instead, so yt-dlp streams from the start and ffmpeg
-      // uses HTTP range requests to skip ahead efficiently.
-      // We remove -ss from yt-dlp and add it to ffmpeg below.
-    }
 
     const ffmpegArgs = [];
     if (startSeconds > 0) {
       ffmpegArgs.push('-ss', String(startSeconds));
     }
     ffmpegArgs.push(
-      '-i', 'pipe:0',         // read from stdin (yt-dlp output)
+      '-i', 'pipe:0',
       '-af', `volume=${volume / 100}`,
       '-f', 's16le',
       '-ar', '48000',
@@ -705,11 +735,8 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
     });
     session.resolveProcess = ytDlpProcess;
 
-    let ytDlpStderr = '';
-    ytDlpProcess.stderr.on('data', (chunk) => { ytDlpStderr += chunk.toString(); });
-
     ytDlpProcess.on('error', (err) => {
-      reject(new Error(`Failed to start yt-dlp: ${err.message}`));
+      safeReject(new Error(`Failed to start yt-dlp: ${err.message}`));
     });
 
     const ffmpegProcess = spawn('ffmpeg', ffmpegArgs, {
@@ -717,34 +744,38 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
     });
     session.ffmpegProcess = ffmpegProcess;
 
-    // Pipe yt-dlp stdout → ffmpeg stdin
     ytDlpProcess.stdout.pipe(ffmpegProcess.stdin);
 
-    // If yt-dlp fails, kill ffmpeg so the whole thing resolves/rejects
+    // When yt-dlp closes: if error, kill ffmpeg immediately
     ytDlpProcess.on('close', (code) => {
       session.resolveProcess = null;
       if (code !== 0 && code !== null) {
-        // Don't reject here if ffmpeg already started — it may have buffered enough.
-        // Only reject if ffmpeg hasn't produced output yet.
-        if (!ffmpegProcess.killed) {
-          // Let ffmpeg finish with whatever it buffered
-        }
+        try { ffmpegProcess.kill(); } catch {}
+        safeReject(new Error(`yt-dlp exited with code ${code}`));
+        return;
       }
-      // Close ffmpeg stdin so it can finish
+      // Normal exit — close ffmpeg stdin so it can drain and finish
       try { ffmpegProcess.stdin.end(); } catch {}
     });
 
     ffmpegProcess.stderr.on('data', () => {});
 
     ffmpegProcess.on('error', (err) => {
-      reject(new Error(`Failed to start ffmpeg: ${err.message}`));
+      safeReject(new Error(`Failed to start ffmpeg: ${err.message}`));
+    });
+
+    // First audio data from ffmpeg clears the timeout — stream is alive
+    let dataReceived = false;
+    ffmpegProcess.stdout.once('data', () => {
+      dataReceived = true;
+      cleanup(); // streaming started, no more timeout needed
     });
 
     ffmpegProcess.on('close', (code) => {
-      if (code !== 0 && code !== null && session.ffmpegProcess === ffmpegProcess) {
-        // Only warn if it wasn't intentionally killed
-      }
       session.ffmpegProcess = null;
+      if (!dataReceived && !resolved) {
+        safeReject(new Error(`ffmpeg exited with code ${code} before producing audio`));
+      }
     });
 
     logger.info(
@@ -752,6 +783,6 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
         ? `Resuming from ${formatTime(startSeconds)}…`
         : 'Streaming audio…',
     );
-    resolve({ stream: ffmpegProcess.stdout, ffmpegProcess });
+    safeResolve({ stream: ffmpegProcess.stdout, ffmpegProcess });
   });
 }
