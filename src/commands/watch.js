@@ -3,8 +3,8 @@ import { playLatest, attachNowPlayingMessage, getSessionInfo } from '../services
 import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('اخر_لطمه')
-  .setDescription('تشغيل آخر فيديو من القناة');
+  .setName('اخر_مقطع')
+  .setDescription('تشغيل اخر فيديو من القناه');
 
 export async function execute(interaction) {
   const voiceChannel = interaction.member?.voice?.channel;

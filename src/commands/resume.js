@@ -4,7 +4,7 @@ import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
   .setName('كمل')
-  .setDescription('استكمال آخر مقطع تم تشغيله');
+  .setDescription('استكمال اخر مقطع تم تشغيله');
 
 export async function execute(interaction) {
   const voiceChannel = interaction.member?.voice?.channel;
