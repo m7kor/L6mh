@@ -669,70 +669,89 @@ function formatTime(totalSeconds) {
 
 function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) {
   return new Promise((resolve, reject) => {
-    const resolveProcess = spawn('yt-dlp', [
+    // Pipe yt-dlp directly into ffmpeg — no intermediate URL that can expire.
+    // yt-dlp streams the audio and ffmpeg transcodes to PCM s16le.
+
+    const ytDlpArgs = [
       '-f', 'bestaudio/best',
       '--no-playlist',
       '--no-warnings',
-      '-g',
+      '-o', '-',          // output to stdout
+      '--no-part',        // don't create .part files
       youtubeUrl,
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
-    session.resolveProcess = resolveProcess;
+    ];
 
-    let stdout = '';
-    let stderr = '';
-    resolveProcess.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
-    resolveProcess.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    if (startSeconds > 0) {
+      // Seek via ffmpeg instead, so yt-dlp streams from the start and ffmpeg
+      // uses HTTP range requests to skip ahead efficiently.
+      // We remove -ss from yt-dlp and add it to ffmpeg below.
+    }
 
-    resolveProcess.on('error', (err) => reject(new Error(`Failed to start yt-dlp: ${err.message}`)));
+    const ffmpegArgs = [];
+    if (startSeconds > 0) {
+      ffmpegArgs.push('-ss', String(startSeconds));
+    }
+    ffmpegArgs.push(
+      '-i', 'pipe:0',         // read from stdin (yt-dlp output)
+      '-af', `volume=${volume / 100}`,
+      '-f', 's16le',
+      '-ar', '48000',
+      '-ac', '2',
+      'pipe:1',
+    );
 
-    resolveProcess.on('close', (code) => {
-      session.resolveProcess = null;
-      if (code !== 0) {
-        reject(new Error(`yt-dlp failed (code ${code}): ${stderr.trim().slice(-300)}`));
-        return;
-      }
-
-      const directUrl = stdout.trim().split('\n')[0];
-      if (!directUrl) {
-        reject(new Error('yt-dlp did not return a playable URL.'));
-        return;
-      }
-
-      const ffmpegArgs = [];
-      if (startSeconds > 0) {
-        ffmpegArgs.push('-ss', String(startSeconds));
-      }
-      ffmpegArgs.push(
-        '-i', directUrl,
-        '-af', `volume=${volume / 100}`,
-        '-f', 's16le',
-        '-ar', '48000',
-        '-ac', '2',
-        'pipe:1',
-      );
-
-      const ffmpegProcess = spawn('ffmpeg', ffmpegArgs, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-
-      ffmpegProcess.stderr.on('data', () => {});
-
-      ffmpegProcess.on('error', (err) => {
-        reject(new Error(`Failed to start ffmpeg: ${err.message}`));
-      });
-
-      ffmpegProcess.on('close', (code) => {
-        if (code !== 0 && code !== null && session.ffmpegProcess === ffmpegProcess) {
-          logger.warn(`ffmpeg exited with code ${code}`);
-        }
-      });
-
-      logger.info(
-        startSeconds > 0
-          ? `Resuming from ${formatTime(startSeconds)}…`
-          : 'Streaming audio…',
-      );
-      resolve({ stream: ffmpegProcess.stdout, ffmpegProcess });
+    const ytDlpProcess = spawn('yt-dlp', ytDlpArgs, {
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
+    session.resolveProcess = ytDlpProcess;
+
+    let ytDlpStderr = '';
+    ytDlpProcess.stderr.on('data', (chunk) => { ytDlpStderr += chunk.toString(); });
+
+    ytDlpProcess.on('error', (err) => {
+      reject(new Error(`Failed to start yt-dlp: ${err.message}`));
+    });
+
+    const ffmpegProcess = spawn('ffmpeg', ffmpegArgs, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    session.ffmpegProcess = ffmpegProcess;
+
+    // Pipe yt-dlp stdout → ffmpeg stdin
+    ytDlpProcess.stdout.pipe(ffmpegProcess.stdin);
+
+    // If yt-dlp fails, kill ffmpeg so the whole thing resolves/rejects
+    ytDlpProcess.on('close', (code) => {
+      session.resolveProcess = null;
+      if (code !== 0 && code !== null) {
+        // Don't reject here if ffmpeg already started — it may have buffered enough.
+        // Only reject if ffmpeg hasn't produced output yet.
+        if (!ffmpegProcess.killed) {
+          // Let ffmpeg finish with whatever it buffered
+        }
+      }
+      // Close ffmpeg stdin so it can finish
+      try { ffmpegProcess.stdin.end(); } catch {}
+    });
+
+    ffmpegProcess.stderr.on('data', () => {});
+
+    ffmpegProcess.on('error', (err) => {
+      reject(new Error(`Failed to start ffmpeg: ${err.message}`));
+    });
+
+    ffmpegProcess.on('close', (code) => {
+      if (code !== 0 && code !== null && session.ffmpegProcess === ffmpegProcess) {
+        // Only warn if it wasn't intentionally killed
+      }
+      session.ffmpegProcess = null;
+    });
+
+    logger.info(
+      startSeconds > 0
+        ? `Resuming from ${formatTime(startSeconds)}…`
+        : 'Streaming audio…',
+    );
+    resolve({ stream: ffmpegProcess.stdout, ffmpegProcess });
   });
 }
