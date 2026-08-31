@@ -4,7 +4,7 @@ import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
   .setName('عشوائي')
-  .setDescription('تشغيل مقاطع عشوائية بشكل مستمر (24/7)');
+  .setDescription('تشغيل مقاطع عشوائيه بشكل مستمر (24/7)');
 
 export async function execute(interaction) {
   const voiceChannel = interaction.member?.voice?.channel;
