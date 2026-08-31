@@ -714,9 +714,10 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       '--no-warnings',
       '-o', '-',
       '--no-part',
+      // PO token provider locally via systemd
+      '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416',
     ];
 
-    // Use cookies file if present (required for datacenter IPs)
     const cookiesPath = join(process.cwd(), 'cookies.txt');
     if (existsSync(cookiesPath)) {
       ytDlpArgs.push('--cookies', cookiesPath);
