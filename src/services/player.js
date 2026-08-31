@@ -714,8 +714,15 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       '--no-warnings',
       '-o', '-',
       '--no-part',
-      youtubeUrl,
     ];
+
+    // Use cookies file if present (required for datacenter IPs)
+    const cookiesPath = join(process.cwd(), 'cookies.txt');
+    if (existsSync(cookiesPath)) {
+      ytDlpArgs.push('--cookies', cookiesPath);
+    }
+
+    ytDlpArgs.push(youtubeUrl);
 
     const ffmpegArgs = [];
     if (startSeconds > 0) {
