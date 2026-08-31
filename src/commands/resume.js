@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { resume, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
-import { buildNowPlayingEmbed, buildControlRow } from '../utils/embeds.js';
+import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
   .setName('كمل')
@@ -25,9 +25,8 @@ export async function execute(interaction) {
       paused: info.paused,
       elapsedSeconds: info.elapsedSeconds,
     });
-    const row = buildControlRow({ paused: info.paused });
 
-    const message = await interaction.editReply({ embeds: [embed], components: [row] });
+    const message = await interaction.editReply({ embeds: [embed] });
     attachNowPlayingMessage(interaction.guild.id, message);
   } catch (err) {
     await interaction.editReply(`❌ خطأ: ${err.message}`);

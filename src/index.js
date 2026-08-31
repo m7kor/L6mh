@@ -1,28 +1,8 @@
 /**
  * discord-yt-audio-bot — main entry point.
  *
- * A bot that plays YouTube audio in voice channels, with continuous
- * ("random") playback, a preview queue, skip, volume control, a local
- * soundboard, and per-guild session state.
- *
- * Slash commands (see src/commands/ for each one):
- *   /watch                 — play the channel's latest video, then continue forever (24/7)
- *   /watch mode:random     — start with a random pick instead, then continue forever
- *   /nowplaying            — show the live now-playing card again
- *   /skip                  — skip the current track
- *   /queue                 — show the current + upcoming tracks
- *   /volume percent:<n>    — set playback volume (0-200%)
- *   /sound name:<name>     — play a short local sound effect
- *   /status                — bot diagnostics
- *   /كمل                   — resume the last video
- *
- * Every play command runs 24/7 — once a video ends, the next one (random)
- * starts automatically. There's no /stop command by design (see README);
- * use the ⏹️ button on the Now Playing card for a manual override.
- *
- * Also auto-joins whenever someone enters an empty voice channel alone
- * (see the VoiceStateUpdate handler below), on top of the static
- * VOICE_CHANNEL_ID auto-join at startup.
+ * Plays YouTube audio in voice channels with continuous playback.
+ * Commands: /كمل, /اخر_مقطع, /شيوائي
  */
 
 import { readdirSync } from 'node:fs';
@@ -35,23 +15,14 @@ import { notify } from './utils/webhook.js';
 import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
 import {
   stopAllSessions,
-  skip,
-  stopPlayback,
-  togglePause,
-  nudgeVolume,
   playRandom,
   resume,
-  playSoundEffect,
   playerEvents,
   getSessionInfo,
 } from './services/player.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
-
-// ---------------------------------------------------------------------------
-// Load commands
-// ---------------------------------------------------------------------------
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -71,10 +42,6 @@ for (const file of commandFiles) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Live bot presence — "Watching <title>" while something is playing
-// ---------------------------------------------------------------------------
-
 playerEvents.on('trackChange', ({ video, paused }) => {
   if (!client.user) return;
   if (!video) {
@@ -86,10 +53,6 @@ playerEvents.on('trackChange', ({ video, paused }) => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Ready event
-// ---------------------------------------------------------------------------
-
 client.once(Events.ClientReady, async (c) => {
   logger.info(`Logged in as ${c.user.tag}`);
   logger.info(`Channel ID: ${config.channelId}`);
@@ -97,14 +60,8 @@ client.once(Events.ClientReady, async (c) => {
 
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**.`, 'ok');
 
-  // Best-effort, non-blocking: yt-dlp lags behind YouTube's site changes
-  // often enough that a stale copy is a common cause of "audio just stopped
-  // working." Check once at startup and self-update if possible.
   checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp update check failed:', err.message));
 
-  // Auto-join voice channel and start random playback if configured.
-  // Runs for every guild the bot is in (not just the first one), so it
-  // behaves correctly if the bot ever gets added to more than one server.
   if (config.voiceChannelId) {
     for (const guild of c.guilds.cache.values()) {
       try {
@@ -112,7 +69,6 @@ client.once(Events.ClientReady, async (c) => {
         if (channel && channel.isVoiceBased()) {
           logger.info(`[${guild.id}] Auto-joining #${channel.name}…`);
 
-          // Play a random notification sound first, then resume the last video
           try {
             const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
             const sounds = listSounds();
@@ -121,6 +77,7 @@ client.once(Events.ClientReady, async (c) => {
               const soundPath = resolveSoundPath(randomSound);
               if (soundPath) {
                 logger.info(`[${guild.id}] Playing startup sound: ${randomSound}`);
+                const { playSoundEffect } = await import('./services/player.js');
                 await playSoundEffect(guild, channel, soundPath);
                 logger.info(`[${guild.id}] Startup sound finished.`);
               }
@@ -129,7 +86,6 @@ client.once(Events.ClientReady, async (c) => {
             logger.warn(`[${guild.id}] Startup sound failed:`, soundErr.message);
           }
 
-          // Try to resume the last video; fall back to random if no saved state
           try {
             await resume(guild, channel);
             logger.info(`[${guild.id}] Auto-resumed playback.`);
@@ -147,21 +103,11 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Auto-join when someone enters an empty voice channel alone
-// ---------------------------------------------------------------------------
-// If the bot isn't already playing in this guild, and a human joins a
-// voice channel that was empty (they're alone in it), the bot hops in and
-// starts the 24/7 radio automatically — no command needed. It also leaves
-// on its own once everyone's gone, so it doesn't sit idle in an empty
-// channel burning resources.
-
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
     const guild = newState.guild;
     const session = getSessionInfo(guild.id);
 
-    // --- Someone joined a channel — check if they're alone in it. ---
     const joinedChannel = newState.channel;
     if (joinedChannel && oldState.channelId !== newState.channelId && !newState.member?.user.bot) {
       const humanCount = joinedChannel.members.filter((m) => !m.user.bot).size;
@@ -177,6 +123,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
             const soundPath = resolveSoundPath(randomSound);
             if (soundPath) {
               logger.info(`[${guild.id}] Playing join sound: ${randomSound}`);
+              const { playSoundEffect } = await import('./services/player.js');
               await playSoundEffect(guild, joinedChannel, soundPath);
             }
           }
@@ -192,7 +139,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       return;
     }
 
-    // --- Someone left a channel — check if the bot is now alone there. ---
     const leftChannel = oldState.channel;
     if (leftChannel && oldState.channelId !== newState.channelId) {
       const botMember = await guild.members.fetchMe();
@@ -202,6 +148,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       const humansLeft = leftChannel.members.filter((m) => !m.user.bot).size;
       if (humansLeft === 0) {
         logger.info(`[${guild.id}] Everyone left #${leftChannel.name} — stopping and leaving.`);
+        const { stopPlayback } = await import('./services/player.js');
         stopPlayback(guild.id, { manual: false });
       }
     }
@@ -209,10 +156,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     logger.error('VoiceStateUpdate handler error:', err.message);
   }
 });
-
-// ---------------------------------------------------------------------------
-// Slash command + button + autocomplete dispatch
-// ---------------------------------------------------------------------------
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
@@ -232,64 +175,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     return;
   }
-
-  if (interaction.isAutocomplete()) {
-    const command = client.commands.get(interaction.commandName);
-    if (command?.autocomplete) {
-      try {
-        await command.autocomplete(interaction);
-      } catch (err) {
-        logger.error(`Autocomplete error for /${interaction.commandName}:`, err.message);
-      }
-    }
-    return;
-  }
-
-  if (interaction.isButton() && interaction.customId.startsWith('player:')) {
-    await handlePlayerButton(interaction);
-  }
 });
-
-// ---------------------------------------------------------------------------
-// Now Playing button controls
-// ---------------------------------------------------------------------------
-
-async function handlePlayerButton(interaction) {
-  const guildId = interaction.guild.id;
-  const action = interaction.customId.split(':')[1];
-
-  try {
-    switch (action) {
-      case 'pauseresume':
-        togglePause(guildId);
-        break;
-      case 'skip':
-        skip(guildId);
-        break;
-      case 'volume_up':
-        nudgeVolume(guildId, 1);
-        break;
-      case 'volume_down':
-        nudgeVolume(guildId, -1);
-        break;
-      case 'stop':
-        stopPlayback(guildId, { manual: true });
-        break;
-      default:
-        break;
-    }
-    // The relevant service call already refreshes the Now Playing message;
-    // we just need to acknowledge the interaction so Discord doesn't show
-    // "This interaction failed" to the user who clicked.
-    await interaction.deferUpdate();
-  } catch (err) {
-    await interaction.reply({ content: `❌ خطأ: ${err.message}`, ephemeral: true }).catch(() => {});
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Graceful shutdown
-// ---------------------------------------------------------------------------
 
 function shutdown(signal) {
   logger.info(`Received ${signal}, shutting down…`);
@@ -302,31 +188,16 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGBREAK', () => shutdown('SIGBREAK'));
 
-// ---------------------------------------------------------------------------
-// Crash resilience — keep the 24/7 stream alive
-// ---------------------------------------------------------------------------
-// discord.js and the voice/network stack occasionally throw rejections that
-// aren't fatal (e.g. a dropped request). Log and keep running for those.
-// A genuinely uncaught exception can leave things in an inconsistent state,
-// so we exit cleanly and let a process manager (pm2, see README) restart
-// the bot immediately rather than limping along broken.
-
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled promise rejection:', reason);
 });
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception — restarting:', err);
-  // Best-effort — the process is exiting right after this, so we don't
-  // await it, just give it a moment to actually leave the network.
   notify('🔴 Uncaught Exception — Restarting', `\`\`\`${String(err?.stack || err).slice(0, 1500)}\`\`\``, 'error');
   stopAllSessions();
   setTimeout(() => process.exit(1), 500);
 });
-
-// ---------------------------------------------------------------------------
-// Login
-// ---------------------------------------------------------------------------
 
 client.login(config.discordToken).catch(async (err) => {
   logger.error('Login failed:', err.message);

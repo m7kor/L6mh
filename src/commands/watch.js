@@ -1,17 +1,10 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { playRandom, playLatest, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
-import { buildNowPlayingEmbed, buildControlRow } from '../utils/embeds.js';
+import { playLatest, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
+import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('watch')
-  .setDescription('تشغيل بث قناة وحيد عمر (يستمر 24/7 تلقائياً)')
-  .addStringOption((opt) => opt
-    .setName('mode')
-    .setDescription('نقطة البداية')
-    .addChoices(
-      { name: 'آخر فيديو — الافتراضي', value: 'latest' },
-      { name: 'عشوائي', value: 'random' },
-    ));
+  .setName('اخر_مقطع')
+  .setDescription('تشغيل آخر فيديو من القناة');
 
 export async function execute(interaction) {
   const voiceChannel = interaction.member?.voice?.channel;
@@ -20,15 +13,9 @@ export async function execute(interaction) {
     return;
   }
 
-  const mode = interaction.options.getString('mode'); // 'latest' | 'random' | null
-
   await interaction.deferReply();
-
   try {
-    const video = mode === 'random'
-      ? await playRandom(interaction.guild, voiceChannel)
-      : await playLatest(interaction.guild, voiceChannel);
-
+    const video = await playLatest(interaction.guild, voiceChannel);
     const info = getSessionInfo(interaction.guild.id);
 
     const embed = buildNowPlayingEmbed(video, {
@@ -38,9 +25,8 @@ export async function execute(interaction) {
       paused: info.paused,
       elapsedSeconds: info.elapsedSeconds,
     });
-    const row = buildControlRow({ paused: info.paused });
 
-    const message = await interaction.editReply({ embeds: [embed], components: [row] });
+    const message = await interaction.editReply({ embeds: [embed] });
     attachNowPlayingMessage(interaction.guild.id, message);
   } catch (err) {
     await interaction.editReply(`❌ خطأ: ${err.message}`);

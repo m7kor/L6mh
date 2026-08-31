@@ -30,7 +30,7 @@ import { getRandomVideo, getLatestVideo, getVideoDetails } from './youtube.js';
 import { listSounds, resolveSoundPath } from '../utils/sounds.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
-import { buildNowPlayingEmbed, buildControlRow } from '../utils/embeds.js';
+import { buildNowPlayingEmbed } from '../utils/embeds.js';
 import { recordPlay } from '../utils/stats.js';
 import { notify } from '../utils/webhook.js';
 
@@ -107,8 +107,6 @@ class GuildSession {
      *  interaction to hand them over each time. */
     this.guild = null;
     this.channel = null;
-    /** Timer handle for the next randomly-timed ambient sound effect. */
-    this.ambientTimer = null;
   }
 }
 
@@ -238,8 +236,7 @@ async function updateNowPlayingMessage(session, { disabled = false } = {}) {
       paused: session.paused,
       elapsedSeconds: getElapsedSeconds(session),
     });
-    const row = buildControlRow({ paused: session.paused, disabled });
-    await session.nowPlayingMessage.edit({ embeds: [embed], components: [row] });
+    await session.nowPlayingMessage.edit({ embeds: [embed] });
   } catch (err) {
     // The message may have been deleted, or we lost permission — stop trying.
     logger.warn(`[${session.guildId}] Could not update Now Playing message:`, err.message);
@@ -282,7 +279,6 @@ export function stopPlayback(guildId, { manual = true } = {}) {
 
   freezeProgress(session);
   stopProgressAutosave(session);
-  stopAmbientSound(session);
 
   if (manual) {
     updateNowPlayingMessage(session, { disabled: true }).catch(() => {});
@@ -347,7 +343,6 @@ export async function playLatest(guild, channel) {
   trackRecent(session, video.videoId);
 
   await connectAndPlay(guild, channel, video);
-  scheduleAmbientSound(session);
   prefetchQueue(session).catch((err) => logger.error('Prefetch failed:', err.message));
 
   return session.current;
@@ -366,7 +361,6 @@ export async function playRandom(guild, channel) {
   trackRecent(session, video.videoId);
 
   await connectAndPlay(guild, channel, video);
-  scheduleAmbientSound(session);
   prefetchQueue(session).catch((err) => logger.error('Prefetch failed:', err.message));
 
   return session.current;
@@ -470,6 +464,11 @@ export function nudgeVolume(guildId, direction) {
  * bot joins just for the sound and leaves again afterward (unless this is
  * the configured default voice channel).
  */
+/**
+ * Play a short local sound effect. If the main stream is active, it's
+ * paused, the sound plays, then the main stream resumes seamlessly.
+ * Never disconnects from the voice channel.
+ */
 export function playSoundEffect(guild, channel, filePath) {
   const session = getSession(guild.id);
   const hadMainTrack = Boolean(session.current) && Boolean(session.player) && !session.paused;
@@ -477,7 +476,9 @@ export function playSoundEffect(guild, channel, filePath) {
   session.interjecting = true;
 
   return (async () => {
-    const alreadyHere = session.connection && session.connection.joinConfig.channelId === channel.id;
+    const alreadyHere = session.connection
+      && session.connection.joinConfig.channelId === channel.id
+      && session.connection.state.status !== VoiceConnectionStatus.Destroyed;
 
     if (!alreadyHere) {
       if (session.connection) {
@@ -523,10 +524,6 @@ export function playSoundEffect(guild, channel, filePath) {
         try {
           if (hadMainTrack && session.current) {
             await connectAndPlay(guild, channel, session.current, { countPlay: false });
-          } else if (config.voiceChannelId !== channel.id) {
-            // Ad hoc join just for the sound — leave when done rather than
-            // idling silently in the channel.
-            stopPlayback(guild.id, { manual: false });
           }
         } catch (err) {
           logger.error(`[${guild.id}] Failed to resume after sound effect:`, err.message);
@@ -539,6 +536,24 @@ export function playSoundEffect(guild, channel, filePath) {
       effectPlayer.play(resource);
     });
   })();
+}
+
+/**
+ * Play a random sound from the sounds folder. Used as a jingle at the
+ * start and end of each video. Never disconnects — just plays and resolves.
+ */
+async function playRandomSound(guild, channel) {
+  try {
+    const sounds = listSounds();
+    if (sounds.length === 0) return;
+    const name = sounds[Math.floor(Math.random() * sounds.length)];
+    const filePath = resolveSoundPath(name);
+    if (!filePath) return;
+    logger.info(`[${guild.id}] Jingle: ${name}`);
+    await playSoundEffect(guild, channel, filePath);
+  } catch (err) {
+    logger.warn(`[${guild.id}] Random sound failed:`, err.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -567,53 +582,8 @@ async function prefetchQueue(session) {
 }
 
 // ---------------------------------------------------------------------------
-// Ambient soundboard — automatically drops in a random clip from /sounds
-// on a randomized interval, with no command needed. Scheduled once per
-// playback session (not per track) so it isn't reset every time the radio
-// moves to the next video.
+// Internal
 // ---------------------------------------------------------------------------
-
-function scheduleAmbientSound(session) {
-  stopAmbientSound(session);
-  if (!config.soundEffectsEnabled) return;
-
-  const minMs = config.soundEffectsMinMinutes * 60_000;
-  const maxMs = Math.max(minMs, config.soundEffectsMaxMinutes * 60_000);
-  const delay = minMs + Math.random() * (maxMs - minMs);
-
-  session.ambientTimer = setTimeout(() => triggerAmbientSound(session), delay);
-}
-
-function stopAmbientSound(session) {
-  if (session.ambientTimer) {
-    clearTimeout(session.ambientTimer);
-    session.ambientTimer = null;
-  }
-}
-
-async function triggerAmbientSound(session) {
-  // Bail out quietly (and reschedule) if conditions changed since this was queued.
-  if (!session.continuous || session.manualStop || session.paused || !session.guild || !session.channel) {
-    scheduleAmbientSound(session);
-    return;
-  }
-
-  try {
-    const sounds = listSounds();
-    if (sounds.length > 0) {
-      const name = sounds[Math.floor(Math.random() * sounds.length)];
-      const filePath = resolveSoundPath(name);
-      if (filePath) {
-        logger.info(`[${session.guildId}] Ambient sound effect: ${name}`);
-        await playSoundEffect(session.guild, session.channel, filePath);
-      }
-    }
-  } catch (err) {
-    logger.warn(`[${session.guildId}] Ambient sound effect failed:`, err.message);
-  }
-
-  scheduleAmbientSound(session); // always reschedule, even if /sounds was empty this time
-}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -621,9 +591,13 @@ function sleep(ms) {
 
 async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) {
   const session = getSession(guild.id);
-  logger.info(`[${guild.id}] Playing: ${video.title}`);
   session.guild = guild;
   session.channel = channel;
+
+  // Play a random jingle at the start of each video
+  await playRandomSound(guild, channel);
+
+  logger.info(`[${guild.id}] Playing: ${video.title}`);
 
   // Reuse the existing connection if we're already in the right channel,
   // otherwise destroy the old one and create a new connection.
@@ -791,6 +765,9 @@ async function onTrackFinished(guild, channel) {
     let attempt = 0;
     while (session.continuous && !session.manualStop) {
       try {
+        // Play a random jingle before the next video
+        await playRandomSound(guild, channel);
+
         const next = session.queue.shift()
           || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds);
         session.current = next;

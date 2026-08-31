@@ -1,8 +1,9 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { playRandom } from '../services/player.js';
+import { playRandom, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
+import { buildNowPlayingEmbed } from '../utils/embeds.js';
 
 export const data = new SlashCommandBuilder()
-  .setName('random')
+  .setName('شيوائي')
   .setDescription('تشغيل مقاطع عشوائية بشكل مستمر (24/7)');
 
 export async function execute(interaction) {
@@ -14,10 +15,19 @@ export async function execute(interaction) {
 
   await interaction.deferReply();
   try {
-    playRandom(interaction.guild, voiceChannel).catch((err) =>
-      console.error('[random] Error:', err),
-    );
-    await interaction.editReply('🎲 جاري تشغيل مقاطع عشوائية بشكل مستمر…');
+    const video = await playRandom(interaction.guild, voiceChannel);
+    const info = getSessionInfo(interaction.guild.id);
+
+    const embed = buildNowPlayingEmbed(video, {
+      volume: info.volume,
+      mode: info.mode,
+      continuous: info.continuous,
+      paused: info.paused,
+      elapsedSeconds: info.elapsedSeconds,
+    });
+
+    const message = await interaction.editReply({ embeds: [embed] });
+    attachNowPlayingMessage(interaction.guild.id, message);
   } catch (err) {
     await interaction.editReply(`❌ خطأ: ${err.message}`);
   }
