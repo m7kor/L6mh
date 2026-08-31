@@ -714,8 +714,8 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       '--no-warnings',
       '-o', '-',
       '--no-part',
-      // PO token provider locally via systemd
-      '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416',
+      // PO token provider via bgutil-pot
+      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
     ];
 
     const cookiesPath = join(process.cwd(), 'cookies.txt');
