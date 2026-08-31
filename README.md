@@ -28,8 +28,8 @@ src/
   config.js           validates environment variables
   deploy-commands.js  registers slash commands with Discord
   commands/
-    random.js         /شيوائي
-    watch.js          /اخر_مقطع
+    random.js         /عشوائي
+    watch.js          /اخر_لطمه
     resume.js         /كمل
   services/
     player.js         playback engine — voice connection, yt-dlp→ffmpeg pipeline, jingles
