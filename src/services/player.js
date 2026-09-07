@@ -508,7 +508,7 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   session.ffmpegProcess = ffmpegProcess;
 
   const resource = createAudioResource(stream, {
-    inputType: StreamType.Raw,
+    inputType: StreamType.OggOpus,
   });
   session.resource = resource;
 
@@ -678,11 +678,11 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
 
 function killProcesses(session) {
   if (session.ffmpegProcess) {
-    try { session.ffmpegProcess.kill(); } catch {}
+    try { session.ffmpegProcess.kill('SIGKILL'); } catch {}
     session.ffmpegProcess = null;
   }
   if (session.resolveProcess) {
-    try { session.resolveProcess.kill(); } catch {}
+    try { session.resolveProcess.kill('SIGKILL'); } catch {}
     session.resolveProcess = null;
   }
 }
@@ -751,7 +751,13 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
     ffmpegArgs.push(
       '-i', 'pipe:0',
       '-af', `volume=${volume / 100}`,
-      '-f', 's16le',
+      '-c:a', 'libopus',
+      '-b:a', '96K',
+      '-vbr', 'on',
+      '-compression_level', '10',
+      '-frame_duration', '20',
+      '-application', 'audio',
+      '-f', 'opus',
       '-ar', '48000',
       '-ac', '2',
       'pipe:1',
