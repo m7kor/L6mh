@@ -754,6 +754,11 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
 
     ytDlpProcess.stdout.pipe(ffmpegProcess.stdin);
 
+    ffmpegProcess.stdin.on('error', (err) => {
+      if (err.code === 'EPIPE') return; // ignore EPIPE from ffmpeg closing early
+      logger.error(`ffmpeg stdin error: ${err.message}`);
+    });
+
     // When yt-dlp closes: if error, kill ffmpeg immediately
     ytDlpProcess.on('close', (code) => {
       session.resolveProcess = null;

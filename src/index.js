@@ -61,6 +61,9 @@ client.once(Events.ClientReady, async (c) => {
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**.`, 'ok');
 
   checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp update check failed:', err.message));
+  setInterval(() => {
+    checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp periodic update failed:', err.message));
+  }, 1000 * 60 * 60 * 24); // Check daily
 
   if (config.voiceChannelId) {
     for (const guild of c.guilds.cache.values()) {
@@ -193,8 +196,12 @@ process.on('unhandledRejection', (reason) => {
 });
 
 process.on('uncaughtException', (err) => {
+  if (err && err.code === 'EPIPE') {
+    logger.warn('Ignored uncaught EPIPE error');
+    return;
+  }
   logger.error('Uncaught exception — restarting:', err);
-  notify('🔴 Uncaught Exception — Restarting', `\`\`\`${String(err?.stack || err).slice(0, 1500)}\`\`\``, 'error');
+  notify('🔴 Uncaught Exception — Restarting', `\`\`\`${String(err?.stack || err).slice(0, 1500)}\`\`\``, 'error').catch(() => {});
   stopAllSessions();
   setTimeout(() => process.exit(1), 500);
 });
