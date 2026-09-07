@@ -750,6 +750,7 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       ffmpegArgs.push('-ss', String(startSeconds));
     }
     ffmpegArgs.push(
+      '-re',
       '-i', 'pipe:0',
       '-af', `volume=${volume / 100}`,
       '-f', 's16le',
