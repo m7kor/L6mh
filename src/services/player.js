@@ -758,7 +758,7 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       '-compression_level', '10',
       '-frame_duration', '20',
       '-application', 'audio',
-      '-f', 'opus',
+      '-f', 'ogg',
       '-ar', '48000',
       '-ac', '2',
       'pipe:1',
