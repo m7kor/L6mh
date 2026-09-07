@@ -518,6 +518,25 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   session.player = player;
   session.paused = false;
 
+  let stallTimeout = null;
+  player.on('stateChange', (oldState, newState) => {
+    if (session.player !== player) return;
+    if (newState.status === AudioPlayerStatus.Playing) {
+      if (stallTimeout) { clearTimeout(stallTimeout); stallTimeout = null; }
+    } else if (newState.status === AudioPlayerStatus.AutoPaused || newState.status === AudioPlayerStatus.Buffering) {
+      if (!stallTimeout) {
+        stallTimeout = setTimeout(() => {
+          logger.warn(`[${guild.id}] Stream stalled for 20s. Skipping track.`);
+          if (session.player === player) {
+            onTrackFinished(guild, channel);
+          }
+        }, 20_000);
+      }
+    } else {
+      if (stallTimeout) { clearTimeout(stallTimeout); stallTimeout = null; }
+    }
+  });
+
   player.on(AudioPlayerStatus.Idle, () => {
     if (session.player !== player) return;
     if (session.interjecting) return;
