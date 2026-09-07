@@ -65,43 +65,61 @@ client.once(Events.ClientReady, async (c) => {
     checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp periodic update failed:', err.message));
   }, 1000 * 60 * 60 * 24); // Check daily
 
-  if (config.voiceChannelId) {
-    for (const guild of c.guilds.cache.values()) {
-      try {
-        const channel = await guild.channels.fetch(config.voiceChannelId);
-        if (channel && channel.isVoiceBased()) {
-          logger.info(`[${guild.id}] Auto-joining #${channel.name}…`);
+  for (const guild of c.guilds.cache.values()) {
+    try {
+      let targetChannel = null;
 
-          try {
-            const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
-            const sounds = listSounds();
-            if (sounds.length > 0) {
-              const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
-              const soundPath = resolveSoundPath(randomSound);
-              if (soundPath) {
-                logger.info(`[${guild.id}] Playing startup sound: ${randomSound}`);
-                const { playSoundEffect } = await import('./services/player.js');
-                await playSoundEffect(guild, channel, soundPath);
-                logger.info(`[${guild.id}] Startup sound finished.`);
-              }
-            }
-          } catch (soundErr) {
-            logger.warn(`[${guild.id}] Startup sound failed:`, soundErr.message);
-          }
-
-          try {
-            await resume(guild, channel);
-            logger.info(`[${guild.id}] Auto-resumed playback.`);
-          } catch {
-            logger.info(`[${guild.id}] No saved state — starting random playback.`);
-            await playRandom(guild, channel);
-          }
-        } else {
-          logger.warn(`[${guild.id}] Voice channel ${config.voiceChannelId} not found or not a voice channel.`);
+      if (config.voiceChannelId) {
+        const configuredChannel = await guild.channels.fetch(config.voiceChannelId).catch(() => null);
+        if (configuredChannel && configuredChannel.isVoiceBased()) {
+          targetChannel = configuredChannel;
         }
-      } catch (err) {
-        logger.error(`[${guild.id}] Failed to auto-join voice channel:`, err.message);
       }
+
+      if (!targetChannel) {
+        const voiceChannels = guild.channels.cache.filter((ch) => ch.isVoiceBased());
+        let maxHumans = 0;
+        for (const ch of voiceChannels.values()) {
+          const humans = ch.members.filter((m) => !m.user.bot).size;
+          if (humans > maxHumans) {
+            maxHumans = humans;
+            targetChannel = ch;
+          }
+        }
+      }
+
+      if (targetChannel) {
+        logger.info(`[${guild.id}] Auto-joining #${targetChannel.name}…`);
+
+        try {
+          const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
+          const sounds = listSounds();
+          if (sounds.length > 0) {
+            const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+            const soundPath = resolveSoundPath(randomSound);
+            if (soundPath) {
+              logger.info(`[${guild.id}] Playing startup sound: ${randomSound}`);
+              const { playSoundEffect } = await import('./services/player.js');
+              await playSoundEffect(guild, targetChannel, soundPath);
+              logger.info(`[${guild.id}] Startup sound finished.`);
+            }
+          }
+        } catch (soundErr) {
+          logger.warn(`[${guild.id}] Startup sound failed:`, soundErr.message);
+        }
+
+        try {
+          await resume(guild, targetChannel);
+          logger.info(`[${guild.id}] Auto-resumed playback.`);
+        } catch {
+          logger.info(`[${guild.id}] No saved state — starting random playback.`);
+          await playRandom(guild, targetChannel);
+        }
+      } else {
+        logger.info(`[${guild.id}] No populated voice channel found to auto-join.`);
+      }
+    } catch (err) {
+      logger.error(`[${guild.id}] Failed to auto-join voice channel:`, err.message);
     }
   }
 });
@@ -114,10 +132,10 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const joinedChannel = newState.channel;
     if (joinedChannel && oldState.channelId !== newState.channelId && !newState.member?.user.bot) {
       const humanCount = joinedChannel.members.filter((m) => !m.user.bot).size;
-      const alreadyPlayingHere = session.connected && session.current;
+      const isBotIdle = !session.connected;
 
-      if (humanCount === 1 && !alreadyPlayingHere) {
-        logger.info(`[${guild.id}] ${newState.member?.user.tag} joined #${joinedChannel.name} alone — auto-starting radio.`);
+      if (humanCount >= 1 && isBotIdle) {
+        logger.info(`[${guild.id}] ${newState.member?.user.tag} joined #${joinedChannel.name} — auto-starting radio.`);
         try {
           const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
           const sounds = listSounds();
