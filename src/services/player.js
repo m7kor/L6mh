@@ -508,7 +508,7 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   session.ffmpegProcess = ffmpegProcess;
 
   const resource = createAudioResource(stream, {
-    inputType: StreamType.OggOpus,
+    inputType: StreamType.Raw,
   });
   session.resource = resource;
 
@@ -752,13 +752,7 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
     ffmpegArgs.push(
       '-i', 'pipe:0',
       '-af', `volume=${volume / 100}`,
-      '-c:a', 'libopus',
-      '-b:a', '96K',
-      '-vbr', 'on',
-      '-compression_level', '10',
-      '-frame_duration', '20',
-      '-application', 'audio',
-      '-f', 'ogg',
+      '-f', 's16le',
       '-ar', '48000',
       '-ac', '2',
       'pipe:1',
