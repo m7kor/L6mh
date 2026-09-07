@@ -508,7 +508,7 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   session.ffmpegProcess = ffmpegProcess;
 
   const resource = createAudioResource(stream, {
-    inputType: StreamType.Raw,
+    inputType: StreamType.OggOpus,
   });
   session.resource = resource;
 
@@ -731,6 +731,7 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       '-f', 'bestaudio/best',
       '--no-playlist',
       '--no-warnings',
+      '--no-progress',
       '-o', '-',
       '--no-part',
       // PO token provider via bgutil-pot
@@ -751,7 +752,13 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
     ffmpegArgs.push(
       '-i', 'pipe:0',
       '-af', `volume=${volume / 100}`,
-      '-f', 's16le',
+      '-c:a', 'libopus',
+      '-b:a', '96K',
+      '-vbr', 'on',
+      '-compression_level', '10',
+      '-frame_duration', '20',
+      '-application', 'audio',
+      '-f', 'opus',
       '-ar', '48000',
       '-ac', '2',
       'pipe:1',
@@ -761,6 +768,8 @@ function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) 
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     session.resolveProcess = ytDlpProcess;
+
+    ytDlpProcess.stderr.on('data', () => {}); // Consume stderr to prevent buffer block
 
     ytDlpProcess.on('error', (err) => {
       safeReject(new Error(`Failed to start yt-dlp: ${err.message}`));
