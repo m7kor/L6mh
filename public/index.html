@@ -44,20 +44,106 @@
         .card:hover { border-color: rgba(255, 255, 255, 0.15); }
 
         /* Now Playing — full width */
-        .now-playing-card { grid-column: 1 / 4; flex-direction: row; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(188, 19, 254, 0.08), rgba(0, 243, 255, 0.03)); border-color: rgba(188, 19, 254, 0.2); }
-        .np-info { flex: 1; padding-left: 20px; }
-        .np-info h3 { font-size: 15px; color: var(--neon-blue); margin-bottom: 5px; font-weight: 700; }
-        .np-info h1 { font-size: 26px; font-weight: 800; line-height: 1.4; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .np-progress { display: flex; align-items: center; gap: 12px; font-family: 'Outfit'; font-size: 14px; font-weight: 600; color: var(--text-muted); }
-        .progress-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
-        .progress-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); width: 0%; transition: width 1s linear; }
-        .visualizer { display: flex; gap: 5px; height: 60px; align-items: flex-end; justify-content: center; padding-right: 20px; border-right: 1px solid var(--card-border); }
-        .bar { width: 6px; background: var(--neon-green); border-radius: 3px; animation: bounce 1s infinite ease-in-out; }
-        .bar:nth-child(2) { animation-delay: 0.1s; height: 30%; } .bar:nth-child(3) { animation-delay: 0.2s; height: 60%; }
-        .bar:nth-child(4) { animation-delay: 0.3s; height: 40%; } .bar:nth-child(5) { animation-delay: 0.4s; height: 80%; }
-        .bar:nth-child(6) { animation-delay: 0.5s; height: 50%; }
-        .bar.paused { animation-play-state: paused; height: 10px !important; background: var(--text-muted); }
+        .now-playing-card {
+            grid-column: 1 / 4;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: stretch;
+            padding: 0;
+            overflow: hidden;
+            border: none;
+            background: linear-gradient(90deg, rgba(0,243,255,0.25) 0%, rgba(188,19,254,0.35) 35%, rgba(20,20,25,0.95) 35%, #141419 100%);
+        }
+        .np-thumb {
+            width: 35%;
+            min-height: 120px;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .np-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .np-thumb-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-start;
+            padding: 15px;
+            gap: 4px;
+        }
+        .np-visualizer {
+            display: flex;
+            gap: 4px;
+            height: 40px;
+            align-items: flex-end;
+        }
+        .np-bar {
+            width: 4px;
+            background: var(--neon-green);
+            border-radius: 2px;
+            animation: bounce 0.8s infinite ease-in-out;
+        }
+        .np-bar:nth-child(2) { animation-delay: 0.1s; height: 60%; }
+        .np-bar:nth-child(3) { animation-delay: 0.2s; height: 100%; }
+        .np-bar:nth-child(4) { animation-delay: 0.3s; height: 40%; }
+        .np-bar:nth-child(5) { animation-delay: 0.15s; height: 80%; }
+        .np-bar.paused { animation-play-state: paused; height: 6px !important; background: var(--text-muted); }
         @keyframes bounce { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+        .np-info {
+            flex: 1;
+            padding: 20px 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .np-mode {
+            font-size: 13px;
+            color: var(--neon-blue);
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-family: 'Outfit';
+        }
+        .np-title {
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.4;
+            margin-bottom: 15px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .np-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Outfit';
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .np-progress-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        .np-progress-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            width: 0%;
+            transition: width 1s linear;
+        }
 
         /* Stats */
         .stat-card { justify-content: center; align-items: center; text-align: center; }
@@ -116,18 +202,23 @@
         <div class="bento-grid">
             <!-- Now Playing -->
             <div class="card now-playing-card">
-                <div class="np-info">
-                    <h3 id="npMode">📻 يتم الآن عرض البث</h3>
-                    <h1 id="npTitle">جاري تحميل البيانات...</h1>
-                    <div class="np-progress">
-                        <span id="npElapsed">0:00</span>
-                        <div class="progress-bar"><div class="progress-fill" id="npBar"></div></div>
-                        <span id="npDuration">0:00</span>
+                <div class="np-thumb">
+                    <img id="npThumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E" alt="">
+                    <div class="np-thumb-overlay">
+                        <div class="np-visualizer" id="visualizer">
+                            <div class="np-bar"></div><div class="np-bar"></div><div class="np-bar"></div>
+                            <div class="np-bar"></div><div class="np-bar"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="visualizer" id="visualizer">
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                <div class="np-info">
+                    <div class="np-mode" id="npMode">📻 يتم الآن عرض البث</div>
+                    <div class="np-title" id="npTitle">جاري تحميل البيانات...</div>
+                    <div class="np-progress">
+                        <span id="npElapsed">0:00</span>
+                        <div class="np-progress-bar"><div class="np-progress-fill" id="npBar"></div></div>
+                        <span id="npDuration">0:00</span>
+                    </div>
                 </div>
             </div>
 
@@ -235,7 +326,6 @@
             document.getElementById('statPlayed').innerText = `${played} / ${remaining}`;
 
             const session = sessions[0];
-            const visualizer = document.getElementById('visualizer');
 
             if (session && session.title) {
                 document.getElementById('npTitle').innerText = session.title;
@@ -251,10 +341,15 @@
                     document.getElementById('npBar').style.width = '100%';
                     document.getElementById('npBar').style.background = 'var(--neon-red)';
                 }
+                if (session.thumbnail) {
+                    document.getElementById('npThumb').src = session.thumbnail;
+                } else if (session.videoId) {
+                    document.getElementById('npThumb').src = `https://i.ytimg.com/vi/${session.videoId}/mqdefault.jpg`;
+                }
                 if (session.paused) {
-                    Array.from(visualizer.children).forEach(b => b.classList.add('paused'));
+                    Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.add('paused'));
                 } else {
-                    Array.from(visualizer.children).forEach(b => b.classList.remove('paused'));
+                    Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.remove('paused'));
                 }
             } else {
                 document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
@@ -262,7 +357,8 @@
                 document.getElementById('npElapsed').innerText = '0:00';
                 document.getElementById('npDuration').innerText = '0:00';
                 document.getElementById('npBar').style.width = '0%';
-                Array.from(visualizer.children).forEach(b => b.classList.add('paused'));
+                document.getElementById('npThumb').src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E";
+                Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.add('paused'));
             }
         };
 
