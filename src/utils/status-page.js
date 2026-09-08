@@ -36,12 +36,13 @@ let cachedHtml = null;
 const errorLog = [];
 const MAX_ERROR_LOG = 50;
 
-// Simple in-memory rate limiter
+// Simple in-memory rate limiter (excludes /api/status polling)
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_MAX = 120;
 
-function isRateLimited(ip) {
+function isRateLimited(ip, url) {
+  if (url === '/api/status') return false; // dashboard polls every 2s
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now - entry.start > RATE_LIMIT_WINDOW_MS) {
@@ -139,7 +140,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
       // All API endpoints require auth
       if (req.url.startsWith('/api/')) {
-        if (isRateLimited(ip)) {
+        if (isRateLimited(ip, req.url)) {
           res.writeHead(429, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Too many requests' }));
           return;
