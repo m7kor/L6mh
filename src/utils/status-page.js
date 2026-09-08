@@ -4,6 +4,7 @@
  */
 
 import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createLogger } from './logger.js';
 import { loadPlays } from './stats.js';
