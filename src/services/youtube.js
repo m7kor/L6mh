@@ -10,6 +10,8 @@
  * everything here goes through the uploads playlist instead of search.
  */
 
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { notify } from '../utils/webhook.js';
@@ -43,9 +45,34 @@ const LIST_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes — the video catalog ra
 const DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — duration/thumbnail never change
 const MAX_PAGES = 10; // up to 500 videos; plenty for a channel archive, keeps quota bounded
 
+const VIDEO_CACHE_FILE = join(process.cwd(), 'video-cache.json');
+
 let uploadsPlaylistCache = { id: null, channelId: null };
 let listCache = { items: null, fetchedAt: 0 };
 const detailsCache = new Map(); // videoId -> { data, fetchedAt }
+
+function loadDiskCache() {
+  if (!existsSync(VIDEO_CACHE_FILE)) return;
+  try {
+    const data = JSON.parse(readFileSync(VIDEO_CACHE_FILE, 'utf-8'));
+    if (data.items && Array.isArray(data.items)) {
+      listCache = { items: data.items, fetchedAt: data.fetchedAt || 0 };
+      logger.info(`Loaded ${data.items.length} videos from disk cache.`);
+    }
+  } catch {}
+}
+
+function saveDiskCache() {
+  if (!listCache.items) return;
+  try {
+    writeFileSync(VIDEO_CACHE_FILE, JSON.stringify({
+      items: listCache.items,
+      fetchedAt: listCache.fetchedAt,
+    }, null, 2));
+  } catch {}
+}
+
+loadDiskCache();
 
 async function callApi(endpoint, params) {
   const res = await fetch(`https://www.googleapis.com/youtube/v3/${endpoint}?${params}`);
@@ -134,6 +161,7 @@ export async function getVideos(
     if (videos.length === 0) throw new Error('لا يوجد فيديوهات على هذه القناة.');
 
     listCache = { items: videos, fetchedAt: now };
+    saveDiskCache();
     logger.info(`Fetched ${videos.length} videos from channel uploads (${pages} page(s)).`);
     return videos;
   } catch (err) {
@@ -166,12 +194,26 @@ export async function getLatestVideo(channelId = config.channelId, apiKey = conf
 /**
  * Pick a random video, optionally avoiding a set of recently-played video IDs
  * so continuous playback doesn't repeat the same handful of clips back to back.
+ * Filters out YouTube Shorts (<60s) and avoids consecutive long videos (>20min).
  * @param {string[]} exclude - video IDs to avoid if possible
  */
 export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = []) {
   const videos = await getVideos(channelId, apiKey);
-  const pool = videos.filter((v) => !exclude.includes(v.videoId));
-  const list = pool.length > 0 ? pool : videos; // fall back if everything was excluded
+  let pool = videos.filter((v) => !exclude.includes(v.videoId));
+
+  // Filter out Shorts (<60s) if we have enough non-Short content
+  const nonShorts = pool.filter((v) => v.durationSeconds == null || v.durationSeconds >= 60);
+  if (nonShorts.length > 5) pool = nonShorts;
+
+  // Avoid consecutive long videos (>20min): if last played was long, prefer shorter
+  const lastPlayedId = exclude[exclude.length - 1];
+  const lastPlayed = lastPlayedId ? videos.find((v) => v.videoId === lastPlayedId) : null;
+  if (lastPlayed && lastPlayed.durationSeconds && lastPlayed.durationSeconds > 1200) {
+    const shorter = pool.filter((v) => v.durationSeconds == null || v.durationSeconds <= 1200);
+    if (shorter.length > 3) pool = shorter;
+  }
+
+  const list = pool.length > 0 ? pool : videos;
   return list[Math.floor(Math.random() * list.length)];
 }
 

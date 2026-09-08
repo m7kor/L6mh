@@ -6,7 +6,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import {
@@ -20,6 +20,12 @@ import {
   NoSubscriberBehavior,
 } from '@discordjs/voice';
 import { getRandomVideo, getLatestVideo, getVideoDetails } from './youtube.js';
+import {
+  getSession, sessions, saveState, restoreLastVideo, loadAllState,
+  getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
+  trackRecent,
+} from './session.js';
+import { createAudioStream, killProcesses, preValidateVideo, formatTime } from './streaming.js';
 import { listSounds, resolveSoundPath } from '../utils/sounds.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
@@ -31,135 +37,41 @@ const logger = createLogger('audio');
 
 export const playerEvents = new EventEmitter();
 
-const STATE_FILE = join(process.cwd(), 'playback-state.json');
 const RECENT_HISTORY_SIZE = 20;
 const RETRY_BASE_DELAY_MS = 5_000;
 const RETRY_MAX_DELAY_MS = 60_000;
 const RECONNECT_DELAY_MS = 10_000;
-const PROGRESS_AUTOSAVE_MS = 15_000;
 const UI_REFRESH_MS = 15_000;
+const PRELOAD_THRESHOLD_MS = 10_000;
 
 // ---------------------------------------------------------------------------
-// Per-guild session
+// Jingle rotation — least-recently-played weighting
 // ---------------------------------------------------------------------------
 
-class GuildSession {
-  constructor(guildId) {
-    this.guildId = guildId;
-    this.connection = null;
-    this.player = null;
-    this.resource = null;
+const jingleLastPlayed = new Map();
 
-    this.mode = null;
-    this.continuous = false;
-    this.volume = config.defaultVolume;
-    this.paused = false;
+function pickJingle(sounds) {
+  if (sounds.length === 0) return null;
+  if (sounds.length === 1) return sounds[0];
 
-    this.queue = [];
-    this.recentIds = [];
-    this.current = null;
-
-    this.manualStop = false;
-    this.advancing = false;
-
-    this.segmentStartOffset = 0;
-    this.segmentStartedAt = null;
-    this.progressTimer = null;
-    this.uiTimer = null;
-    this.resolveProcess = null;
-    this.ffmpegProcess = null;
-
-    this.nowPlayingMessage = null;
-    this.interjecting = false;
-
-    this.guild = null;
-    this.channel = null;
+  const now = Date.now();
+  const weights = sounds.map((name) => {
+    const last = jingleLastPlayed.get(name) || 0;
+    const age = now - last;
+    return Math.max(1, age / 60_000);
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < sounds.length; i++) {
+    r -= weights[i];
+    if (r <= 0) {
+      jingleLastPlayed.set(sounds[i], now);
+      return sounds[i];
+    }
   }
-}
-
-const sessions = new Map();
-
-function getSession(guildId) {
-  let session = sessions.get(guildId);
-  if (!session) {
-    session = new GuildSession(guildId);
-    sessions.set(guildId, session);
-  }
-  return session;
-}
-
-// ---------------------------------------------------------------------------
-// State persistence
-// ---------------------------------------------------------------------------
-
-function loadAllState() {
-  if (!existsSync(STATE_FILE)) return {};
-  try {
-    return JSON.parse(readFileSync(STATE_FILE, 'utf-8'));
-  } catch (err) {
-    logger.error('Failed to load state file:', err.message);
-    return {};
-  }
-}
-
-function saveState(session) {
-  try {
-    const all = loadAllState();
-    all[session.guildId] = {
-      current: session.current,
-      mode: session.mode,
-      continuous: session.continuous,
-      volume: session.volume,
-      savedAt: new Date().toISOString(),
-    };
-    writeFileSync(STATE_FILE, JSON.stringify(all, null, 2));
-  } catch (err) {
-    logger.error('Failed to save state:', err.message);
-  }
-}
-
-function restoreLastVideo(guildId) {
-  const saved = loadAllState()[guildId];
-  if (!saved) return null;
-  const session = getSession(guildId);
-  session.current = saved.current || null;
-  session.volume = saved.volume ?? config.defaultVolume;
-  return session.current;
-}
-
-// ---------------------------------------------------------------------------
-// Progress tracking
-// ---------------------------------------------------------------------------
-
-function getElapsedSeconds(session) {
-  if (session.segmentStartedAt == null) {
-    return session.current?.progressSeconds || 0;
-  }
-  const elapsedSinceSegmentStart = (Date.now() - session.segmentStartedAt) / 1000;
-  return session.segmentStartOffset + elapsedSinceSegmentStart;
-}
-
-function freezeProgress(session) {
-  if (!session.current) return;
-  const elapsed = Math.max(0, Math.floor(getElapsedSeconds(session)));
-  session.current = { ...session.current, progressSeconds: elapsed };
-  session.segmentStartedAt = null;
-}
-
-function startProgressAutosave(session) {
-  stopProgressAutosave(session);
-  session.progressTimer = setInterval(() => {
-    if (!session.current || session.segmentStartedAt == null) return;
-    const elapsed = Math.max(0, Math.floor(getElapsedSeconds(session)));
-    saveState({ ...session, current: { ...session.current, progressSeconds: elapsed } });
-  }, PROGRESS_AUTOSAVE_MS);
-}
-
-function stopProgressAutosave(session) {
-  if (session.progressTimer) {
-    clearInterval(session.progressTimer);
-    session.progressTimer = null;
-  }
+  const fallback = sounds[sounds.length - 1];
+  jingleLastPlayed.set(fallback, now);
+  return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,10 +238,45 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function trackRecent(session, videoId) {
-  if (!videoId) return;
-  session.recentIds.push(videoId);
-  if (session.recentIds.length > RECENT_HISTORY_SIZE) session.recentIds.shift();
+// ---------------------------------------------------------------------------
+// Track preloading — resolve next video stream in background
+// ---------------------------------------------------------------------------
+
+async function preloadNextTrack(session) {
+  if (session.preloaded) return;
+  try {
+    const next = session.queue[0]
+      || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds);
+    if (!next?.url) return;
+    const ytDlpArgs = [
+      '-f', 'bestaudio/best',
+      '--no-playlist',
+      '--no-warnings',
+      '--no-progress',
+      '-o', '-',
+      '--no-part',
+      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
+    ];
+    const cookiesPath = join(process.cwd(), 'cookies.txt');
+    if (existsSync(cookiesPath)) ytDlpArgs.push('--cookies', cookiesPath);
+    ytDlpArgs.push(next.url);
+    const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    proc.stderr.on('data', () => {});
+    const firstChunk = await new Promise((resolve) => {
+      const timer = setTimeout(() => { proc.kill(); resolve(null); }, 5000);
+      proc.stdout.once('data', (data) => { clearTimeout(timer); resolve(data); });
+      proc.on('close', () => { clearTimeout(timer); resolve(null); });
+      proc.on('error', () => { clearTimeout(timer); resolve(null); });
+    });
+    if (firstChunk && firstChunk.length > 0) {
+      session.preloaded = { video: next, proc };
+      logger.info(`[${session.guildId}] Preloaded: ${next.title}`);
+    } else {
+      proc.kill();
+    }
+  } catch {
+    session.preloaded = null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -396,7 +343,7 @@ async function playRandomSound(guild, channel) {
     const sounds = listSounds();
     if (sounds.length === 0) return;
 
-    const name = sounds[Math.floor(Math.random() * sounds.length)];
+    const name = pickJingle(sounds);
     const filePath = resolveSoundPath(name);
     if (!filePath) return;
 
@@ -562,6 +509,16 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   updateNowPlayingMessage(session).catch(() => {});
   playerEvents.emit('trackChange', { guildId: guild.id, video: session.current, paused: false });
 
+  // Preload next track when current is near the end
+  if (video.durationSeconds && video.durationSeconds > 30) {
+    const preloadAt = Math.max(5_000, (video.durationSeconds - 15) * 1000);
+    setTimeout(() => {
+      if (session.current?.videoId === video.videoId && session.continuous) {
+        preloadNextTrack(session).catch(() => {});
+      }
+    }, preloadAt);
+  }
+
   if (countPlay && startSeconds === 0) {
     recordPlay(video);
   }
@@ -578,6 +535,16 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
     }
     updateNowPlayingMessage(session).catch(() => {});
   }).catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Retry logic — jittered backoff for track transitions and rejoin
+// ---------------------------------------------------------------------------
+
+function jitteredDelay(baseMs, attempt) {
+  const delay = Math.min(baseMs * attempt, RETRY_MAX_DELAY_MS);
+  const jitter = delay * (0.8 + Math.random() * 0.4);
+  return Math.floor(jitter);
 }
 
 // ---------------------------------------------------------------------------
@@ -611,15 +578,27 @@ async function onTrackFinished(guild, channel) {
       try {
         await playRandomSound(guild, channel);
 
-        const next = session.queue.shift()
-          || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds);
+        let next;
+        if (session.preloaded?.video) {
+          next = session.preloaded.video;
+          session.preloaded = null;
+        } else {
+          next = session.queue.shift()
+            || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds);
+        }
+        const valid = await preValidateVideo(next.url);
+        if (!valid) {
+          logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
+          trackRecent(session, next.videoId);
+          continue;
+        }
         session.current = next;
         trackRecent(session, next.videoId);
         await connectAndPlay(guild, channel, next);
         return;
       } catch (err) {
         attempt += 1;
-        const delay = Math.min(RETRY_BASE_DELAY_MS * attempt, RETRY_MAX_DELAY_MS);
+        const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
         logger.error(
           `[${guild.id}] Failed to play next (attempt ${attempt}/${MAX_ATTEMPTS}):`,
           err.message,
@@ -659,7 +638,7 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     await connectAndPlay(guild, freshChannel, video, { countPlay: false });
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {
-    const delay = Math.min(RETRY_BASE_DELAY_MS * attempt, RETRY_MAX_DELAY_MS);
+    const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
     logger.error(`[${guild.id}] Rejoin failed:`, err.message);
     if (attempt === 5) {
       notify(
@@ -670,155 +649,4 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     }
     setTimeout(() => rejoinAndResume(guild, channel, attempt + 1), delay);
   }
-}
-
-// ---------------------------------------------------------------------------
-// Process cleanup
-// ---------------------------------------------------------------------------
-
-function killProcesses(session) {
-  if (session.ffmpegProcess) {
-    try { session.ffmpegProcess.kill('SIGKILL'); } catch {}
-    session.ffmpegProcess = null;
-  }
-  if (session.resolveProcess) {
-    try { session.resolveProcess.kill('SIGKILL'); } catch {}
-    session.resolveProcess = null;
-  }
-}
-
-function formatTime(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = Math.floor(totalSeconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-// ---------------------------------------------------------------------------
-// Audio streaming — yt-dlp → ffmpeg → PCM
-// ---------------------------------------------------------------------------
-
-function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) {
-  return new Promise((resolve, reject) => {
-    const STREAM_TIMEOUT_MS = 30_000; // kill everything if no data in 30s
-    let resolved = false;
-    let streamTimeout = null;
-
-    function cleanup() {
-      if (streamTimeout) { clearTimeout(streamTimeout); streamTimeout = null; }
-    }
-
-    function safeReject(err) {
-      if (resolved) return;
-      resolved = true;
-      cleanup();
-      killProcesses(session);
-      reject(err);
-    }
-
-    function safeResolve(val) {
-      if (resolved) return;
-      resolved = true;
-      cleanup();
-      resolve(val);
-    }
-
-    // Timeout: if no audio data flows within STREAM_TIMEOUT_MS, abort
-    streamTimeout = setTimeout(() => {
-      safeReject(new Error('Stream timeout — no audio data received'));
-    }, STREAM_TIMEOUT_MS);
-
-    const ytDlpArgs = [
-      '-f', 'bestaudio/best',
-      '--no-playlist',
-      '--no-warnings',
-      '--no-progress',
-      '-o', '-',
-      '--no-part',
-      // PO token provider via bgutil-pot
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
-    ];
-
-    const cookiesPath = join(process.cwd(), 'cookies.txt');
-    if (existsSync(cookiesPath)) {
-      ytDlpArgs.push('--cookies', cookiesPath);
-    }
-
-    ytDlpArgs.push(youtubeUrl);
-
-    const ffmpegArgs = [];
-    if (startSeconds > 0) {
-      ffmpegArgs.push('-ss', String(startSeconds));
-    }
-    ffmpegArgs.push(
-      '-re',
-      '-i', 'pipe:0',
-      '-af', `volume=${volume / 100}`,
-      '-f', 's16le',
-      '-ar', '48000',
-      '-ac', '2',
-      'pipe:1',
-    );
-
-    const ytDlpProcess = spawn('yt-dlp', ytDlpArgs, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    session.resolveProcess = ytDlpProcess;
-
-    ytDlpProcess.stderr.on('data', () => {}); // Consume stderr to prevent buffer block
-
-    ytDlpProcess.on('error', (err) => {
-      safeReject(new Error(`Failed to start yt-dlp: ${err.message}`));
-    });
-
-    const ffmpegProcess = spawn('ffmpeg', ffmpegArgs, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    session.ffmpegProcess = ffmpegProcess;
-
-    ytDlpProcess.stdout.pipe(ffmpegProcess.stdin);
-
-    ffmpegProcess.stdin.on('error', (err) => {
-      if (err.code === 'EPIPE') return; // ignore EPIPE from ffmpeg closing early
-      logger.error(`ffmpeg stdin error: ${err.message}`);
-    });
-
-    // When yt-dlp closes: if error, kill ffmpeg immediately
-    ytDlpProcess.on('close', (code) => {
-      session.resolveProcess = null;
-      if (code !== 0 && code !== null) {
-        try { ffmpegProcess.kill(); } catch {}
-        safeReject(new Error(`yt-dlp exited with code ${code}`));
-        return;
-      }
-      // Normal exit — close ffmpeg stdin so it can drain and finish
-      try { ffmpegProcess.stdin.end(); } catch {}
-    });
-
-    ffmpegProcess.stderr.on('data', () => {});
-
-    ffmpegProcess.on('error', (err) => {
-      safeReject(new Error(`Failed to start ffmpeg: ${err.message}`));
-    });
-
-    // First audio data from ffmpeg clears the timeout — stream is alive
-    let dataReceived = false;
-    ffmpegProcess.stdout.once('data', () => {
-      dataReceived = true;
-      cleanup(); // streaming started, no more timeout needed
-    });
-
-    ffmpegProcess.on('close', (code) => {
-      session.ffmpegProcess = null;
-      if (!dataReceived && !resolved) {
-        safeReject(new Error(`ffmpeg exited with code ${code} before producing audio`));
-      }
-    });
-
-    logger.info(
-      startSeconds > 0
-        ? `Resuming from ${formatTime(startSeconds)}…`
-        : 'Streaming audio…',
-    );
-    safeResolve({ stream: ffmpegProcess.stdout, ffmpegProcess });
-  });
 }

@@ -13,6 +13,9 @@ import { config } from './config.js';
 import { createLogger } from './utils/logger.js';
 import { notify } from './utils/webhook.js';
 import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
+import { startHeartbeat } from './utils/heartbeat.js';
+import { startStatusPage } from './utils/status-page.js';
+import { checkWeeklyRecap } from './utils/weekly-recap.js';
 import {
   stopAllSessions,
   playRandom,
@@ -23,6 +26,24 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
+
+// Optional Sentry error tracking — SENTRY_DSN must be set in .env
+if (process.env.SENTRY_DSN) {
+  try {
+    const Sentry = await import('@sentry/node');
+    Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.1 });
+    logger.info('Sentry error tracking enabled.');
+  } catch {
+    logger.warn('Sentry SDK not installed — error tracking disabled.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Anti-flap hysteresis — debounce voice state changes per guild
+// ---------------------------------------------------------------------------
+
+const voiceActionTimeouts = new Map();
+const VOICE_DEBOUNCE_MS = 4_000;
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -59,6 +80,11 @@ client.once(Events.ClientReady, async (c) => {
   logger.info(`Commands loaded: /${[...client.commands.keys()].join(', /')}`);
 
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**.`, 'ok');
+  startHeartbeat();
+  startStatusPage(getSessionInfo);
+
+  // Weekly recap — check daily
+  setInterval(checkWeeklyRecap, 60 * 60 * 1000);
 
   checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp update check failed:', err.message));
   setInterval(() => {
@@ -131,6 +157,14 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
     const joinedChannel = newState.channel;
     if (joinedChannel && oldState.channelId !== newState.channelId && !newState.member?.user.bot) {
+      const debounceKey = `join-${guild.id}`;
+      const existing = voiceActionTimeouts.get(debounceKey);
+      if (existing) clearTimeout(existing);
+
+      voiceActionTimeouts.set(debounceKey, setTimeout(() => {
+        voiceActionTimeouts.delete(debounceKey);
+      }, VOICE_DEBOUNCE_MS));
+
       const humanCount = joinedChannel.members.filter((m) => !m.user.bot).size;
       const isBotIdle = !session.connected;
 
@@ -162,6 +196,14 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 
     const leftChannel = oldState.channel;
     if (leftChannel && oldState.channelId !== newState.channelId) {
+      const debounceKey = `leave-${guild.id}`;
+      const existing = voiceActionTimeouts.get(debounceKey);
+      if (existing) clearTimeout(existing);
+
+      voiceActionTimeouts.set(debounceKey, setTimeout(() => {
+        voiceActionTimeouts.delete(debounceKey);
+      }, VOICE_DEBOUNCE_MS));
+
       const botMember = await guild.members.fetchMe();
       const botIsThere = leftChannel.members.has(botMember.id);
       if (!botIsThere) return;
@@ -209,8 +251,14 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGBREAK', () => shutdown('SIGBREAK'));
 
+function redactSecrets(str) {
+  return String(str)
+    .replace(/Bot\s+[A-Za-z0-9._-]+/g, 'Bot [REDACTED]')
+    .replace(/[A-Za-z0-9._-]{20,}/g, '[REDACTED]');
+}
+
 process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled promise rejection:', reason);
+  logger.error('Unhandled promise rejection:', redactSecrets(reason));
 });
 
 process.on('uncaughtException', (err) => {
@@ -218,8 +266,8 @@ process.on('uncaughtException', (err) => {
     logger.warn('Ignored uncaught EPIPE error');
     return;
   }
-  logger.error('Uncaught exception — restarting:', err);
-  notify('🔴 Uncaught Exception — Restarting', `\`\`\`${String(err?.stack || err).slice(0, 1500)}\`\`\``, 'error').catch(() => {});
+  logger.error('Uncaught exception — restarting:', redactSecrets(err?.stack || err));
+  notify('🔴 Uncaught Exception — Restarting', `\`\`\`${redactSecrets(String(err?.stack || err)).slice(0, 1500)}\`\`\``, 'error').catch(() => {});
   stopAllSessions();
   setTimeout(() => process.exit(1), 500);
 });

@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { playLatest, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
 import { buildNowPlayingEmbed } from '../utils/embeds.js';
+import { isOnCooldown, setCooldown, getRemainingCooldown } from '../utils/cooldown.js';
 
 export const data = new SlashCommandBuilder()
   .setName('اخر_مقطع')
@@ -13,6 +14,13 @@ export async function execute(interaction) {
     return;
   }
 
+  if (isOnCooldown(interaction.user.id, 'اخر_مقطع')) {
+    const secs = getRemainingCooldown(interaction.user.id, 'اخر_مقطع');
+    await interaction.reply({ content: `⏳ انتظر ${secs} ثانية قبل إعادة المحاولة.`, ephemeral: true });
+    return;
+  }
+
+  setCooldown(interaction.user.id, 'اخر_مقطع');
   await interaction.deferReply();
   try {
     const video = await playLatest(interaction.guild, voiceChannel);

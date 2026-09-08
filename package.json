@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "deploy": "node src/deploy-commands.js"
+    "deploy": "node src/deploy-commands.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/**/*.test.js"
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",

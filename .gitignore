@@ -1,7 +1,11 @@
 node_modules/
 .env
+.env.*
 *.log
 playback-state.json
+video-cache.json
+heartbeat.json
+play-counts.json
 cookies.txt
 cookies_strip.txt
 helium_cookies.db
@@ -10,3 +14,6 @@ check_*.py
 debug_*.py
 export_*.py
 test_*.py
+.audio-cache/
+.pytest_cache/
+.pytestcache/

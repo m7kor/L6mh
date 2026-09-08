@@ -2,7 +2,7 @@
  * Lightweight play-count persistence.
  */
 
-import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createLogger } from './logger.js';
 
@@ -22,6 +22,9 @@ function loadJson(path) {
 
 function saveJson(path, data) {
   try {
+    if (existsSync(path)) {
+      try { copyFileSync(path, path + '.bak'); } catch {}
+    }
     writeFileSync(path, JSON.stringify(data, null, 2));
   } catch (err) {
     logger.error(`Failed to write ${path}:`, err.message);

@@ -1,25 +1,45 @@
 /**
- * Minimal scoped logger. Prefixes every line with a colored scope tag
- * and a timestamp, e.g:  [audio] 2026-08-27 20:15:03  Now playing...
+ * Structured logger with console + optional JSON output.
+ *
+ * Default: coloured scope-tagged console output (development).
+ * Set LOG_FORMAT=json for machine-parseable JSON lines (production).
+ * Preserve the same createLogger(scope) API so no call sites change.
  */
 
 const COLORS = {
-  bot: '\x1b[36m', // cyan
-  audio: '\x1b[35m', // magenta
-  youtube: '\x1b[33m', // yellow
-  config: '\x1b[31m', // red
+  bot: '\x1b[36m',
+  audio: '\x1b[35m',
+  youtube: '\x1b[33m',
+  config: '\x1b[31m',
+  heartbeat: '\x1b[32m',
+  webhook: '\x1b[37m',
+  status: '\x1b[96m',
 };
 const RESET = '\x1b[0m';
 
+const jsonMode = process.env.LOG_FORMAT === 'json';
+
 function timestamp() {
+  return new Date().toISOString();
+}
+
+function timestampPretty() {
   return new Date().toISOString().replace('T', ' ').split('.')[0];
 }
 
 function write(scope, level, args) {
-  const color = COLORS[scope] || '\x1b[37m';
-  const prefix = `${color}[${scope}]${RESET} ${timestamp()}`;
-  const method = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
-  method(prefix, ...args);
+  if (jsonMode) {
+    const msg = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+    const entry = { ts: timestamp(), level, scope, msg };
+    if (level === 'error') console.error(JSON.stringify(entry));
+    else if (level === 'warn') console.warn(JSON.stringify(entry));
+    else console.log(JSON.stringify(entry));
+  } else {
+    const color = COLORS[scope] || '\x1b[37m';
+    const prefix = `${color}[${scope}]${RESET} ${timestampPretty()}`;
+    const method = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    method(prefix, ...args);
+  }
 }
 
 export function createLogger(scope) {
