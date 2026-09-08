@@ -3,473 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WaheedTech | Advanced Studio Panel</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <title>WaheedTech | Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-main: #08080a;
-            --card-bg: rgba(255, 255, 255, 0.03);
-            --card-border: rgba(255, 255, 255, 0.08);
-            --neon-blue: #00f3ff;
-            --neon-purple: #bc13fe;
-            --neon-green: #00ff9d;
-            --neon-red: #ff0055;
-            --neon-yellow: #ffd700;
-            --text-main: #ffffff;
-            --text-muted: #8b8b8b;
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface-2: #1a1a25;
+            --border: rgba(255,255,255,0.06);
+            --border-hover: rgba(255,255,255,0.12);
+            --cyan: #00e5ff;
+            --purple: #a855f7;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+            --text: #f1f1f1;
+            --text-2: #71717a;
+            --radius: 16px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', 'Outfit', sans-serif; }
-        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
-        body::before { content: ''; position: fixed; top: -10%; right: -5%; width: 500px; height: 500px; background: radial-gradient(circle, var(--neon-purple) 0%, transparent 70%); filter: blur(120px); opacity: 0.15; z-index: 0; }
-        body::after { content: ''; position: fixed; bottom: -10%; left: -5%; width: 600px; height: 600px; background: radial-gradient(circle, var(--neon-blue) 0%, transparent 70%); filter: blur(150px); opacity: 0.1; z-index: 0; }
-        .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 30px; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; }
 
-        /* Header */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding: 15px 25px; background: rgba(255,255,255,0.02); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .logo-section { display: flex; align-items: center; gap: 15px; }
-        .logo-img { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
-        .logo-text h2 { font-size: 18px; font-weight: 800; }
-        .logo-text p { font-size: 13px; color: var(--neon-blue); font-family: 'Outfit'; }
-        .header-right { display: flex; align-items: center; gap: 12px; }
-        .server-status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neon-green); font-weight: 700; background: rgba(0,255,157,0.1); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(0,255,157,0.2); }
-        .pulse-dot { width: 10px; height: 10px; background: var(--neon-green); border-radius: 50%; box-shadow: 0 0 10px var(--neon-green); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(0, 255, 157, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); } }
-        .theme-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: 0.3s; }
-        .theme-btn:hover { border-color: var(--neon-blue); color: var(--neon-blue); }
+        .shell { max-width: 1280px; margin: 0 auto; padding: 24px; }
 
-        /* Grid */
-        .bento-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .card { background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 20px; padding: 25px; display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: border-color 0.3s; }
-        .card:hover { border-color: rgba(255, 255, 255, 0.15); }
+        /* ── Header ── */
+        .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+        .hdr-brand { display: flex; align-items: center; gap: 14px; }
+        .hdr-logo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--cyan), var(--purple)); display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #000; }
+        .hdr-name h1 { font-size: 17px; font-weight: 800; line-height: 1.2; }
+        .hdr-name p { font-size: 12px; color: var(--text-2); font-family: 'Outfit'; }
+        .hdr-actions { display: flex; align-items: center; gap: 10px; }
+        .hdr-pill { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 20px; }
+        .hdr-pill.on { color: var(--green); background: rgba(34,197,94,0.1); }
+        .hdr-pill.off { color: var(--red); background: rgba(239,68,68,0.1); }
+        .hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
-        /* Now Playing — full width */
-        .now-playing-card {
-            grid-column: 1 / 4;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: stretch;
-            padding: 0;
-            overflow: hidden;
-            border: none;
-            background: #111116;
-            min-height: 160px;
-        }
-        .np-left {
-            width: 180px;
-            min-width: 180px;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, rgba(0,243,255,0.3), rgba(188,19,254,0.4));
-        }
-        .np-left img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            inset: 0;
-        }
-        .np-left-overlay {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(0,243,255,0.2), rgba(188,19,254,0.3));
-            display: flex;
-            align-items: flex-end;
-            justify-content: flex-start;
-            padding: 12px;
-            z-index: 1;
-        }
-        .np-visualizer {
-            display: flex;
-            gap: 4px;
-            height: 35px;
-            align-items: flex-end;
-        }
-        .np-bar {
-            width: 4px;
-            background: var(--neon-green);
-            border-radius: 2px;
-            animation: bounce 0.8s infinite ease-in-out;
-        }
-        .np-bar:nth-child(2) { animation-delay: 0.1s; height: 60%; }
-        .np-bar:nth-child(3) { animation-delay: 0.2s; height: 100%; }
-        .np-bar:nth-child(4) { animation-delay: 0.3s; height: 40%; }
-        .np-bar:nth-child(5) { animation-delay: 0.15s; height: 80%; }
-        .np-bar.paused { animation-play-state: paused; height: 6px !important; background: var(--text-muted); }
-        @keyframes bounce { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
-        .np-center {
-            flex: 1;
-            padding: 20px 25px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .np-mode {
-            font-size: 13px;
-            color: var(--neon-blue);
-            font-weight: 700;
-            margin-bottom: 8px;
-            font-family: 'Outfit';
-        }
-        .np-title {
-            font-size: 20px;
-            font-weight: 800;
-            line-height: 1.4;
-            margin-bottom: 12px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .np-progress {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Outfit';
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-muted);
-        }
-        .np-progress-bar {
-            flex: 1;
-            height: 4px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 2px;
-            overflow: hidden;
-            position: relative;
-        }
-        .np-progress-fill {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
-            width: 0%;
-            transition: width 1s linear;
-        }
-        .np-right {
-            width: 300px;
-            min-width: 300px;
-            position: relative;
-            overflow: hidden;
-            background: #000;
-        }
-        .np-right iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        .np-right img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-        }
+        /* ── Now Playing ── */
+        .np { display: grid; grid-template-columns: 200px 1fr 280px; gap: 0; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--border); margin-bottom: 20px; min-height: 150px; }
+        .np-thumb { position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(0,229,255,0.25), rgba(168,85,247,0.35)); }
+        .np-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .np-vis { position: absolute; bottom: 10px; left: 10px; display: flex; gap: 3px; height: 30px; align-items: flex-end; z-index: 2; }
+        .np-vis span { width: 3px; background: var(--green); border-radius: 2px; animation: eq .7s infinite ease-in-out; }
+        .np-vis span:nth-child(2) { animation-delay: .1s; height: 55%; }
+        .np-vis span:nth-child(3) { animation-delay: .2s; height: 100%; }
+        .np-vis span:nth-child(4) { animation-delay: .3s; height: 35%; }
+        .np-vis span:nth-child(5) { animation-delay: .15s; height: 75%; }
+        .np-vis span.off { animation-play-state: paused; height: 4px !important; background: var(--text-2); }
+        @keyframes eq { 0%,100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
 
-        /* Stats */
-        .stat-card { justify-content: center; align-items: center; text-align: center; }
-        .stat-icon { width: 55px; height: 55px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 15px; }
-        .stat-val { font-family: 'Outfit'; font-size: 32px; font-weight: 800; margin-bottom: 5px; }
-        .stat-lbl { color: var(--text-muted); font-size: 14px; }
+        .np-body { padding: 22px 26px; display: flex; flex-direction: column; justify-content: center; }
+        .np-tag { font-size: 12px; font-weight: 600; color: var(--cyan); font-family: 'Outfit'; margin-bottom: 6px; }
+        .np-title { font-size: 19px; font-weight: 800; line-height: 1.45; margin-bottom: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .np-bar-row { display: flex; align-items: center; gap: 10px; font-family: 'Outfit'; font-size: 12px; font-weight: 600; color: var(--text-2); }
+        .np-track { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; position: relative; }
+        .np-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); width: 0%; transition: width 1s linear; border-radius: 2px; }
+        .np-skip { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid var(--border); display: grid; place-items: center; cursor: pointer; color: var(--text); font-size: 13px; transition: .2s; flex-shrink: 0; }
+        .np-skip:hover { background: var(--cyan); color: #000; border-color: var(--cyan); }
 
-        /* Quick Actions */
-        .quick-card { justify-content: center; }
-        .ctrl-hdr { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .q-grid { display: flex; flex-direction: column; gap: 12px; width: 100%; }
-        .q-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; color: #fff; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700; }
-        .q-btn:hover { background: rgba(0, 243, 255, 0.1); border-color: var(--neon-blue); color: var(--neon-blue); }
+        .np-embed { background: #000; position: relative; overflow: hidden; }
+        .np-embed iframe { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; }
+        .np-embed img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-        /* Video Browser */
-        .videos-card { grid-column: 1 / 4; }
-        .sec-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .sec-hdr h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-        .vid-search { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 10px; color: #fff; font-size: 14px; outline: none; margin-bottom: 12px; }
-        .vid-search:focus { border-color: var(--neon-blue); }
-        .vid-list { display: flex; flex-direction: column; gap: 6px; max-height: 500px; overflow-y: auto; }
-        .vid-item { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid transparent; transition: 0.3s; cursor: pointer; }
-        .vid-item:hover { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.05); }
-        .vid-thumb { width: 100px; height: 56px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
-        .vid-info { flex: 1; min-width: 0; }
-        .vid-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .vid-play { font-size: 11px; color: var(--neon-green); font-weight: 700; margin-top: 2px; }
-        .empty-msg { color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px; }
+        /* ── Stats Row ── */
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: border-color .2s; }
+        .stat:hover { border-color: var(--border-hover); }
+        .stat-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; margin-bottom: 12px; }
+        .stat-num { font-family: 'Outfit'; font-size: 26px; font-weight: 800; line-height: 1.2; }
+        .stat-lbl { font-size: 12px; color: var(--text-2); margin-top: 4px; }
 
-        @media (max-width: 1200px) {
-            .bento-grid { grid-template-columns: 1fr; }
-            .now-playing-card, .videos-card { grid-column: 1; }
+        /* ── Quick Actions ── */
+        .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .act-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; transition: .2s; }
+        .act-btn:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,229,255,0.04); }
+        .act-btn i { font-size: 16px; }
+
+        /* ── Video List ── */
+        .vid-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .vid-hdr { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .vid-hdr h2 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .vid-hdr h2 i { color: var(--green); }
+        .vid-count { font-family: 'Outfit'; font-size: 13px; font-weight: 600; color: var(--text-2); background: var(--surface-2); padding: 4px 12px; border-radius: 8px; }
+        .vid-search { width: 100%; padding: 12px 18px; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-size: 14px; outline: none; }
+        .vid-search::placeholder { color: var(--text-2); }
+        .vid-list { max-height: 480px; overflow-y: auto; }
+        .vid-list::-webkit-scrollbar { width: 6px; }
+        .vid-list::-webkit-scrollbar-track { background: transparent; }
+        .vid-list::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 3px; }
+        .vid-row { display: flex; align-items: center; gap: 12px; padding: 10px 18px; cursor: pointer; transition: background .15s; border-bottom: 1px solid var(--border); }
+        .vid-row:last-child { border-bottom: none; }
+        .vid-row:hover { background: rgba(0,229,255,0.04); }
+        .vid-row.active { background: rgba(0,229,255,0.08); }
+        .vid-num { font-family: 'Outfit'; font-size: 12px; font-weight: 600; color: var(--text-2); width: 28px; text-align: center; flex-shrink: 0; }
+        .vid-img { width: 80px; height: 45px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
+        .vid-text { flex: 1; min-width: 0; }
+        .vid-text h4 { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .vid-play-icon { width: 30px; height: 30px; border-radius: 50%; background: rgba(34,197,94,0.15); display: grid; place-items: center; color: var(--green); font-size: 11px; flex-shrink: 0; transition: .2s; }
+        .vid-row:hover .vid-play-icon { background: var(--green); color: #000; }
+
+        .empty { color: var(--text-2); text-align: center; padding: 40px; font-size: 14px; }
+
+        @media (max-width: 900px) {
+            .np { grid-template-columns: 1fr; }
+            .np-thumb, .np-embed { display: none; }
+            .stats, .actions { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+<div class="shell">
 
-    <div class="container">
-        <header class="header">
-            <div class="logo-section">
-                <div class="logo-img">W</div>
-                <div class="logo-text">
-                    <h2>استوديو وحيد تك</h2>
-                    <p>Advanced Bot Control</p>
-                </div>
+    <!-- Header -->
+    <header class="hdr">
+        <div class="hdr-brand">
+            <div class="hdr-logo">W</div>
+            <div class="hdr-name">
+                <h1>استوديو وحيد تك</h1>
+                <p>Bot Control Panel</p>
             </div>
-            <div class="header-right">
-                <div class="server-status">
-                    <div class="pulse-dot"></div>
-                    <span id="statusText">متصل بالخادم</span>
-                </div>
-                <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="تبديل السمة"><i class="fas fa-moon"></i></button>
-            </div>
-        </header>
+        </div>
+        <div class="hdr-actions">
+            <div class="hdr-pill on" id="connPill"><div class="hdr-dot"></div><span id="connText">متصل</span></div>
+        </div>
+    </header>
 
-        <div class="bento-grid">
-            <!-- Now Playing -->
-            <div class="card now-playing-card">
-                <div class="np-left">
-                    <img id="npThumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E" alt="">
-                    <div class="np-left-overlay">
-                        <div class="np-visualizer" id="visualizer">
-                            <div class="np-bar"></div><div class="np-bar"></div><div class="np-bar"></div>
-                            <div class="np-bar"></div><div class="np-bar"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="np-center">
-                    <div class="np-mode" id="npMode">📻 يتم الآن عرض البث</div>
-                    <div class="np-title" id="npTitle">جاري تحميل البيانات...</div>
-                    <div class="np-progress">
-                        <span id="npElapsed">0:00</span>
-                        <div class="np-progress-bar"><div class="np-progress-fill" id="npBar"></div></div>
-                        <span id="npDuration">0:00</span>
-                    </div>
-                </div>
-                <div class="np-right">
-                    <div id="npEmbed"></div>
-                    <img id="npEmbedFallback" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E" alt="" style="display:none">
-                </div>
+    <!-- Now Playing -->
+    <div class="np">
+        <div class="np-thumb">
+            <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='150'%3E%3Crect fill='%231a1a25' width='200' height='150'/%3E%3C/svg%3E" alt="">
+            <div class="np-vis" id="npVis">
+                <span></span><span></span><span></span><span></span><span></span>
             </div>
-
-            <!-- Uptime -->
-            <div class="card stat-card">
-                <div class="stat-icon" style="color: var(--neon-blue); background: rgba(0, 243, 255, 0.1);"><i class="fas fa-server"></i></div>
-                <h4 class="stat-val" id="statUptime">0h 0m</h4>
-                <p class="stat-lbl">مدة التشغيل</p>
+        </div>
+        <div class="np-body">
+            <div class="np-tag" id="npTag">جاري التحميل...</div>
+            <div class="np-title" id="npTitle">—</div>
+            <div class="np-bar-row">
+                <span id="npElapsed">0:00</span>
+                <div class="np-track"><div class="np-fill" id="npFill"></div></div>
+                <span id="npDur">0:00</span>
+                <div class="np-skip" onclick="cmd('skip')" title="تخطي"><i class="fas fa-forward-step"></i></div>
             </div>
-
-            <!-- Quick Actions -->
-            <div class="card quick-card">
-                <div class="ctrl-hdr"><i class="fas fa-bolt" style="color: var(--neon-yellow);"></i> تحكم سريع</div>
-                <div class="q-grid">
-                    <button class="q-btn" onclick="sendCommand('random')"><i class="fas fa-random"></i> عشوائي</button>
-                    <button class="q-btn" onclick="sendCommand('resume')"><i class="fas fa-redo"></i> كمل</button>
-                    <button class="q-btn" onclick="sendCommand('latest')"><i class="fas fa-clock"></i> اخر مقطع</button>
-                </div>
-            </div>
-
-            <!-- Played Counter -->
-            <div class="card stat-card">
-                <div class="stat-icon" style="color: var(--neon-green); background: rgba(0, 255, 157, 0.1);"><i class="fas fa-check-double"></i></div>
-                <h4 class="stat-val" id="statPlayed">0 / 0</h4>
-                <p class="stat-lbl">مشغل / متبقي</p>
-            </div>
-
-            <!-- Server Status -->
-            <div class="card stat-card">
-                <div class="stat-icon" style="color: var(--neon-yellow); background: rgba(255, 215, 0, 0.1);"><i class="fas fa-users"></i></div>
-                <h4 class="stat-val" id="statServers" style="font-size: 18px;">لا يوجد سيرفر</h4>
-                <p class="stat-lbl">حالة الاتصال</p>
-            </div>
-
-            <!-- Video Browser -->
-            <div class="card videos-card">
-                <div class="sec-hdr">
-                    <h3><i class="fas fa-film" style="color: var(--neon-green);"></i> مقاطع القناة</h3>
-                </div>
-                <input type="text" class="vid-search" id="vidSearch" placeholder="بحث في المقاطع...">
-                <div class="vid-list" id="vidGrid">
-                    <div class="empty-msg">جاري تحميل المقاطع...</div>
-                </div>
-            </div>
+        </div>
+        <div class="np-embed">
+            <div id="npEmb"></div>
+            <img id="npEmbImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='150'%3E%3Crect fill='%23000' width='280' height='150'/%3E%3C/svg%3E" alt="">
         </div>
     </div>
 
-    <script>
-        const formatTime = (totalSeconds) => {
-            if (!totalSeconds || isNaN(totalSeconds)) return '0:00';
-            const total = Math.max(0, Math.floor(totalSeconds));
-            const h = Math.floor(total / 3600);
-            const m = Math.floor((total % 3600) / 60);
-            const s = total % 60;
-            const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-            const ss = String(s).padStart(2, '0');
-            return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-        };
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-icon" style="color:var(--cyan);background:rgba(0,229,255,0.1)"><i class="fas fa-clock"></i></div>
+            <div class="stat-num" id="sUp">0h 0m</div>
+            <div class="stat-lbl">مدة التشغيل</div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon" style="color:var(--green);background:rgba(34,197,94,0.1)"><i class="fas fa-check-double"></i></div>
+            <div class="stat-num" id="sPlayed">0 / 0</div>
+            <div class="stat-lbl">مشغل / متبقي</div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon" style="color:var(--yellow);background:rgba(234,179,8,0.1)"><i class="fas fa-server"></i></div>
+            <div class="stat-num" id="sServer" style="font-size:16px">—</div>
+            <div class="stat-lbl">السيرفر</div>
+        </div>
+    </div>
 
-        // === Theme ===
-        const toggleTheme = () => {
-            document.body.classList.toggle('light');
-            const isLight = document.body.classList.contains('light');
-            localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            document.querySelector('#themeBtn i').className = isLight ? 'fas fa-sun' : 'fas fa-moon';
-        };
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light');
-            document.querySelector('#themeBtn i').className = 'fas fa-sun';
+    <!-- Quick Actions -->
+    <div class="actions">
+        <button class="act-btn" onclick="cmd('random')"><i class="fas fa-shuffle"></i> عشوائي</button>
+        <button class="act-btn" onclick="cmd('resume')"><i class="fas fa-rotate-left"></i> كمل</button>
+        <button class="act-btn" onclick="cmd('latest')"><i class="fas fa-clock-rotate-left"></i> آخر مقطع</button>
+    </div>
+
+    <!-- Video List -->
+    <div class="vid-section">
+        <div class="vid-hdr">
+            <h2><i class="fas fa-film"></i> مقاطع القناة</h2>
+            <span class="vid-count" id="vCount">0 مقطع</span>
+        </div>
+        <input type="text" class="vid-search" id="vSearch" placeholder="بحث في المقاطع...">
+        <div class="vid-list" id="vList"><div class="empty">جاري التحميل...</div></div>
+    </div>
+
+</div>
+
+<script>
+const fmt = s => {
+    if (!s || isNaN(s)) return '0:00';
+    s = Math.max(0, Math.floor(s));
+    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+    const mm = h ? String(m).padStart(2,'0') : m;
+    return h ? `${h}:${mm}:${String(ss).padStart(2,'0')}` : `${mm}:${String(ss).padStart(2,'0')}`;
+};
+
+// ── Commands ──
+const cmd = async c => { if(!c) return; try { await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:c})}); } catch{} refresh(); };
+
+// ── YouTube Embed ──
+let curVid = null;
+const npEmb = document.getElementById('npEmb');
+const npEmbImg = document.getElementById('npEmbImg');
+const setEmb = id => {
+    if (!id) { npEmb.innerHTML=''; npEmbImg.style.display='block'; curVid=null; return; }
+    if (curVid===id) return;
+    curVid=id;
+    npEmbImg.style.display='none';
+    npEmb.innerHTML=`<iframe src="https://www.youtube.com/embed/${id}?autoplay=0&controls=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+};
+const clearEmb = () => { npEmb.innerHTML=''; npEmbImg.style.display='block'; curVid=null; };
+
+// ── Status ──
+const refresh = async () => {
+    try {
+        const r = await fetch('/api/status');
+        if (!r.ok) return;
+        const d = await r.json();
+        const s = (d.sessions||[])[0];
+        const pill = document.getElementById('connPill');
+        const txt = document.getElementById('connText');
+
+        // Uptime
+        document.getElementById('sUp').innerText = `${Math.floor(d.uptime/3600)}h ${Math.floor((d.uptime%3600)/60)}m`;
+
+        if (s && s.title) {
+            pill.className = 'hdr-pill on';
+            txt.textContent = s.guildName || 'متصل';
+            document.getElementById('npTitle').innerText = s.title;
+            const mode = s.mode==='random'?'عشوائي مستمر':s.mode==='latest'?'أحدث مقطع':s.mode==='resume'?'استكمال':'تشغيل';
+            document.getElementById('npTag').innerText = `📻 ${mode} • الصوت: ${s.volume}%`;
+            const el = s.elapsedSeconds||0, dur = s.durationSeconds||0;
+            document.getElementById('npElapsed').innerText = fmt(el);
+            document.getElementById('npDur').innerText = dur ? fmt(dur) : 'لايف';
+            document.getElementById('npFill').style.width = dur ? `${Math.min(100,el/dur*100)}%` : '100%';
+            if (s.videoId) setEmb(s.videoId); else clearEmb();
+            document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
+        } else {
+            pill.className = 'hdr-pill off';
+            txt.textContent = 'غير متصل';
+            document.getElementById('npTitle').innerText = 'لا يوجد بث';
+            document.getElementById('npTag').innerText = '—';
+            document.getElementById('npElapsed').innerText = '0:00';
+            document.getElementById('npDur').innerText = '0:00';
+            document.getElementById('npFill').style.width = '0%';
+            clearEmb();
+            document.querySelectorAll('.np-vis span').forEach(b => b.classList.add('off'));
         }
-        const lightStyle = document.createElement('style');
-        lightStyle.textContent = `.light{--bg-main:#f0f0f5;--card-bg:rgba(255,255,255,0.8);--card-border:rgba(0,0,0,0.1);--neon-blue:#0066cc;--neon-purple:#8800cc;--neon-green:#00aa55;--neon-red:#cc0033;--neon-yellow:#cc9900;--text-main:#1a1a1a;--text-muted:#666}.light .vid-item{background:rgba(0,0,0,0.04)}.light .term-body,.light .term-hdr{background:rgba(0,0,0,0.03)}.light .term-input{color:#1a1a1a}`;
-        document.head.appendChild(lightStyle);
 
-        // === Send Command (silent — no terminal) ===
-        const sendCommand = async (cmd) => {
-            if (!cmd) return;
-            try {
-                await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd }) });
-            } catch {}
-            fetchStatus();
-        };
+        // Server
+        document.getElementById('sServer').innerText = s ? `${s.guildName||'—'} • #${s.channelName||'?'}` : '—';
 
-        // === YouTube Embed ===
-        let currentVideoId = null;
-        const npEmbed = document.getElementById('npEmbed');
-        const npThumb = document.getElementById('npThumb');
-        const npEmbedFallback = document.getElementById('npEmbedFallback');
-        const setEmbed = (videoId) => {
-            if (!videoId) {
-                npEmbed.innerHTML = '';
-                npThumb.style.display = 'block';
-                npEmbedFallback.style.display = 'none';
-                currentVideoId = null;
-                return;
-            }
-            if (currentVideoId === videoId) return;
-            currentVideoId = videoId;
-            npThumb.style.display = 'none';
-            npEmbedFallback.style.display = 'none';
-            npEmbed.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&rel=0&modestbranding=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-        };
+        // Played
+        const played = s?.playedCount || 0;
+        const total = allVid.length || 0;
+        document.getElementById('sPlayed').innerText = `${played} / ${total - played}`;
 
-        // === Update UI ===
-        const updateUI = (data) => {
-            // Uptime
-            const upH = Math.floor(data.uptime / 3600);
-            const upM = Math.floor((data.uptime % 3600) / 60);
-            document.getElementById('statUptime').innerText = `${upH}h ${upM}m`;
+    } catch {
+        document.getElementById('connPill').className = 'hdr-pill off';
+        document.getElementById('connText').textContent = 'فقد الاتصال';
+    }
+};
+setInterval(refresh, 2000);
+refresh();
 
-            // Servers
-            const sessions = data.sessions || [];
-            const serverInfo = document.getElementById('statServers');
-            if (sessions.length > 0) {
-                const s = sessions[0];
-                serverInfo.innerText = `${s.guildName || s.guildId} | #${s.channelName || 'صوتي'}`;
-            } else {
-                serverInfo.innerText = 'لا يوجد اتصال';
-            }
+// ── Videos ──
+let allVid = [];
+const vList = document.getElementById('vList');
+const vSearch = document.getElementById('vSearch');
+const vCount = document.getElementById('vCount');
 
-            // Played Counter
-            const played = sessions[0]?.playedCount || 0;
-            const total = allVideos.length || 0;
-            const remaining = total - played;
-            document.getElementById('statPlayed').innerText = `${played} / ${remaining}`;
+const render = q => {
+    const lower = (q||'').toLowerCase();
+    const list = lower ? allVid.filter(v => (v.title||'').toLowerCase().includes(lower)) : allVid;
+    vCount.textContent = `${allVid.length} مقطع`;
+    if (!list.length) { vList.innerHTML = '<div class="empty">لا توجد نتائج</div>'; return; }
+    vList.innerHTML = list.map((v,i) => `
+        <div class="vid-row" onclick="cmd('play ${v.videoId}')">
+            <span class="vid-num">${i+1}</span>
+            <img class="vid-img" src="${v.thumbnail||`https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`}" loading="lazy" alt="">
+            <div class="vid-text"><h4>${v.title||'—'}</h4></div>
+            <div class="vid-play-icon"><i class="fas fa-play"></i></div>
+        </div>
+    `).join('');
+};
 
-            const session = sessions[0];
+vSearch.addEventListener('input', e => render(e.target.value));
 
-            if (session && session.title) {
-                document.getElementById('npTitle').innerText = session.title;
-                const modeAr = session.mode === 'random' ? 'عشوائي مستمر' : session.mode === 'latest' ? 'أحدث مقطع' : session.mode === 'resume' ? 'استكمال' : 'تشغيل';
-                document.getElementById('npMode').innerText = `📻 ${modeAr} | الصوت: ${session.volume}%`;
-                const el = session.elapsedSeconds || 0;
-                const dur = session.durationSeconds || 0;
-                document.getElementById('npElapsed').innerText = formatTime(el);
-                document.getElementById('npDuration').innerText = dur ? formatTime(dur) : 'لايف';
-                if (dur > 0) {
-                    document.getElementById('npBar').style.width = `${Math.min(100, (el / dur) * 100)}%`;
-                } else {
-                    document.getElementById('npBar').style.width = '100%';
-                    document.getElementById('npBar').style.background = 'var(--neon-red)';
-                }
-                if (session.videoId) {
-                    setEmbed(session.videoId);
-                } else {
-                    setEmbed(null);
-                }
-                if (session.paused) {
-                    Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.add('paused'));
-                } else {
-                    Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.remove('paused'));
-                }
-            } else {
-                document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
-                document.getElementById('npMode').innerText = '📻 الراديو متوقف';
-                document.getElementById('npElapsed').innerText = '0:00';
-                document.getElementById('npDuration').innerText = '0:00';
-                document.getElementById('npBar').style.width = '0%';
-                setEmbed(null);
-                Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.add('paused'));
-            }
-        };
-
-        const fetchStatus = async () => {
-            try {
-                const res = await fetch('/api/status');
-                if (res.ok) { const data = await res.json(); updateUI(data); }
-            } catch {
-                document.getElementById('statusText').innerText = 'فقد الاتصال';
-                document.getElementById('statusText').style.color = 'var(--neon-red)';
-                document.querySelector('.pulse-dot').style.background = 'var(--neon-red)';
-            }
-        };
-        setInterval(fetchStatus, 2000);
-        fetchStatus();
-
-        // === Video Browser ===
-        let allVideos = [];
-        const vidGrid = document.getElementById('vidGrid');
-        const vidSearch = document.getElementById('vidSearch');
-
-        const playVideoById = async (videoId) => {
-            try {
-                await fetch('/api/play', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoId }) });
-            } catch {}
-            fetchStatus();
-        };
-
-        const renderVideos = (filter = '') => {
-            const lower = filter.toLowerCase();
-            const filtered = lower ? allVideos.filter(v => (v.title || '').toLowerCase().includes(lower)) : allVideos;
-            if (filtered.length === 0) {
-                vidGrid.innerHTML = '<div class="empty-msg">لا توجد نتائج</div>';
-                return;
-            }
-            vidGrid.innerHTML = filtered.map(v => `
-                <div class="vid-item" onclick="playVideoById('${v.videoId}')">
-                    <img class="vid-thumb" src="${v.thumbnail || 'https://i.ytimg.com/vi/' + v.videoId + '/mqdefault.jpg'}" alt="" loading="lazy">
-                    <div class="vid-info">
-                        <div class="vid-title">${v.title || 'مقطع مجهول'}</div>
-                        <div class="vid-play"><i class="fas fa-play"></i> تشغيل</div>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        vidSearch.addEventListener('input', (e) => renderVideos(e.target.value));
-
-        const fetchVideos = async () => {
-            try {
-                const res = await fetch('/api/videos');
-                if (res.ok) {
-                    const data = await res.json();
-                    allVideos = data.videos || [];
-                    renderVideos();
-                }
-            } catch {}
-        };
-        fetchVideos();
-        setInterval(fetchVideos, 60000);
-    </script>
+const fetchVid = async () => {
+    try {
+        const r = await fetch('/api/videos');
+        if (r.ok) { const d = await r.json(); allVid = d.videos||[]; render(); }
+    } catch {}
+};
+fetchVid();
+setInterval(fetchVid, 60000);
+</script>
 </body>
 </html>
