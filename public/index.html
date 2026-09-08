@@ -56,10 +56,18 @@
         }
         .np-thumb {
             width: 35%;
-            min-height: 120px;
+            min-height: 160px;
             position: relative;
             overflow: hidden;
             flex-shrink: 0;
+        }
+        .np-thumb iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
         .np-thumb img {
             width: 100%;
@@ -69,12 +77,16 @@
         }
         .np-thumb-overlay {
             position: absolute;
-            inset: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             display: flex;
             align-items: flex-end;
             justify-content: flex-start;
-            padding: 15px;
+            padding: 10px;
             gap: 4px;
+            z-index: 2;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
         }
         .np-visualizer {
             display: flex;
@@ -203,6 +215,7 @@
             <!-- Now Playing -->
             <div class="card now-playing-card">
                 <div class="np-thumb">
+                    <div id="npEmbed"></div>
                     <img id="npThumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E" alt="">
                     <div class="np-thumb-overlay">
                         <div class="np-visualizer" id="visualizer">
@@ -302,6 +315,23 @@
             fetchStatus();
         };
 
+        // === YouTube Embed ===
+        let currentVideoId = null;
+        const npEmbed = document.getElementById('npEmbed');
+        const npThumb = document.getElementById('npThumb');
+        const setEmbed = (videoId) => {
+            if (!videoId) {
+                npEmbed.innerHTML = '';
+                npThumb.style.display = 'block';
+                currentVideoId = null;
+                return;
+            }
+            if (currentVideoId === videoId) return;
+            currentVideoId = videoId;
+            npThumb.style.display = 'none';
+            npEmbed.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=0&controls=0&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+        };
+
         // === Update UI ===
         const updateUI = (data) => {
             // Uptime
@@ -341,10 +371,10 @@
                     document.getElementById('npBar').style.width = '100%';
                     document.getElementById('npBar').style.background = 'var(--neon-red)';
                 }
-                if (session.thumbnail) {
-                    document.getElementById('npThumb').src = session.thumbnail;
-                } else if (session.videoId) {
-                    document.getElementById('npThumb').src = `https://i.ytimg.com/vi/${session.videoId}/mqdefault.jpg`;
+                if (session.videoId) {
+                    setEmbed(session.videoId);
+                } else {
+                    setEmbed(null);
                 }
                 if (session.paused) {
                     Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.add('paused'));
@@ -357,7 +387,7 @@
                 document.getElementById('npElapsed').innerText = '0:00';
                 document.getElementById('npDuration').innerText = '0:00';
                 document.getElementById('npBar').style.width = '0%';
-                document.getElementById('npThumb').src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E";
+                setEmbed(null);
                 Array.from(document.querySelectorAll('.np-bar')).forEach(b => b.classList.add('paused'));
             }
         };
