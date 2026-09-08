@@ -17,3 +17,5 @@ test_*.py
 .audio-cache/
 .pytest_cache/
 .pytestcache/
+*.bak
+cdp_export.py

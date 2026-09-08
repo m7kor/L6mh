@@ -37,7 +37,6 @@ const logger = createLogger('audio');
 
 export const playerEvents = new EventEmitter();
 
-const RECENT_HISTORY_SIZE = 20;
 const RETRY_BASE_DELAY_MS = 5_000;
 const RETRY_MAX_DELAY_MS = 60_000;
 const RECONNECT_DELAY_MS = 10_000;
