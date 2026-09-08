@@ -154,15 +154,20 @@ export function stopPlayback(guildId, { manual = true } = {}) {
   if (player) {
     try { player.stop(true); } catch {}
   }
-  const conn = session.connection;
-  session.connection = null;
-  if (conn) {
-    try { conn.destroy(); } catch {}
+
+  // Only destroy connection on manual stop or when explicitly requested
+  if (manual) {
+    const conn = session.connection;
+    session.connection = null;
+    if (conn) {
+      try { conn.destroy(); } catch {}
+    }
   }
+
   killProcesses(session);
   saveState(session);
   playerEvents.emit('trackChange', { guildId, video: null, paused: false });
-  logger.info(`[${guildId}] Stopped playback and disconnected.`);
+  logger.info(`[${guildId}] Stopped playback${manual ? ' and disconnected.' : '.'}`);
 }
 
 export function stopAllSessions() {
