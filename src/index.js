@@ -183,10 +183,6 @@ client.once(Events.ClientReady, async (c) => {
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
-  if (process.env.STATUS_PORT && !process.env.DASHBOARD_TOKEN) {
-    logger.warn('Dashboard is running with no DASHBOARD_TOKEN — mutating endpoints are unauthenticated.');
-    notify('Dashboard unauthenticated', 'STATUS_PORT is set but DASHBOARD_TOKEN is empty. The dashboard has no auth.', 'warn');
-  }
   startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
 
   // Weekly recap — check daily

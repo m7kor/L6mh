@@ -1,6 +1,7 @@
 /**
  * Dashboard — full HTML status page with live API.
- * Auth: mutating endpoints require DASHBOARD_TOKEN (env) via Authorization header.
+ * Auth: ALL API endpoints require DASHBOARD_TOKEN (env) via Authorization header.
+ * Dashboard refuses to start if DASHBOARD_TOKEN is not set.
  */
 
 import { createServer } from 'node:http';
@@ -13,10 +14,11 @@ import { getVideos } from '../services/youtube.js';
 const logger = createLogger('dashboard');
 
 const PORT = Number(process.env.STATUS_PORT) || 0;
+const HOST = process.env.STATUS_HOST || '127.0.0.1';
 const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || '';
 
 function checkAuth(req, res) {
-  if (!DASHBOARD_TOKEN) return true; // no token configured = open (local dev)
+  if (!DASHBOARD_TOKEN) return false;
   const auth = req.headers['authorization'] || '';
   if (auth === `Bearer ${DASHBOARD_TOKEN}`) return true;
   res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -33,6 +35,30 @@ let cachedHtml = null;
 // In-memory error log (last 50 errors)
 const errorLog = [];
 const MAX_ERROR_LOG = 50;
+
+// Simple in-memory rate limiter
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 20;
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.start > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { start: now, count: 1 });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
+// Periodic cleanup of rate limit map (every 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now - entry.start > RATE_LIMIT_WINDOW_MS * 2) rateLimitMap.delete(ip);
+  }
+}, 5 * 60_000);
 
 export function logDashboardError(message) {
   errorLog.unshift({ message, time: new Date().toISOString() });
@@ -79,22 +105,46 @@ async function getApiData() {
 
 export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnArg) {
   if (!PORT) return;
+
+  if (!DASHBOARD_TOKEN) {
+    logger.warn('STATUS_PORT is set but DASHBOARD_TOKEN is empty — dashboard will NOT start (auth required).');
+    return;
+  }
+
   getSessionInfoFn = getSessionInfoFnArg;
   getAllSessionsFn = getAllSessionsFnArg || null;
   executeCommandFn = executeCommandFnArg || null;
 
   try {
     const server = createServer(async (req, res) => {
+      // Security headers
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+
+      const ip = req.socket.remoteAddress || '';
+
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
         return;
       }
 
+      // Health endpoint — no auth, no data leakage
       if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, uptime: process.uptime() }));
+        res.end(JSON.stringify({ ok: true }));
         return;
+      }
+
+      // All API endpoints require auth
+      if (req.url.startsWith('/api/')) {
+        if (isRateLimited(ip)) {
+          res.writeHead(429, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Too many requests' }));
+          return;
+        }
+        if (!checkAuth(req, res)) return;
       }
 
       if (req.url === '/api/status') {
@@ -110,7 +160,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/command' && req.method === 'POST') {
-        if (!checkAuth(req, res)) return;
         let body = '';
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', async () => {
@@ -146,7 +195,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/skip' && req.method === 'POST') {
-        if (!checkAuth(req, res)) return;
         if (executeCommandFn) {
           try {
             await Promise.resolve(executeCommandFn('skip'));
@@ -164,7 +212,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/volume' && req.method === 'POST') {
-        if (!checkAuth(req, res)) return;
         let body = '';
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', async () => {
@@ -192,7 +239,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/pause' && req.method === 'POST') {
-        if (!checkAuth(req, res)) return;
         if (executeCommandFn) {
           try {
             await Promise.resolve(executeCommandFn('pause'));
@@ -210,7 +256,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/resume' && req.method === 'POST') {
-        if (!checkAuth(req, res)) return;
         if (executeCommandFn) {
           try {
             await Promise.resolve(executeCommandFn('unpause'));
@@ -252,7 +297,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/play' && req.method === 'POST') {
-        if (!checkAuth(req, res)) return;
         let body = '';
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', async () => {
@@ -280,9 +324,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         return;
       }
 
+      // Static files — no auth needed (HTML/JS/CSS only)
       try {
         let filePath = req.url === '/' ? '/index.html' : req.url;
-        // Basic security to prevent directory traversal
         filePath = filePath.replace(/\.\./g, '');
         const fullPath = join(process.cwd(), 'public', filePath);
         
@@ -313,8 +357,8 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
     });
 
-    server.listen(PORT, '0.0.0.0', () => {
-      logger.info(`Dashboard running on http://0.0.0.0:${PORT}`);
+    server.listen(PORT, HOST, () => {
+      logger.info(`Dashboard running on http://${HOST}:${PORT}`);
     });
 
     server.on('error', (err) => {
