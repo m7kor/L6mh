@@ -35,7 +35,10 @@
         .logo-img { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
         .logo-text h2 { font-size: 18px; font-weight: 800; }
         .logo-text p { font-size: 13px; color: var(--neon-blue); font-family: 'Outfit'; }
+        .header-right { display: flex; align-items: center; gap: 12px; }
         .server-status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neon-green); font-weight: 700; background: rgba(0,255,157,0.1); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(0,255,157,0.2); }
+        .theme-btn { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: 0.3s; }
+        .theme-btn:hover { border-color: var(--neon-blue); color: var(--neon-blue); }
         .pulse-dot { width: 10px; height: 10px; background: var(--neon-green); border-radius: 50%; box-shadow: 0 0 10px var(--neon-green); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(0, 255, 157, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); } }
 
@@ -130,6 +133,26 @@
         .trk-info h4 { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .trk-plays { font-family: 'Outfit'; font-size: 13px; font-weight: 800; color: var(--neon-purple); background: rgba(188, 19, 254, 0.1); padding: 5px 12px; border-radius: 12px; }
 
+        /* Queue, History, Errors — same card style */
+        .queue-card { grid-column: 1 / 3; }
+        .history-card { grid-column: 3 / 5; }
+        .error-card { grid-column: 1 / 5; }
+        .sec-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .sec-hdr h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .sec-list { display: flex; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; }
+        .q-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid transparent; transition: 0.3s; }
+        .q-item:hover { border-color: var(--card-border); }
+        .q-num { font-family: 'Outfit'; font-size: 13px; font-weight: 800; color: var(--text-muted); width: 22px; text-align: center; }
+        .q-title { flex: 1; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .h-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid transparent; transition: 0.3s; }
+        .h-item:hover { border-color: var(--card-border); }
+        .h-time { font-family: 'Outfit'; font-size: 11px; color: var(--text-dim, #555); white-space: nowrap; }
+        .h-title { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .err-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; background: rgba(255,0,85,0.05); border-radius: 10px; border: 1px solid rgba(255,0,85,0.1); font-size: 12px; }
+        .err-time { font-family: 'Outfit'; font-size: 10px; color: var(--neon-red); white-space: nowrap; }
+        .err-msg { flex: 1; color: var(--text-muted); font-family: 'Outfit', monospace; }
+        .empty-msg { color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px; }
+
         @media (max-width: 1200px) {
             .bento-grid { grid-template-columns: repeat(2, 1fr); }
             .now-playing-card, .terminal-card, .top-card { grid-column: 1 / 3; }
@@ -154,9 +177,12 @@
                     <p>Advanced Bot Control</p>
                 </div>
             </div>
-            <div class="server-status">
-                <div class="pulse-dot"></div>
-                <span id="statusText">متصل بالخادم</span>
+            <div class="header-right">
+                <div class="server-status">
+                    <div class="pulse-dot"></div>
+                    <span id="statusText">متصل بالخادم</span>
+                </div>
+                <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="تبديل السمة"><i class="fas fa-moon"></i></button>
             </div>
         </header>
 
@@ -249,11 +275,40 @@
                 </div>
             </div>
 
+            <!-- Queue (2 Cols) -->
+            <div class="card queue-card">
+                <div class="sec-hdr">
+                    <h3><i class="fas fa-list-ol" style="color: var(--neon-yellow);"></i> قائمة الانتظار</h3>
+                </div>
+                <div class="sec-list" id="queueList">
+                    <div class="empty-msg">فارغة</div>
+                </div>
+            </div>
+
+            <!-- History (2 Cols) -->
+            <div class="card history-card">
+                <div class="sec-hdr">
+                    <h3><i class="fas fa-history" style="color: var(--neon-orange, #ff6b35);"></i> السجل</h3>
+                </div>
+                <div class="sec-list" id="historyList">
+                    <div class="empty-msg">لا يوجد سجل</div>
+                </div>
+            </div>
+
+            <!-- Error Log (4 Cols) -->
+            <div class="card error-card">
+                <div class="sec-hdr">
+                    <h3><i class="fas fa-exclamation-triangle" style="color: var(--neon-red);"></i> سجل الأخطاء</h3>
+                </div>
+                <div class="sec-list" id="errorList">
+                    <div class="empty-msg">لا يوجد أخطاء</div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        // === تحديث البيانات (API) ===
         const formatTime = (totalSeconds) => {
             if (!totalSeconds || isNaN(totalSeconds)) return '0:00';
             const total = Math.max(0, Math.floor(totalSeconds));
@@ -265,6 +320,48 @@
             return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
         };
 
+        const timeAgo = (isoStr) => {
+            if (!isoStr) return '';
+            const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+            if (diff < 60) return 'الآن';
+            if (diff < 3600) return Math.floor(diff / 60) + 'د';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'س';
+            return Math.floor(diff / 86400) + 'ي';
+        };
+
+        // === Theme Toggle ===
+        const toggleTheme = () => {
+            document.body.classList.toggle('light');
+            const isLight = document.body.classList.contains('light');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            document.querySelector('#themeBtn i').className = isLight ? 'fas fa-sun' : 'fas fa-moon';
+        };
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light');
+            document.querySelector('#themeBtn i').className = 'fas fa-sun';
+        }
+
+        // Light theme CSS variables
+        const lightStyle = document.createElement('style');
+        lightStyle.textContent = `.light{--bg-main:#f0f0f5;--card-bg:rgba(255,255,255,0.8);--card-border:rgba(0,0,0,0.1);--neon-blue:#0066cc;--neon-purple:#8800cc;--neon-green:#00aa55;--neon-red:#cc0033;--neon-yellow:#cc9900;--text-main:#1a1a1a;--text-muted:#666}.light .trk-item,.light .q-item,.light .h-item{background:rgba(0,0,0,0.04)}.light .term-body,.light .term-hdr,.light .term-input-wrap{background:rgba(0,0,0,0.03)}.light .term-input{color:#1a1a1a}`;
+        document.head.appendChild(lightStyle);
+
+        // === Pause/Resume Toggle ===
+        let isPaused = false;
+        const pauseBtn = document.getElementById('pauseBtn');
+        const updatePauseBtn = (paused) => {
+            isPaused = paused;
+            const icon = pauseBtn.querySelector('i');
+            const txt = pauseBtn.childNodes[1];
+            if (paused) { icon.className = 'fas fa-play'; txt.textContent = ' استمرار'; }
+            else { icon.className = 'fas fa-pause'; txt.textContent = ' إيقاف مؤقت'; }
+        };
+        const togglePause = () => {
+            sendCommand(isPaused ? 'unpause' : 'pause');
+            updatePauseBtn(!isPaused);
+        };
+
+        // === Update UI ===
         const updateUI = (data) => {
             // Uptime
             const upH = Math.floor(data.uptime / 3600);
@@ -280,9 +377,7 @@
                 topList.innerHTML = data.topPlayed.slice(0, 5).map((track, i) => `
                     <div class="trk-item">
                         <div class="trk-rank">#${i + 1}</div>
-                        <div class="trk-info">
-                            <h4>${track.title || 'مقطع مجهول'}</h4>
-                        </div>
+                        <div class="trk-info"><h4>${track.title || 'مقطع مجهول'}</h4></div>
                         <div class="trk-plays">${track.count}</div>
                     </div>
                 `).join('');
@@ -305,19 +400,13 @@
                 document.getElementById('npDuration').innerText = dur ? formatTime(dur) : 'لايف';
                 
                 if (dur > 0) {
-                    const pct = Math.min(100, (el / dur) * 100);
-                    document.getElementById('npBar').style.width = `${pct}%`;
+                    document.getElementById('npBar').style.width = `${Math.min(100, (el / dur) * 100)}%`;
                 } else {
-                    document.getElementById('npBar').style.width = `100%`;
+                    document.getElementById('npBar').style.width = '100%';
                     document.getElementById('npBar').style.background = 'var(--neon-red)';
                 }
 
-                // Update pause button to match server state
-                if (session.paused !== undefined) {
-                    updatePauseBtn(session.paused);
-                }
-
-                // Sync volume slider
+                if (session.paused !== undefined) updatePauseBtn(session.paused);
                 if (session.volume !== undefined) {
                     volSlider.value = session.volume;
                     document.getElementById('volText').innerText = `الصوت: ${session.volume}%`;
@@ -339,78 +428,97 @@
                 document.getElementById('npMode').innerText = '📻 الراديو متوقف';
                 document.getElementById('npElapsed').innerText = '0:00';
                 document.getElementById('npDuration').innerText = '0:00';
-                document.getElementById('npBar').style.width = `0%`;
+                document.getElementById('npBar').style.width = '0%';
                 Array.from(visualizer.children).forEach(b => b.classList.add('paused'));
                 micWrapper.classList.remove('active');
                 voiceStatus.innerText = 'غير متصل بقناة صوتية';
+            }
+
+            // Queue
+            const queueList = document.getElementById('queueList');
+            const sessions = data.sessions || [];
+            const allQueues = sessions.flatMap(s => s.queue || []);
+            if (allQueues.length > 0) {
+                queueList.innerHTML = allQueues.slice(0, 10).map((v, i) => `
+                    <div class="q-item">
+                        <div class="q-num">#${i + 1}</div>
+                        <div class="q-title">${v.title || v.videoId || 'مقطع'}</div>
+                    </div>
+                `).join('');
+            } else {
+                queueList.innerHTML = '<div class="empty-msg">فارغة</div>';
+            }
+
+            // History
+            const historyList = document.getElementById('historyList');
+            if (data.history && data.history.length > 0) {
+                historyList.innerHTML = data.history.slice(0, 10).map(h => `
+                    <div class="h-item">
+                        <div class="h-time">${timeAgo(h.playedAt)}</div>
+                        <div class="h-title">${h.title || 'مقطع مجهول'}</div>
+                    </div>
+                `).join('');
+            }
+
+            // Errors
+            const errorList = document.getElementById('errorList');
+            if (data.errors && data.errors.length > 0) {
+                errorList.innerHTML = data.errors.slice(0, 8).map(e => `
+                    <div class="err-item">
+                        <div class="err-time">${timeAgo(e.time)}</div>
+                        <div class="err-msg">${e.message}</div>
+                    </div>
+                `).join('');
+            } else {
+                errorList.innerHTML = '<div class="empty-msg">لا يوجد أخطاء</div>';
             }
         };
 
         const fetchStatus = async () => {
             try {
                 const res = await fetch('/api/status');
-                if (res.ok) {
-                    const data = await res.json();
-                    updateUI(data);
-                }
-            } catch (err) {
+                if (res.ok) { const data = await res.json(); updateUI(data); }
+            } catch {
                 document.getElementById('statusText').innerText = 'فقد الاتصال';
                 document.getElementById('statusText').style.color = 'var(--neon-red)';
                 document.querySelector('.pulse-dot').style.background = 'var(--neon-red)';
             }
         };
-
         setInterval(fetchStatus, 2000);
         fetchStatus();
 
-        // === التيرمينال (Terminal) ===
+        // === Terminal ===
         const termBody = document.getElementById('termBody');
         const termInput = document.getElementById('termInput');
-
         const appendLog = (text, type = 'user') => {
             const div = document.createElement('div');
             div.className = `t-row ${type}`;
-            const promptStr = type === 'user' ? 'Admin>' : type === 'sys' ? '[System]' : '[Error]';
-            div.innerHTML = `<span class="t-prompt">${promptStr}</span><span class="t-text">${text}</span>`;
+            const p = type === 'user' ? 'Admin>' : type === 'sys' ? '[System]' : '[Error]';
+            div.innerHTML = `<span class="t-prompt">${p}</span><span class="t-text">${text}</span>`;
             termBody.appendChild(div);
             termBody.scrollTop = termBody.scrollHeight;
         };
-
         const sendCommand = async (cmd) => {
             if (!cmd) return;
             appendLog(cmd, 'user');
-            
             try {
-                const res = await fetch('/api/command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: cmd })
-                });
+                const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd }) });
                 const data = await res.json();
-                if (data.error) {
-                    appendLog(data.error, 'err');
-                } else {
-                    appendLog(data.reply || 'تم تنفيذ الأمر.', 'sys');
-                }
-            } catch (e) {
-                appendLog('Network error: ' + e.message, 'err');
-            }
-            fetchStatus(); // تحديث فوري
+                if (data.error) appendLog(data.error, 'err');
+                else appendLog(data.reply || 'تم تنفيذ الأمر.', 'sys');
+            } catch (e) { appendLog('Network error: ' + e.message, 'err'); }
+            fetchStatus();
         };
-
         termInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const val = termInput.value.trim();
                 termInput.value = '';
-                if (val.toLowerCase() === 'clear') {
-                    termBody.innerHTML = '';
-                    return;
-                }
+                if (val.toLowerCase() === 'clear') { termBody.innerHTML = ''; return; }
                 sendCommand(val);
             }
         });
 
-        // === التحكم بالصوت ===
+        // === Volume ===
         const volSlider = document.getElementById('volSlider');
         let volTimeout;
         volSlider.addEventListener('input', (e) => {
@@ -418,36 +526,9 @@
             document.getElementById('volText').innerText = `الصوت: ${val}%`;
             clearTimeout(volTimeout);
             volTimeout = setTimeout(() => {
-                fetch('/api/volume', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ volume: parseInt(val) })
-                });
-            }, 600); // 600ms debounce
+                fetch('/api/volume', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ volume: parseInt(val) }) });
+            }, 600);
         });
-
-        // === Pause/Resume Toggle ===
-        let isPaused = false;
-        const pauseBtn = document.getElementById('pauseBtn');
-        const updatePauseBtn = (paused) => {
-            isPaused = paused;
-            const icon = pauseBtn.querySelector('i');
-            const txt = pauseBtn.childNodes[1];
-            if (paused) {
-                icon.className = 'fas fa-play';
-                txt.textContent = ' استمرار';
-            } else {
-                icon.className = 'fas fa-pause';
-                txt.textContent = ' إيقاف مؤقت';
-            }
-        };
-
-        const togglePause = () => {
-            const cmd = isPaused ? 'unpause' : 'pause';
-            sendCommand(cmd);
-            updatePauseBtn(!isPaused);
-        };
-
     </script>
 </body>
 </html>
