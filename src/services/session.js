@@ -23,6 +23,7 @@ export class GuildSession {
     this.paused = false;
     this.queue = [];
     this.recentIds = [];
+    this.playedIds = new Set();
     this.current = null;
     this.manualStop = false;
     this.advancing = false;

@@ -232,7 +232,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         try {
           const videos = await getVideos();
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ videos: videos.slice(0, 200) }));
+          res.end(JSON.stringify({ videos }));
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to fetch videos: ' + err.message }));

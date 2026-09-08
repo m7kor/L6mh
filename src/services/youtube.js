@@ -192,35 +192,52 @@ export async function getLatestVideo(channelId = config.channelId, apiKey = conf
 }
 
 /**
- * Pick a random video, optionally avoiding a set of recently-played video IDs
- * so continuous playback doesn't repeat the same handful of clips back to back.
- * @param {string[]} exclude - video IDs to avoid if possible
+ * Pick a random video, cycling through ALL videos without repetition.
+ * Keeps a Set of played IDs per session; when all are played, resets so
+ * continuous playback never stalls.
+ * @param {string[]} exclude - video IDs to avoid (recently played)
+ * @param {Set} playedSet - mutable Set tracking all played IDs; auto-resets when exhausted
  */
-export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = []) {
+export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = [], playedSet = null) {
   const videos = await getVideos(channelId, apiKey);
-  const pool = videos.filter((v) => !exclude.includes(v.videoId));
-  let list = pool.length > 0 ? pool : videos;
-
-  const noShorts = list.filter((v) => {
+  const noShorts = videos.filter((v) => {
     const title = (v.title || '').toLowerCase();
     return !title.includes('#short') && !title.includes('#shorts');
   });
-  if (noShorts.length > 0) {
-    list = noShorts;
+  const pool = noShorts.length > 0 ? noShorts : videos;
+
+  // Build exclusion set from both recent + all played
+  const excluded = new Set(exclude);
+  if (playedSet) {
+    for (const id of playedSet) excluded.add(id);
   }
 
+  let candidates = pool.filter((v) => !excluded.has(v.videoId));
+
+  // If ALL videos have been played, reset the played set and start fresh
+  if (candidates.length === 0 && playedSet) {
+    playedSet.clear();
+    candidates = pool;
+  }
+
+  if (candidates.length === 0) {
+    // Fallback: pick any video
+    candidates = pool;
+  }
+
+  // Weighted random: newer videos get slightly higher chance
   const now = Date.now();
-  const weights = list.map(v => {
+  const weights = candidates.map(v => {
     const age = now - new Date(v.publishedAt || 0).getTime();
     return Math.max(1, Math.min(5, age / (1000 * 60 * 60 * 24 * 30)));
   });
   const total = weights.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
-  for (let i = 0; i < list.length; i++) {
+  for (let i = 0; i < candidates.length; i++) {
     r -= weights[i];
-    if (r <= 0) return list[i];
+    if (r <= 0) return candidates[i];
   }
-  return list[list.length - 1];
+  return candidates[candidates.length - 1];
 }
 
 /** Parse an ISO-8601 duration (e.g. "PT1H2M3S") into whole seconds. */
