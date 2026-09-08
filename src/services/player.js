@@ -234,6 +234,35 @@ export async function setVolume(guildId, volume) {
   return clamped;
 }
 
+export function pausePlayback(guildId) {
+  const session = getSession(guildId);
+  if (!session.player || !session.current) return false;
+  session.player.pause();
+  session.paused = true;
+  freezeProgress(session);
+  saveState(session);
+  playerEvents.emit('trackChange', { guildId, video: session.current, paused: true });
+  logger.info(`[${guildId}] Paused playback.`);
+  return true;
+}
+
+export function resumePlayback(guildId) {
+  const session = getSession(guildId);
+  if (!session.player || !session.current) return false;
+  session.player.unpause();
+  session.paused = false;
+  startProgressAutosave(session);
+  saveState(session);
+  playerEvents.emit('trackChange', { guildId, video: session.current, paused: false });
+  logger.info(`[${guildId}] Resumed playback.`);
+  return true;
+}
+
+export function getQueue(guildId) {
+  const session = getSession(guildId);
+  return session.queue || [];
+}
+
 export function getSessionInfo(guildId) {
   const session = getSession(guildId);
   return {

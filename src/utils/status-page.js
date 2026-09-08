@@ -169,6 +169,40 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
         return;
       }
 
+      if (req.url === '/api/pause' && req.method === 'POST') {
+        if (executeCommand) {
+          try {
+            await Promise.resolve(executeCommand('pause'));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'executeCommand not available' }));
+        }
+        return;
+      }
+
+      if (req.url === '/api/resume' && req.method === 'POST') {
+        if (executeCommand) {
+          try {
+            await Promise.resolve(executeCommand('unpause'));
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'executeCommand not available' }));
+        }
+        return;
+      }
+
       try {
         let filePath = req.url === '/' ? '/index.html' : req.url;
         // Basic security to prevent directory traversal

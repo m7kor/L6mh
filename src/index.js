@@ -27,6 +27,9 @@ import {
   getSessionInfo,
   getAllSessions,
   setVolume,
+  pausePlayback,
+  resumePlayback,
+  getQueue,
 } from './services/player.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -90,7 +93,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, skip, stop, volume <0-200>, random, resume, latest';
+    if (lower === 'help') return 'Commands: status, np, skip, stop, volume <0-200>, random, resume, latest, pause, queue';
     
     const all = getAllSessions();
     
@@ -119,6 +122,24 @@ client.once(Events.ClientReady, async (c) => {
     if (lower === 'stop' || lower === 'leave') {
       stopAllSessions();
       return 'Stopped playback and disconnected from all servers.';
+    }
+    if (lower === 'pause') {
+      let done = 0;
+      all.forEach(s => { if (pausePlayback(s.guildId)) done++; });
+      return done > 0 ? `Paused on ${done} server(s).` : 'No active sessions to pause.';
+    }
+    if (lower === 'unpause' || lower === 'resume-playback') {
+      let done = 0;
+      all.forEach(s => { if (resumePlayback(s.guildId)) done++; });
+      return done > 0 ? `Resumed on ${done} server(s).` : 'No active sessions to resume.';
+    }
+    if (lower === 'queue') {
+      if (all.length === 0) return 'No active sessions.';
+      const lines = all.map(s => {
+        const q = getQueue(s.guildId);
+        return s.guildName + ': ' + (q.length > 0 ? q.map(v => v.title || v.videoId).join(', ') : 'Empty');
+      });
+      return lines.join('\n');
     }
     if (lower === '/عشوائي' || lower === 'random') {
       let done = 0;

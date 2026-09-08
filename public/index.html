@@ -234,7 +234,7 @@
                 <div class="q-grid">
                     <button class="q-btn" onclick="sendCommand('random')"><i class="fas fa-random"></i> عشوائي</button>
                     <button class="q-btn" onclick="sendCommand('skip')"><i class="fas fa-forward"></i> تخطي</button>
-                    <button class="q-btn" onclick="sendCommand('pause')"><i class="fas fa-pause"></i> إيقاف مؤقت</button>
+                    <button class="q-btn" id="pauseBtn" onclick="togglePause()"><i class="fas fa-pause"></i> إيقاف مؤقت</button>
                     <button class="q-btn" onclick="sendCommand('stop')" style="color: var(--neon-red); border-color: rgba(255,0,85,0.3);"><i class="fas fa-stop"></i> إيقاف</button>
                 </div>
             </div>
@@ -310,6 +310,17 @@
                 } else {
                     document.getElementById('npBar').style.width = `100%`;
                     document.getElementById('npBar').style.background = 'var(--neon-red)';
+                }
+
+                // Update pause button to match server state
+                if (session.paused !== undefined) {
+                    updatePauseBtn(session.paused);
+                }
+
+                // Sync volume slider
+                if (session.volume !== undefined) {
+                    volSlider.value = session.volume;
+                    document.getElementById('volText').innerText = `الصوت: ${session.volume}%`;
                 }
 
                 if (session.paused) {
@@ -414,6 +425,28 @@
                 });
             }, 600); // 600ms debounce
         });
+
+        // === Pause/Resume Toggle ===
+        let isPaused = false;
+        const pauseBtn = document.getElementById('pauseBtn');
+        const updatePauseBtn = (paused) => {
+            isPaused = paused;
+            const icon = pauseBtn.querySelector('i');
+            const txt = pauseBtn.childNodes[1];
+            if (paused) {
+                icon.className = 'fas fa-play';
+                txt.textContent = ' استمرار';
+            } else {
+                icon.className = 'fas fa-pause';
+                txt.textContent = ' إيقاف مؤقت';
+            }
+        };
+
+        const togglePause = () => {
+            const cmd = isPaused ? 'unpause' : 'pause';
+            sendCommand(cmd);
+            updatePauseBtn(!isPaused);
+        };
 
     </script>
 </body>
