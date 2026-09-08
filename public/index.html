@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WaheedTech | Advanced Studio Panel</title>
+    <title>WaheedTech | Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --bg-main: #08080a;
+            --bg-secondary: #0e0e12;
             --card-bg: rgba(255, 255, 255, 0.03);
             --card-border: rgba(255, 255, 255, 0.08);
             --neon-blue: #00f3ff;
@@ -16,207 +17,282 @@
             --neon-green: #00ff9d;
             --neon-red: #ff0055;
             --neon-yellow: #ffd700;
+            --neon-orange: #ff6b35;
             --text-main: #ffffff;
             --text-muted: #8b8b8b;
+            --text-dim: #555;
+            --scrollbar-thumb: rgba(255,255,255,0.1);
+            --scrollbar-track: transparent;
+        }
+
+        .light {
+            --bg-main: #f0f0f5;
+            --bg-secondary: #e8e8ee;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --card-border: rgba(0, 0, 0, 0.1);
+            --neon-blue: #0066cc;
+            --neon-purple: #8800cc;
+            --neon-green: #00aa55;
+            --neon-red: #cc0033;
+            --neon-yellow: #cc9900;
+            --neon-orange: #cc5500;
+            --text-main: #1a1a1a;
+            --text-muted: #666;
+            --text-dim: #999;
+            --scrollbar-thumb: rgba(0,0,0,0.15);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', 'Outfit', sans-serif; }
+        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+        body::before { content: ''; position: fixed; top: -10%; right: -5%; width: 500px; height: 500px; background: radial-gradient(circle, var(--neon-purple) 0%, transparent 70%); filter: blur(120px); opacity: 0.15; z-index: 0; pointer-events: none; }
+        body::after { content: ''; position: fixed; bottom: -10%; left: -5%; width: 600px; height: 600px; background: radial-gradient(circle, var(--neon-blue) 0%, transparent 70%); filter: blur(150px); opacity: 0.1; z-index: 0; pointer-events: none; }
+        .light body::before, .light body::after { opacity: 0.06; }
 
-        body { background: var(--bg-main); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
 
-        body::before { content: ''; position: fixed; top: -10%; right: -5%; width: 500px; height: 500px; background: radial-gradient(circle, var(--neon-purple) 0%, transparent 70%); filter: blur(120px); opacity: 0.15; z-index: 0; }
-        body::after { content: ''; position: fixed; bottom: -10%; left: -5%; width: 600px; height: 600px; background: radial-gradient(circle, var(--neon-blue) 0%, transparent 70%); filter: blur(150px); opacity: 0.1; z-index: 0; }
-
-        .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 30px; }
+        .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 20px; }
 
         /* Header */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding: 15px 25px; background: rgba(255,255,255,0.02); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .logo-section { display: flex; align-items: center; gap: 15px; }
-        .logo-img { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
-        .logo-text h2 { font-size: 18px; font-weight: 800; }
-        .logo-text p { font-size: 13px; color: var(--neon-blue); font-family: 'Outfit'; }
-        .server-status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neon-green); font-weight: 700; background: rgba(0,255,157,0.1); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(0,255,157,0.2); }
-        .pulse-dot { width: 10px; height: 10px; background: var(--neon-green); border-radius: 50%; box-shadow: 0 0 10px var(--neon-green); animation: pulse 1.5s infinite; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 12px 20px; background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .logo-section { display: flex; align-items: center; gap: 12px; }
+        .logo-img { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #000; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
+        .logo-text h2 { font-size: 16px; font-weight: 800; }
+        .logo-text p { font-size: 12px; color: var(--neon-blue); font-family: 'Outfit'; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .server-status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--neon-green); font-weight: 700; background: rgba(0,255,157,0.1); padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(0,255,157,0.2); }
+        .pulse-dot { width: 8px; height: 8px; background: var(--neon-green); border-radius: 50%; box-shadow: 0 0 10px var(--neon-green); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(0, 255, 157, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0); } }
+        .theme-toggle { width: 38px; height: 38px; border-radius: 10px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: 0.3s; }
+        .theme-toggle:hover { border-color: var(--neon-blue); color: var(--neon-blue); }
 
-        /* Strict 4-Column Bento Grid */
-        .bento-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-auto-rows: minmax(160px, auto);
-            gap: 24px;
-        }
+        /* Grid */
+        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
 
-        .card { background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 20px; padding: 25px; display: flex; flex-direction: column; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: border-color 0.3s; }
+        .card { background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: border-color 0.3s, background 0.3s; }
         .card:hover { border-color: rgba(255, 255, 255, 0.15); }
-
-        /* Grid Placement (RTL Aware: Col 1 is Rightmost) */
-        .now-playing-card { grid-column: 1 / 3; grid-row: 1; flex-direction: row; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(188, 19, 254, 0.08), rgba(0, 243, 255, 0.03)); border-color: rgba(188, 19, 254, 0.2); }
-        .stat-uptime { grid-column: 3 / 4; grid-row: 1; justify-content: center; align-items: center; text-align: center; }
-        .stat-plays { grid-column: 4 / 5; grid-row: 1; justify-content: center; align-items: center; text-align: center; }
-        
-        .terminal-card { grid-column: 1 / 3; grid-row: 2 / 4; padding: 0; }
-        .control-card { grid-column: 3 / 4; grid-row: 2; justify-content: space-between; text-align: center; }
-        .quick-card { grid-column: 3 / 4; grid-row: 3; justify-content: center; }
-        .top-card { grid-column: 4 / 5; grid-row: 2 / 4; }
+        .light .card:hover { border-color: rgba(0, 0, 0, 0.15); }
+        .card-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 
         /* Now Playing */
-        .np-info { flex: 1; padding-left: 20px; }
-        .np-info h3 { font-size: 15px; color: var(--neon-blue); margin-bottom: 5px; font-weight: 700; }
-        .np-info h1 { font-size: 26px; font-weight: 800; line-height: 1.4; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .np-progress { display: flex; align-items: center; gap: 12px; font-family: 'Outfit'; font-size: 14px; font-weight: 600; color: var(--text-muted); }
-        .progress-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative; }
-        .progress-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); width: 0%; transition: width 1s linear; }
-        
-        .visualizer { display: flex; gap: 5px; height: 60px; align-items: flex-end; justify-content: center; padding-right: 20px; border-right: 1px solid var(--card-border); }
-        .bar { width: 6px; background: var(--neon-green); border-radius: 3px; animation: bounce 1s infinite ease-in-out; }
-        .bar:nth-child(2) { animation-delay: 0.1s; height: 30%; } .bar:nth-child(3) { animation-delay: 0.2s; height: 60%; }
-        .bar:nth-child(4) { animation-delay: 0.3s; height: 40%; } .bar:nth-child(5) { animation-delay: 0.4s; height: 80%; }
-        .bar:nth-child(6) { animation-delay: 0.5s; height: 50%; }
-        .bar.paused { animation-play-state: paused; height: 10px !important; background: var(--text-muted); }
+        .now-playing { grid-column: 1 / 8; }
+        .np-content { display: flex; gap: 20px; align-items: center; }
+        .np-info { flex: 1; }
+        .np-label { font-size: 13px; color: var(--neon-blue); margin-bottom: 4px; font-weight: 700; }
+        .np-title { font-size: 22px; font-weight: 800; line-height: 1.3; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .np-progress { display: flex; align-items: center; gap: 10px; font-family: 'Outfit'; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        .progress-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+        .light .progress-bar { background: rgba(0,0,0,0.1); }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); width: 0%; transition: width 1s linear; border-radius: 3px; }
+        .visualizer { display: flex; gap: 4px; height: 50px; align-items: flex-end; }
+        .bar { width: 5px; background: var(--neon-green); border-radius: 2px; animation: bounce 1s infinite ease-in-out; }
+        .bar:nth-child(2) { animation-delay: 0.1s; } .bar:nth-child(3) { animation-delay: 0.2s; }
+        .bar:nth-child(4) { animation-delay: 0.3s; } .bar:nth-child(5) { animation-delay: 0.4s; }
+        .bar:nth-child(6) { animation-delay: 0.5s; }
+        .bar.paused { animation-play-state: paused; height: 8px !important; background: var(--text-muted); }
         @keyframes bounce { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
 
-        /* Stats */
-        .stat-icon { width: 55px; height: 55px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 15px; }
-        .stat-val { font-family: 'Outfit'; font-size: 32px; font-weight: 800; margin-bottom: 5px; }
-        .stat-lbl { color: var(--text-muted); font-size: 14px; }
+        /* Stats Row */
+        .stat-card { grid-column: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .stat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
+        .stat-val { font-family: 'Outfit'; font-size: 24px; font-weight: 800; margin-bottom: 2px; }
+        .stat-lbl { color: var(--text-muted); font-size: 12px; }
 
-        /* Terminal */
-        .term-hdr { padding: 15px 20px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; background: rgba(0,0,0,0.3); }
-        .dots { display: flex; gap: 8px; margin-left: 15px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; }
-        .dot.r { background: #ff5f56; } .dot.y { background: #ffbd2e; } .dot.g { background: #27c93f; }
-        .term-title { font-family: 'Outfit'; font-size: 13px; color: var(--text-muted); }
-        .term-body { flex: 1; padding: 20px; overflow-y: auto; font-family: 'Outfit', monospace; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.5); }
-        .t-row { display: flex; gap: 10px; direction: ltr; }
-        .t-prompt { color: var(--neon-green); font-weight: 700; white-space: nowrap; }
-        .t-text { color: #e2e8f0; }
-        .t-row.sys .t-prompt { color: var(--neon-purple); }
-        
-        .term-input-wrap { display: flex; align-items: center; padding: 15px 20px; border-top: 1px solid var(--card-border); background: rgba(0,0,0,0.3); gap: 15px; direction: ltr; }
-        .term-input-wrap i { color: var(--neon-blue); font-size: 16px; }
-        .term-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Outfit', monospace; font-size: 15px; }
+        /* Servers */
+        .servers-card { grid-column: 1 / 5; min-height: 200px; }
+        .server-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
+        .srv-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 10px; border: 1px solid transparent; transition: 0.3s; }
+        .light .srv-item { background: rgba(0,0,0,0.04); }
+        .srv-item:hover { border-color: var(--card-border); }
+        .srv-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .srv-dot.on { background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green); }
+        .srv-dot.off { background: var(--text-dim); }
+        .srv-name { flex: 1; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .srv-track { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+        .srv-ctrls { display: flex; gap: 4px; }
+        .srv-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--card-border); background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: 0.2s; }
+        .srv-btn:hover { border-color: var(--neon-blue); color: var(--neon-blue); }
+        .srv-btn.danger:hover { border-color: var(--neon-red); color: var(--neon-red); }
+
+        /* Queue */
+        .queue-card { grid-column: 5 / 9; min-height: 200px; }
+        .queue-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+        .q-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 13px; }
+        .light .q-item { background: rgba(0,0,0,0.04); }
+        .q-num { font-family: 'Outfit'; font-size: 11px; color: var(--text-dim); width: 20px; text-align: center; }
+        .q-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* History */
+        .history-card { grid-column: 9 / 13; min-height: 200px; }
+        .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+        .h-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 12px; }
+        .light .h-item { background: rgba(0,0,0,0.04); }
+        .h-time { font-family: 'Outfit'; font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+        .h-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* Controls */
-        .ctrl-hdr { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .mic-wrap { width: 70px; height: 70px; margin: 0 auto 15px; border-radius: 50%; background: rgba(0, 243, 255, 0.05); border: 2px solid var(--neon-blue); display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--neon-blue); position: relative; }
-        .mic-wrap.active::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--neon-blue); animation: ripple 2s infinite; }
-        @keyframes ripple { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
-        .ctrl-stat { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-        
-        .vol-slider { display: flex; align-items: center; gap: 15px; padding: 0 10px; }
-        .vol-slider i { color: var(--text-muted); font-size: 18px; }
-        input[type=range] { -webkit-appearance: none; flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; outline: none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--neon-blue); cursor: pointer; box-shadow: 0 0 10px var(--neon-blue); }
-        .vol-txt { font-size: 14px; font-weight: 700; color: var(--neon-blue); margin-top: 15px; }
+        .controls-card { grid-column: 1 / 5; }
+        .ctrl-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .ctrl-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.2); color: #fff; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 700; }
+        .light .ctrl-btn { background: rgba(0,0,0,0.05); color: var(--text-main); }
+        .ctrl-btn:hover { background: rgba(0, 243, 255, 0.1); border-color: var(--neon-blue); color: var(--neon-blue); }
+        .ctrl-btn.active { background: rgba(0, 243, 255, 0.15); border-color: var(--neon-blue); color: var(--neon-blue); }
+        .ctrl-btn.danger { color: var(--neon-red); }
+        .ctrl-btn.danger:hover { background: rgba(255, 0, 85, 0.1); border-color: var(--neon-red); }
+        .vol-section { margin-top: 8px; }
+        .vol-slider { display: flex; align-items: center; gap: 10px; }
+        .vol-slider i { color: var(--text-muted); font-size: 14px; }
+        input[type=range] { -webkit-appearance: none; flex: 1; height: 5px; background: rgba(255,255,255,0.1); border-radius: 3px; outline: none; }
+        .light input[type=range] { background: rgba(0,0,0,0.1); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--neon-blue); cursor: pointer; box-shadow: 0 0 8px var(--neon-blue); }
+        .vol-txt { font-size: 13px; font-weight: 700; color: var(--neon-blue); text-align: center; margin-top: 8px; }
 
-        /* Quick Actions */
-        .q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
-        .q-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 12px; padding: 14px; color: #fff; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700; }
-        .q-btn:hover { background: rgba(0, 243, 255, 0.1); border-color: var(--neon-blue); color: var(--neon-blue); }
+        /* Terminal */
+        .terminal-card { grid-column: 5 / 13; display: flex; flex-direction: column; }
+        .term-hdr { padding: 10px 16px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; background: rgba(0,0,0,0.3); border-radius: 12px 12px 0 0; }
+        .light .term-hdr { background: rgba(0,0,0,0.05); }
+        .dots { display: flex; gap: 6px; margin-left: 12px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot.r { background: #ff5f56; } .dot.y { background: #ffbd2e; } .dot.g { background: #27c93f; }
+        .term-title { font-family: 'Outfit'; font-size: 12px; color: var(--text-muted); }
+        .term-body { flex: 1; padding: 14px 16px; overflow-y: auto; font-family: 'Outfit', monospace; font-size: 13px; line-height: 1.5; display: flex; flex-direction: column; gap: 6px; background: rgba(0,0,0,0.5); min-height: 120px; max-height: 180px; }
+        .light .term-body { background: rgba(0,0,0,0.03); }
+        .t-row { display: flex; gap: 8px; direction: ltr; }
+        .t-prompt { color: var(--neon-green); font-weight: 700; white-space: nowrap; }
+        .t-text { color: #e2e8f0; }
+        .light .t-text { color: var(--text-main); }
+        .t-row.sys .t-prompt { color: var(--neon-purple); }
+        .t-row.err .t-prompt { color: var(--neon-red); }
+        .term-input-wrap { display: flex; align-items: center; padding: 10px 16px; border-top: 1px solid var(--card-border); background: rgba(0,0,0,0.3); gap: 10px; direction: ltr; border-radius: 0 0 12px 12px; }
+        .light .term-input-wrap { background: rgba(0,0,0,0.05); }
+        .term-input-wrap i { color: var(--neon-blue); font-size: 14px; }
+        .term-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Outfit', monospace; font-size: 13px; }
+        .light .term-input { color: var(--text-main); }
 
-        /* Top Tracks */
-        .top-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .top-hdr h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-        .top-hdr i { color: var(--neon-yellow); }
-        .top-list { display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto; padding-left: 5px; }
-        .trk-item { display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid transparent; transition: 0.3s; }
-        .trk-item:hover { border-color: var(--card-border); background: rgba(255,255,255,0.05); }
-        .trk-rank { font-family: 'Outfit'; font-size: 20px; font-weight: 800; color: var(--text-muted); width: 25px; text-align: center; }
-        .trk-item:nth-child(1) .trk-rank { color: var(--neon-yellow); }
-        .trk-item:nth-child(2) .trk-rank { color: #c0c0c0; }
-        .trk-item:nth-child(3) .trk-rank { color: #cd7f32; }
-        .trk-info { flex: 1; overflow: hidden; }
-        .trk-info h4 { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .trk-plays { font-family: 'Outfit'; font-size: 13px; font-weight: 800; color: var(--neon-purple); background: rgba(188, 19, 254, 0.1); padding: 5px 12px; border-radius: 12px; }
+        /* Error Log */
+        .error-card { grid-column: 1 / 13; }
+        .error-list { display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto; }
+        .err-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; background: rgba(255, 0, 85, 0.05); border-radius: 8px; border: 1px solid rgba(255, 0, 85, 0.1); font-size: 12px; }
+        .err-time { font-family: 'Outfit'; font-size: 10px; color: var(--neon-red); white-space: nowrap; }
+        .err-msg { flex: 1; color: var(--text-muted); font-family: 'Outfit', monospace; }
+        .no-errors { color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px; }
 
         @media (max-width: 1200px) {
-            .bento-grid { grid-template-columns: repeat(2, 1fr); }
-            .now-playing-card, .terminal-card, .top-card { grid-column: 1 / 3; }
-            .stat-uptime { grid-column: 1 / 2; grid-row: 2; }
-            .stat-plays { grid-column: 2 / 3; grid-row: 2; }
-            .control-card { grid-column: 1 / 2; grid-row: 3; }
-            .quick-card { grid-column: 2 / 3; grid-row: 3; }
-            .terminal-card { grid-row: 4; height: 350px; }
-            .top-card { grid-row: 5; height: 350px; }
+            .grid { grid-template-columns: repeat(6, 1fr); }
+            .now-playing, .terminal-card, .error-card { grid-column: 1 / 7; }
+            .stat-card { grid-column: span 2; }
+            .servers-card, .controls-card { grid-column: 1 / 4; }
+            .queue-card { grid-column: 4 / 7; }
+            .history-card { grid-column: 1 / 7; }
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .stat-card, .servers-card, .controls-card, .queue-card, .history-card, .terminal-card, .error-card { grid-column: 1; }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- Header -->
         <header class="header">
             <div class="logo-section">
                 <div class="logo-img">W</div>
                 <div class="logo-text">
                     <h2>استوديو وحيد تك</h2>
-                    <p>Advanced Bot Control</p>
+                    <p>Command Center</p>
                 </div>
             </div>
-            <div class="server-status">
-                <div class="pulse-dot"></div>
-                <span id="statusText">متصل بالخادم</span>
+            <div class="header-actions">
+                <div class="server-status">
+                    <div class="pulse-dot"></div>
+                    <span id="statusText">متصل</span>
+                </div>
+                <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
         </header>
 
-        <!-- Bento Grid -->
-        <div class="bento-grid">
-            
-            <!-- Now Playing (2 Cols) -->
-            <div class="card now-playing-card">
-                <div class="np-info">
-                    <h3 id="npMode">📻 يتم الآن عرض البث</h3>
-                    <h1 id="npTitle">جاري تحميل البيانات...</h1>
-                    <div class="np-progress">
-                        <span id="npElapsed">0:00</span>
-                        <div class="progress-bar"><div class="progress-fill" id="npBar"></div></div>
-                        <span id="npDuration">0:00</span>
+        <div class="grid">
+            <!-- Now Playing -->
+            <div class="card now-playing">
+                <div class="card-title"><i class="fas fa-play-circle" style="color: var(--neon-blue);"></i> يُعرض الآن</div>
+                <div class="np-content">
+                    <div class="np-info">
+                        <div class="np-label" id="npMode">جاري التحميل...</div>
+                        <div class="np-title" id="npTitle">—</div>
+                        <div class="np-progress">
+                            <span id="npElapsed">0:00</span>
+                            <div class="progress-bar"><div class="progress-fill" id="npBar"></div></div>
+                            <span id="npDuration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="visualizer" id="visualizer">
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
                     </div>
                 </div>
-                <div class="visualizer" id="visualizer">
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                </div>
             </div>
 
-            <!-- Uptime (1 Col) -->
-            <div class="card stat-uptime">
+            <!-- Stats -->
+            <div class="card stat-card">
                 <div class="stat-icon" style="color: var(--neon-blue); background: rgba(0, 243, 255, 0.1);"><i class="fas fa-server"></i></div>
-                <h4 class="stat-val" id="statUptime">0h 0m</h4>
-                <p class="stat-lbl">مدة التشغيل</p>
+                <div class="stat-val" id="statUptime">0h 0m</div>
+                <div class="stat-lbl">مدة التشغيل</div>
             </div>
-
-            <!-- Plays (1 Col) -->
-            <div class="card stat-plays">
+            <div class="card stat-card">
                 <div class="stat-icon" style="color: var(--neon-purple); background: rgba(188, 19, 254, 0.1);"><i class="fas fa-play"></i></div>
-                <h4 class="stat-val" id="totalPlaysTxt">0</h4>
-                <p class="stat-lbl">إجمالي التشغيلات</p>
+                <div class="stat-val" id="totalPlays">0</div>
+                <div class="stat-lbl">إجمالي التشغيلات</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon" style="color: var(--neon-green); background: rgba(0, 255, 157, 0.1);"><i class="fas fa-memory"></i></div>
+                <div class="stat-val" id="statMem">0MB</div>
+                <div class="stat-lbl">الذاكرة</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon" style="color: var(--neon-orange); background: rgba(255, 107, 53, 0.1);"><i class="fas fa-tv"></i></div>
+                <div class="stat-val" id="statGuilds">0</div>
+                <div class="stat-lbl">الخوادم</div>
             </div>
 
-            <!-- Terminal (2 Cols) -->
-            <div class="card terminal-card">
-                <div class="term-hdr">
-                    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
-                    <span class="term-title">admin@waheed-bot:~</span>
-                </div>
-                <div class="term-body" id="termBody">
-                    <div class="t-row sys"><span class="t-prompt">[System]</span><span class="t-text">WaheedTech Bot Engine initialized.</span></div>
-                </div>
-                <div class="term-input-wrap">
-                    <i class="fas fa-terminal"></i>
-                    <input type="text" class="term-input" id="termInput" placeholder="Enter command (e.g., skip, random)..." autocomplete="off">
+            <!-- Servers -->
+            <div class="card servers-card">
+                <div class="card-title"><i class="fas fa-network-wired" style="color: var(--neon-green);"></i> الخوادم النشطة</div>
+                <div class="server-list" id="serverList">
+                    <div class="no-errors">جاري التحميل...</div>
                 </div>
             </div>
 
-            <!-- Voice Control (1 Col) -->
-            <div class="card control-card">
-                <div>
-                    <div class="ctrl-hdr"><i class="fas fa-podcast" style="color: var(--neon-purple);"></i> المحرك الصوتي</div>
-                    <div class="mic-wrap active" id="micStatus"><i class="fas fa-microphone"></i></div>
-                    <div class="ctrl-stat" id="voiceStatus">البوت متصل ويبث بنجاح</div>
+            <!-- Queue -->
+            <div class="card queue-card">
+                <div class="card-title"><i class="fas fa-list-ol" style="color: var(--neon-yellow);"></i> قائمة الانتظار</div>
+                <div class="queue-list" id="queueList">
+                    <div class="no-errors">فارغة</div>
                 </div>
-                <div>
+            </div>
+
+            <!-- History -->
+            <div class="card history-card">
+                <div class="card-title"><i class="fas fa-history" style="color: var(--neon-orange);"></i> السجل</div>
+                <div class="history-list" id="historyList">
+                    <div class="no-errors">لا يوجد سجل</div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="card controls-card">
+                <div class="card-title"><i class="fas fa-sliders-h" style="color: var(--neon-purple);"></i> التحكم</div>
+                <div class="ctrl-row">
+                    <button class="ctrl-btn" onclick="sendCommand('random')"><i class="fas fa-random"></i> عشوائي</button>
+                    <button class="ctrl-btn" onclick="sendCommand('skip')"><i class="fas fa-forward"></i> تخطي</button>
+                </div>
+                <div class="ctrl-row">
+                    <button class="ctrl-btn" id="pauseBtn" onclick="togglePause()"><i class="fas fa-pause"></i> إيقاف مؤقت</button>
+                    <button class="ctrl-btn danger" onclick="sendCommand('stop')"><i class="fas fa-stop"></i> إيقاف</button>
+                </div>
+                <div class="vol-section">
                     <div class="vol-slider">
                         <i class="fas fa-volume-down"></i>
                         <input type="range" id="volSlider" min="0" max="200" value="100">
@@ -226,34 +302,32 @@
                 </div>
             </div>
 
-            <!-- Quick Actions (1 Col) -->
-            <div class="card quick-card">
-                <div class="ctrl-hdr" style="justify-content: flex-start; margin-bottom: 20px;">
-                    <i class="fas fa-bolt" style="color: var(--neon-yellow);"></i> تحكم سريع
+            <!-- Terminal -->
+            <div class="card terminal-card">
+                <div class="term-hdr">
+                    <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+                    <span class="term-title">admin@waheed-bot:~</span>
                 </div>
-                <div class="q-grid">
-                    <button class="q-btn" onclick="sendCommand('random')"><i class="fas fa-random"></i> عشوائي</button>
-                    <button class="q-btn" onclick="sendCommand('skip')"><i class="fas fa-forward"></i> تخطي</button>
-                    <button class="q-btn" id="pauseBtn" onclick="togglePause()"><i class="fas fa-pause"></i> إيقاف مؤقت</button>
-                    <button class="q-btn" onclick="sendCommand('stop')" style="color: var(--neon-red); border-color: rgba(255,0,85,0.3);"><i class="fas fa-stop"></i> إيقاف</button>
+                <div class="term-body" id="termBody">
+                    <div class="t-row sys"><span class="t-prompt">[System]</span><span class="t-text">Bot Engine initialized.</span></div>
                 </div>
-            </div>
-
-            <!-- Top Tracks (1 Col) -->
-            <div class="card top-card">
-                <div class="top-hdr">
-                    <h3><i class="fas fa-fire"></i> الأكثر تشغيلاً</h3>
-                </div>
-                <div class="top-list" id="topTracksList">
-                    <div class="trk-item" style="justify-content: center; color: var(--text-muted);">جاري التحميل...</div>
+                <div class="term-input-wrap">
+                    <i class="fas fa-terminal"></i>
+                    <input type="text" class="term-input" id="termInput" placeholder="Command (skip, random, pause, queue...)..." autocomplete="off">
                 </div>
             </div>
 
+            <!-- Error Log -->
+            <div class="card error-card">
+                <div class="card-title"><i class="fas fa-exclamation-triangle" style="color: var(--neon-red);"></i> سجل الأخطاء</div>
+                <div class="error-list" id="errorList">
+                    <div class="no-errors">لا يوجد أخطاء</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // === تحديث البيانات (API) ===
         const formatTime = (totalSeconds) => {
             if (!totalSeconds || isNaN(totalSeconds)) return '0:00';
             const total = Math.max(0, Math.floor(totalSeconds));
@@ -265,59 +339,82 @@
             return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
         };
 
+        const timeAgo = (isoStr) => {
+            if (!isoStr) return '';
+            const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+            if (diff < 60) return 'الآن';
+            if (diff < 3600) return Math.floor(diff / 60) + 'د';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'س';
+            return Math.floor(diff / 86400) + 'ي';
+        };
+
+        // === Theme ===
+        const toggleTheme = () => {
+            document.body.classList.toggle('light');
+            const isLight = document.body.classList.contains('light');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            const icon = document.querySelector('#themeBtn i');
+            icon.className = isLight ? 'fas fa-sun' : 'fas fa-moon';
+        };
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light');
+            document.querySelector('#themeBtn i').className = 'fas fa-sun';
+        }
+
+        // === Update UI ===
+        let isPaused = false;
+        const pauseBtn = document.getElementById('pauseBtn');
+        const volSlider = document.getElementById('volSlider');
+
+        const updatePauseBtn = (paused) => {
+            isPaused = paused;
+            const icon = pauseBtn.querySelector('i');
+            if (paused) {
+                icon.className = 'fas fa-play';
+                pauseBtn.childNodes[1].textContent = ' استمرار';
+            } else {
+                icon.className = 'fas fa-pause';
+                pauseBtn.childNodes[1].textContent = ' إيقاف مؤقت';
+            }
+        };
+
+        const togglePause = () => {
+            const cmd = isPaused ? 'unpause' : 'pause';
+            sendCommand(cmd);
+            updatePauseBtn(!isPaused);
+        };
+
         const updateUI = (data) => {
-            // Uptime
+            // Stats
             const upH = Math.floor(data.uptime / 3600);
             const upM = Math.floor((data.uptime % 3600) / 60);
             document.getElementById('statUptime').innerText = `${upH}h ${upM}m`;
+            document.getElementById('totalPlays').innerText = data.totalPlays;
+            document.getElementById('statMem').innerText = data.memMB + 'MB';
+            document.getElementById('statGuilds').innerText = data.guilds;
 
-            // Plays
-            document.getElementById('totalPlaysTxt').innerText = `${data.totalPlays} Plays`;
-
-            // Top Tracks
-            const topList = document.getElementById('topTracksList');
-            if (data.topPlayed && data.topPlayed.length > 0) {
-                topList.innerHTML = data.topPlayed.slice(0, 5).map((track, i) => `
-                    <div class="trk-item">
-                        <div class="trk-rank">#${i + 1}</div>
-                        <div class="trk-info">
-                            <h4>${track.title || 'مقطع مجهول'}</h4>
-                        </div>
-                        <div class="trk-plays">${track.count}</div>
-                    </div>
-                `).join('');
-            }
-
-            // Session / Now Playing
+            // Sessions / Now Playing
             const session = data.sessions && data.sessions[0];
             const visualizer = document.getElementById('visualizer');
-            const micWrapper = document.getElementById('micStatus');
-            const voiceStatus = document.getElementById('voiceStatus');
 
             if (session && session.title) {
                 document.getElementById('npTitle').innerText = session.title;
-                const modeAr = session.mode === 'random' ? 'عشوائي مستمر' : session.mode === 'latest' ? 'أحدث مقطع' : 'تشغيل';
+                const modeAr = session.mode === 'random' ? 'عشوائي مستمر' : session.mode === 'latest' ? 'أحدث مقطع' : session.mode === 'resume' ? 'استكمال' : 'تشغيل';
                 document.getElementById('npMode').innerText = `📻 ${modeAr} | الصوت: ${session.volume}%`;
-                
+
                 const el = session.elapsedSeconds || 0;
                 const dur = session.durationSeconds || 0;
                 document.getElementById('npElapsed').innerText = formatTime(el);
                 document.getElementById('npDuration').innerText = dur ? formatTime(dur) : 'لايف';
-                
+
                 if (dur > 0) {
-                    const pct = Math.min(100, (el / dur) * 100);
-                    document.getElementById('npBar').style.width = `${pct}%`;
+                    document.getElementById('npBar').style.width = `${Math.min(100, (el / dur) * 100)}%`;
                 } else {
-                    document.getElementById('npBar').style.width = `100%`;
+                    document.getElementById('npBar').style.width = '100%';
                     document.getElementById('npBar').style.background = 'var(--neon-red)';
                 }
 
-                // Update pause button to match server state
-                if (session.paused !== undefined) {
-                    updatePauseBtn(session.paused);
-                }
-
-                // Sync volume slider
+                if (session.paused !== undefined) updatePauseBtn(session.paused);
                 if (session.volume !== undefined) {
                     volSlider.value = session.volume;
                     document.getElementById('volText').innerText = `الصوت: ${session.volume}%`;
@@ -325,27 +422,70 @@
 
                 if (session.paused) {
                     Array.from(visualizer.children).forEach(b => b.classList.add('paused'));
-                    micWrapper.classList.remove('active');
-                    voiceStatus.innerText = 'البث متوقف مؤقتاً';
-                    voiceStatus.style.color = 'var(--neon-yellow)';
                 } else {
                     Array.from(visualizer.children).forEach(b => b.classList.remove('paused'));
-                    micWrapper.classList.add('active');
-                    voiceStatus.innerText = 'البوت متصل ويبث بنجاح';
-                    voiceStatus.style.color = 'var(--text-muted)';
                 }
             } else {
                 document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
-                document.getElementById('npMode').innerText = '📻 الراديو متوقف';
+                document.getElementById('npMode').innerText = 'الراديو متوقف';
                 document.getElementById('npElapsed').innerText = '0:00';
                 document.getElementById('npDuration').innerText = '0:00';
-                document.getElementById('npBar').style.width = `0%`;
+                document.getElementById('npBar').style.width = '0%';
                 Array.from(visualizer.children).forEach(b => b.classList.add('paused'));
-                micWrapper.classList.remove('active');
-                voiceStatus.innerText = 'غير متصل بقناة صوتية';
+            }
+
+            // Servers
+            const serverList = document.getElementById('serverList');
+            if (data.sessions && data.sessions.length > 0) {
+                serverList.innerHTML = data.sessions.map(s => `
+                    <div class="srv-item">
+                        <div class="srv-dot ${s.connected ? 'on' : 'off'}"></div>
+                        <div style="flex:1; min-width:0;">
+                            <div class="srv-name">${s.guildName}</div>
+                            <div class="srv-track">${s.title || '_IDLE'}</div>
+                        </div>
+                        <div class="srv-ctrls">
+                            <button class="srv-btn" onclick="sendServerCmd('${s.guildId}','skip')" title="Skip"><i class="fas fa-forward"></i></button>
+                            <button class="srv-btn" onclick="sendServerCmd('${s.guildId}','pause')" title="Pause"><i class="fas fa-pause"></i></button>
+                            <button class="srv-btn danger" onclick="sendServerCmd('${s.guildId}','stop')" title="Stop"><i class="fas fa-stop"></i></button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                serverList.innerHTML = '<div class="no-errors">لا توجد خوادم نشطة</div>';
+            }
+
+            // Top Played
+            if (data.topPlayed && data.topPlayed.length > 0) {
+                document.getElementById('statGuilds').innerText = data.sessions.length;
+            }
+
+            // History
+            const historyList = document.getElementById('historyList');
+            if (data.history && data.history.length > 0) {
+                historyList.innerHTML = data.history.slice(0, 12).map(h => `
+                    <div class="h-item">
+                        <div class="h-time">${timeAgo(h.playedAt)}</div>
+                        <div class="h-title">${h.title || 'مقطع مجهول'}</div>
+                    </div>
+                `).join('');
+            }
+
+            // Errors
+            const errorList = document.getElementById('errorList');
+            if (data.errors && data.errors.length > 0) {
+                errorList.innerHTML = data.errors.slice(0, 10).map(e => `
+                    <div class="err-item">
+                        <div class="err-time">${timeAgo(e.time)}</div>
+                        <div class="err-msg">${e.message}</div>
+                    </div>
+                `).join('');
+            } else {
+                errorList.innerHTML = '<div class="no-errors">لا يوجد أخطاء</div>';
             }
         };
 
+        // === Fetch Status ===
         const fetchStatus = async () => {
             try {
                 const res = await fetch('/api/status');
@@ -353,17 +493,16 @@
                     const data = await res.json();
                     updateUI(data);
                 }
-            } catch (err) {
+            } catch {
                 document.getElementById('statusText').innerText = 'فقد الاتصال';
                 document.getElementById('statusText').style.color = 'var(--neon-red)';
                 document.querySelector('.pulse-dot').style.background = 'var(--neon-red)';
             }
         };
-
         setInterval(fetchStatus, 2000);
         fetchStatus();
 
-        // === التيرمينال (Terminal) ===
+        // === Terminal ===
         const termBody = document.getElementById('termBody');
         const termInput = document.getElementById('termInput');
 
@@ -379,7 +518,6 @@
         const sendCommand = async (cmd) => {
             if (!cmd) return;
             appendLog(cmd, 'user');
-            
             try {
                 const res = await fetch('/api/command', {
                     method: 'POST',
@@ -390,28 +528,28 @@
                 if (data.error) {
                     appendLog(data.error, 'err');
                 } else {
-                    appendLog(data.reply || 'تم تنفيذ الأمر.', 'sys');
+                    appendLog(data.reply || 'تم التنفيذ.', 'sys');
                 }
             } catch (e) {
                 appendLog('Network error: ' + e.message, 'err');
             }
-            fetchStatus(); // تحديث فوري
+            fetchStatus();
+        };
+
+        const sendServerCmd = async (guildId, cmd) => {
+            await sendCommand(`${cmd}`);
         };
 
         termInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const val = termInput.value.trim();
                 termInput.value = '';
-                if (val.toLowerCase() === 'clear') {
-                    termBody.innerHTML = '';
-                    return;
-                }
+                if (val.toLowerCase() === 'clear') { termBody.innerHTML = ''; return; }
                 sendCommand(val);
             }
         });
 
-        // === التحكم بالصوت ===
-        const volSlider = document.getElementById('volSlider');
+        // === Volume ===
         let volTimeout;
         volSlider.addEventListener('input', (e) => {
             const val = e.target.value;
@@ -423,31 +561,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ volume: parseInt(val) })
                 });
-            }, 600); // 600ms debounce
+            }, 600);
         });
-
-        // === Pause/Resume Toggle ===
-        let isPaused = false;
-        const pauseBtn = document.getElementById('pauseBtn');
-        const updatePauseBtn = (paused) => {
-            isPaused = paused;
-            const icon = pauseBtn.querySelector('i');
-            const txt = pauseBtn.childNodes[1];
-            if (paused) {
-                icon.className = 'fas fa-play';
-                txt.textContent = ' استمرار';
-            } else {
-                icon.className = 'fas fa-pause';
-                txt.textContent = ' إيقاف مؤقت';
-            }
-        };
-
-        const togglePause = () => {
-            const cmd = isPaused ? 'unpause' : 'pause';
-            sendCommand(cmd);
-            updatePauseBtn(!isPaused);
-        };
-
     </script>
 </body>
 </html>

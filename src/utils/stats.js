@@ -9,6 +9,8 @@ import { createLogger } from './logger.js';
 const logger = createLogger('stats');
 
 const PLAYS_FILE = join(process.cwd(), 'play-counts.json');
+const HISTORY_FILE = join(process.cwd(), 'play-history.json');
+const MAX_HISTORY = 50;
 
 function loadJson(path) {
   if (!existsSync(path)) return {};
@@ -17,6 +19,15 @@ function loadJson(path) {
   } catch (err) {
     logger.error(`Failed to read ${path}:`, err.message);
     return {};
+  }
+}
+
+function loadArray(path) {
+  if (!existsSync(path)) return [];
+  try {
+    return JSON.parse(readFileSync(path, 'utf-8'));
+  } catch {
+    return [];
   }
 }
 
@@ -48,4 +59,21 @@ export function recordPlay(video) {
     lastPlayedAt: new Date().toISOString(),
   };
   saveJson(PLAYS_FILE, all);
+
+  // Append to history
+  const history = loadArray(HISTORY_FILE);
+  history.unshift({
+    videoId: video.videoId,
+    title: video.title,
+    url: video.url,
+    playedAt: new Date().toISOString(),
+  });
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  saveJson(HISTORY_FILE, history);
+}
+
+/** Get recent play history (last N tracks). */
+export function getPlayHistory(limit = 20) {
+  const history = loadArray(HISTORY_FILE);
+  return history.slice(0, limit);
 }

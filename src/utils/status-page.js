@@ -7,17 +7,26 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createLogger } from './logger.js';
-import { loadPlays } from './stats.js';
+import { loadPlays, getPlayHistory } from './stats.js';
 
 const logger = createLogger('dashboard');
 
 const PORT = Number(process.env.STATUS_PORT) || 0;
 
-let getSessionInfo = null;
-let getAllSessions = null;
-let executeCommand = null;
+let getSessionInfoFn = null;
+let getAllSessionsFn = null;
+let executeCommandFnFn = null;
 
 let cachedHtml = null;
+
+// In-memory error log (last 50 errors)
+const errorLog = [];
+const MAX_ERROR_LOG = 50;
+
+export function logDashboardError(message) {
+  errorLog.unshift({ message, time: new Date().toISOString() });
+  if (errorLog.length > MAX_ERROR_LOG) errorLog.length = MAX_ERROR_LOG;
+}
 
 async function getApiData() {
   const plays = await loadPlays();
@@ -32,8 +41,8 @@ async function getApiData() {
     .slice(0, 10);
 
   let sessions = [];
-  if (getAllSessions) {
-    sessions = getAllSessions().map(session => ({
+  if (getAllSessionsFn) {
+    sessions = getAllSessionsFn().map(session => ({
       ...session,
       elapsedSeconds: session.elapsedSeconds || 0,
       durationSeconds: session.durationSeconds || null,
@@ -51,15 +60,17 @@ async function getApiData() {
     topPlayed: sorted.map((entry) => {
       return { id: entry[0], title: entry[1].title, count: entry[1].count, lastPlayedAt: entry[1].lastPlayedAt };
     }),
+    history: getPlayHistory(15),
+    errors: errorLog.slice(0, 20),
     timestamp: new Date().toISOString(),
   };
 }
 
-export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeCommandFn) {
+export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnFnArg) {
   if (!PORT) return;
-  getSessionInfo = getSessionInfoFn;
-  getAllSessions = getAllSessionsFn || null;
-  executeCommand = executeCommandFn || null;
+  getSessionInfoFn = getSessionInfoFnArg;
+  getAllSessionsFn = getAllSessionsFnArg || null;
+  executeCommandFnFn = executeCommandFnFnArg || null;
 
   try {
     const server = createServer(async (req, res) => {
@@ -105,9 +116,9 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
               return;
             }
             
-            if (executeCommand) {
+            if (executeCommandFnFn) {
               try {
-                const reply = await Promise.resolve(executeCommand(cmd));
+                const reply = await Promise.resolve(executeCommandFnFn(cmd));
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ ok: true, reply: reply || 'Command executed.' }));
               } catch (cmdErr) {
@@ -127,9 +138,9 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
       }
 
       if (req.url === '/api/skip' && req.method === 'POST') {
-        if (executeCommand) {
+        if (executeCommandFn) {
           try {
-            await Promise.resolve(executeCommand('skip'));
+            await Promise.resolve(executeCommandFn('skip'));
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
           } catch (err) {
@@ -138,7 +149,7 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
           }
         } else {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'executeCommand not available' }));
+          res.end(JSON.stringify({ error: 'executeCommandFn not available' }));
         }
         return;
       }
@@ -154,13 +165,13 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
               res.end(JSON.stringify({ error: 'Volume must be a number' }));
               return;
             }
-            if (executeCommand) {
-              await Promise.resolve(executeCommand('volume ' + parsed.volume));
+            if (executeCommandFn) {
+              await Promise.resolve(executeCommandFn('volume ' + parsed.volume));
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ ok: true }));
             } else {
               res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'executeCommand not available' }));
+              res.end(JSON.stringify({ error: 'executeCommandFn not available' }));
             }
           } catch (e) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -171,9 +182,9 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
       }
 
       if (req.url === '/api/pause' && req.method === 'POST') {
-        if (executeCommand) {
+        if (executeCommandFn) {
           try {
-            await Promise.resolve(executeCommand('pause'));
+            await Promise.resolve(executeCommandFn('pause'));
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
           } catch (err) {
@@ -182,15 +193,15 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
           }
         } else {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'executeCommand not available' }));
+          res.end(JSON.stringify({ error: 'executeCommandFn not available' }));
         }
         return;
       }
 
       if (req.url === '/api/resume' && req.method === 'POST') {
-        if (executeCommand) {
+        if (executeCommandFn) {
           try {
-            await Promise.resolve(executeCommand('unpause'));
+            await Promise.resolve(executeCommandFn('unpause'));
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ ok: true }));
           } catch (err) {
@@ -199,7 +210,19 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
           }
         } else {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'executeCommand not available' }));
+          res.end(JSON.stringify({ error: 'executeCommandFn not available' }));
+        }
+        return;
+      }
+
+      if (req.url === '/api/servers' && req.method === 'GET') {
+        try {
+          const sessions = getAllSessionsFn ? getAllSessionsFn() : [];
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ servers: sessions }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to fetch servers' }));
         }
         return;
       }
