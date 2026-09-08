@@ -186,6 +186,7 @@ export function getSessionInfo(guildId) {
     paused: session.paused,
     connected: Boolean(session.connection),
     elapsedSeconds: session.current ? getElapsedSeconds(session) : 0,
+    queueCount: session.queue.length,
   };
 }
 

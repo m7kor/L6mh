@@ -1,10 +1,17 @@
 /**
- * "Now Playing" embed builder (no buttons).
+ * "Now Playing" embed builder.
  */
 
 import { EmbedBuilder } from 'discord.js';
 
-const BAR_LENGTH = 18;
+const BAR_LENGTH = 20;
+
+const MODE_LABEL = {
+  random: '🎲 عشوائي مستمر',
+  latest: '🆕 آخر فيديو',
+  url: '🔗 رابط محدد',
+  resume: '⏯️ استكمال',
+};
 
 const MODE_COLOR = {
   random: 0x7c3aed,
@@ -25,14 +32,26 @@ export function formatTime(totalSeconds) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+function formatDuration(totalSeconds) {
+  if (!totalSeconds || totalSeconds <= 0) return null;
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 function progressBar(elapsedSeconds, durationSeconds) {
   if (!durationSeconds || durationSeconds <= 0) {
-    return '🔴 `مباشر`  ✦  بث بدون مدة محددة';
+    return '> 🔴 **مباشر** — بث حي بدون مدة محددة';
   }
   const ratio = Math.max(0, Math.min(1, elapsedSeconds / durationSeconds));
   const filled = Math.round(ratio * BAR_LENGTH);
-  const bar = '━'.repeat(filled) + '◆' + '─'.repeat(Math.max(0, BAR_LENGTH - filled));
-  return `\`${formatTime(elapsedSeconds)}\`  ${bar}  \`${formatTime(durationSeconds)}\``;
+  const empty = BAR_LENGTH - filled;
+  const bar = '█'.repeat(filled) + '░'.repeat(empty);
+  const pct = Math.round(ratio * 100);
+  return `> ${bar}  ${pct}%\n> \`${formatTime(elapsedSeconds)}\` ─── \`${formatTime(durationSeconds)}\``;
 }
 
 function formatViewCount(viewCount) {
@@ -44,41 +63,92 @@ function formatViewCount(viewCount) {
 
 function formatUploadDate(iso) {
   if (!iso) return null;
+  const d = new Date(iso);
+  const now = new Date();
+  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'اليوم';
+  if (diffDays === 1) return 'أمس';
+  if (diffDays < 7) return `منذ ${diffDays} أيام`;
+  if (diffDays < 30) return `منذ ${Math.floor(diffDays / 7)} أسابيع`;
   return iso.slice(0, 10);
 }
 
 export function buildNowPlayingEmbed(video, state) {
-  const modeLabel = {
-    random: '🎲 عشوائي مستمر',
-    latest: '🆕 آخر فيديو',
-    url: '🔗 رابط محدد',
-    resume: '⏯️ استكمال',
-  }[state.mode] || '▶️ تشغيل';
-
+  const modeLabel = MODE_LABEL[state.mode] || '▶️ تشغيل';
   const color = state.paused ? PAUSED_COLOR : (MODE_COLOR[state.mode] || 0x3730a3);
 
-  const metaParts = [modeLabel, `🔊 ${state.volume}%`];
-  const viewsLabel = formatViewCount(video.viewCount);
-  const uploadLabel = formatUploadDate(video.publishedAt);
-  if (viewsLabel) metaParts.push(`👁️ ${viewsLabel}`);
-  if (uploadLabel) metaParts.push(`📅 ${uploadLabel}`);
+  // Progress bar
+  const progress = progressBar(state.elapsedSeconds ?? 0, video.durationSeconds);
 
-  const description = [
-    progressBar(state.elapsedSeconds ?? 0, video.durationSeconds),
-    '',
-    metaParts.join('   ✦   '),
-  ].join('\n');
+  // Metadata fields
+  const fields = [];
+
+  fields.push({
+    name: 'الوضع',
+    value: modeLabel,
+    inline: true,
+  });
+
+  fields.push({
+    name: 'الصوت',
+    value: `🔊 ${state.volume}%`,
+    inline: true,
+  });
+
+  if (video.durationSeconds) {
+    fields.push({
+      name: 'المدة',
+      value: formatDuration(video.durationSeconds) || '—',
+      inline: true,
+    });
+  }
+
+  const viewsLabel = formatViewCount(video.viewCount);
+  if (viewsLabel) {
+    fields.push({
+      name: 'المشاهدات',
+      value: `👁️ ${viewsLabel}`,
+      inline: true,
+    });
+  }
+
+  const uploadLabel = formatUploadDate(video.publishedAt);
+  if (uploadLabel) {
+    fields.push({
+      name: 'النشر',
+      value: `📅 ${uploadLabel}`,
+      inline: true,
+    });
+  }
+
+  if (state.queueCount > 0) {
+    fields.push({
+      name: 'القائمة',
+      value: `📋 ${state.queueCount} مقاطع`,
+      inline: true,
+    });
+  }
 
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setAuthor({ name: '👑 Waheedomar Radio' })
-    .setTitle(`✨ ${video.title}`)
+    .setAuthor({
+      name: '👑 Waheedomar Radio',
+      iconURL: 'https://i.imgur.com/3JY4YMN.png',
+    })
+    .setTitle(video.title)
     .setURL(video.url)
-    .setDescription(description)
-    .setFooter({ text: state.paused ? '✦ متوقف مؤقتاً' : '✦ مباشر الآن' })
+    .setDescription(progress)
+    .addFields(fields)
+    .setFooter({
+      text: state.paused
+        ? '⏸️ متوقف مؤقتاً — اكتب /كمل للاستئناف'
+        : '🎧 مباشر الآن',
+    })
     .setTimestamp();
 
-  if (video.thumbnail) embed.setImage(video.thumbnail);
+  if (video.thumbnail) {
+    embed.setThumbnail(video.thumbnail);
+  }
 
   return embed;
 }
