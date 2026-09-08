@@ -23,7 +23,6 @@ import { getRandomVideo, getLatestVideo, getVideoDetails } from './youtube.js';
 import {
   getSession, sessions, saveState, restoreLastVideo, loadAllState,
   getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
-  trackRecent,
 } from './session.js';
 import { createAudioStream, killProcesses, preValidateVideo } from './streaming.js';
 import { formatTime } from '../utils/format.js';
@@ -292,7 +291,6 @@ export async function playLatest(guild, channel) {
   session.continuous = true;
   session.current = video;
   session.playedIds.add(video.videoId);
-  trackRecent(session, video.videoId);
 
   await connectAndPlay(guild, channel, video);
   return session.current;
@@ -306,7 +304,6 @@ export async function playVideo(guild, channel, video) {
   session.continuous = true;
   session.current = video;
   session.playedIds.add(video.videoId);
-  trackRecent(session, video.videoId);
 
   await connectAndPlay(guild, channel, video);
   return session.current;
@@ -319,10 +316,9 @@ export async function playRandom(guild, channel) {
   session.mode = 'random';
   session.continuous = true;
 
-  const video = await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds, session.playedIds);
+  const video = await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
   session.current = video;
   session.playedIds.add(video.videoId);
-  trackRecent(session, video.videoId);
 
   await connectAndPlay(guild, channel, video);
   return session.current;
@@ -364,7 +360,7 @@ async function preloadNextTrack(session) {
   if (session.preloaded) return;
   try {
     const next = session.queue[0]
-      || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds, session.playedIds);
+      || await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
     if (!next?.url) return;
     const ytDlpArgs = [
       '-f', 'bestaudio/best',
@@ -708,7 +704,7 @@ async function onTrackFinished(guild, channel) {
       const playedSeconds = (Date.now() - session.segmentStartedAt) / 1000;
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
-        trackRecent(session, session.current.videoId);
+        session.playedIds.add(session.current.videoId);
         await sleep(3000);
       }
     }
@@ -728,17 +724,16 @@ async function onTrackFinished(guild, channel) {
           session.preloaded = null;
         } else {
           next = session.queue.shift()
-            || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds, session.playedIds);
+            || await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
         }
         const valid = await preValidateVideo(next.url);
         if (!valid) {
           logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
-          trackRecent(session, session.current.videoId);
+          session.playedIds.add(next.videoId);
           continue;
         }
         session.current = next;
         session.playedIds.add(next.videoId);
-        trackRecent(session, next.videoId);
         await connectAndPlay(guild, channel, next);
         return;
       } catch (err) {
@@ -779,7 +774,7 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     }
 
     const video = session.current
-      || await getRandomVideo(config.channelId, config.youtubeApiKey, session.recentIds, session.playedIds);
+      || await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
     await connectAndPlay(guild, freshChannel, video, { countPlay: false });
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {
