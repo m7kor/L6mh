@@ -194,25 +194,11 @@ export async function getLatestVideo(channelId = config.channelId, apiKey = conf
 /**
  * Pick a random video, optionally avoiding a set of recently-played video IDs
  * so continuous playback doesn't repeat the same handful of clips back to back.
- * Filters out YouTube Shorts (<60s) and avoids consecutive long videos (>20min).
  * @param {string[]} exclude - video IDs to avoid if possible
  */
 export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = []) {
   const videos = await getVideos(channelId, apiKey);
-  let pool = videos.filter((v) => !exclude.includes(v.videoId));
-
-  // Filter out Shorts (<60s) if we have enough non-Short content
-  const nonShorts = pool.filter((v) => v.durationSeconds == null || v.durationSeconds >= 60);
-  if (nonShorts.length > 5) pool = nonShorts;
-
-  // Avoid consecutive long videos (>20min): if last played was long, prefer shorter
-  const lastPlayedId = exclude[exclude.length - 1];
-  const lastPlayed = lastPlayedId ? videos.find((v) => v.videoId === lastPlayedId) : null;
-  if (lastPlayed && lastPlayed.durationSeconds && lastPlayed.durationSeconds > 1200) {
-    const shorter = pool.filter((v) => v.durationSeconds == null || v.durationSeconds <= 1200);
-    if (shorter.length > 3) pool = shorter;
-  }
-
+  const pool = videos.filter((v) => !exclude.includes(v.videoId));
   const list = pool.length > 0 ? pool : videos;
   return list[Math.floor(Math.random() * list.length)];
 }
