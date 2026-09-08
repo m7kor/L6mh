@@ -10,6 +10,7 @@ playback-state.json
 video-cache.json
 heartbeat.json
 play-counts.json
+play-history.json
 cookies.txt
 cookies_strip.txt
 helium_cookies.db

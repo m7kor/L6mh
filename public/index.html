@@ -203,7 +203,7 @@ const fmt = s => {
 // ── Commands ──
 const cmd = async c => { if(!c) return; try { await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:c})}); } catch{} refresh(); };
 
-// ── YouTube Embed ──
+// ── YouTube Embed (safe — no innerHTML with user data) ──
 let curVid = null;
 const npEmb = document.getElementById('npEmb');
 const npEmbImg = document.getElementById('npEmbImg');
@@ -212,7 +212,12 @@ const setEmb = id => {
     if (curVid===id) return;
     curVid=id;
     npEmbImg.style.display='none';
-    npEmb.innerHTML=`<iframe src="https://www.youtube.com/embed/${id}?autoplay=0&controls=1&rel=0&modestbranding=1" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+    npEmb.innerHTML='';
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=0&controls=1&rel=0&modestbranding=1`;
+    iframe.allow = 'autoplay; encrypted-media';
+    iframe.allowFullscreen = true;
+    npEmb.appendChild(iframe);
 };
 const clearEmb = () => { npEmb.innerHTML=''; npEmbImg.style.display='block'; curVid=null; };
 
@@ -279,15 +284,44 @@ const render = q => {
     const lower = (q||'').toLowerCase();
     const list = lower ? allVid.filter(v => (v.title||'').toLowerCase().includes(lower)) : allVid;
     vCount.textContent = `${allVid.length} مقطع`;
-    if (!list.length) { vList.innerHTML = '<div class="empty">لا توجد نتائج</div>'; return; }
-    vList.innerHTML = list.map((v,i) => `
-        <div class="vid-row" onclick="cmd('play ${v.videoId}')">
-            <span class="vid-num">${i+1}</span>
-            <img class="vid-img" src="${v.thumbnail||`https://i.ytimg.com/vi/${v.videoId}/mqdefault.jpg`}" loading="lazy" alt="">
-            <div class="vid-text"><h4>${v.title||'—'}</h4></div>
-            <div class="vid-play-icon"><i class="fas fa-play"></i></div>
-        </div>
-    `).join('');
+    vList.innerHTML = '';
+    if (!list.length) {
+        const d = document.createElement('div');
+        d.className = 'empty';
+        d.textContent = 'لا توجد نتائج';
+        vList.appendChild(d);
+        return;
+    }
+    list.forEach((v, i) => {
+        const row = document.createElement('div');
+        row.className = 'vid-row';
+        row.onclick = () => cmd(`play ${v.videoId}`);
+
+        const num = document.createElement('span');
+        num.className = 'vid-num';
+        num.textContent = i + 1;
+
+        const img = document.createElement('img');
+        img.className = 'vid-img';
+        img.src = v.thumbnail || `https://i.ytimg.com/vi/${encodeURIComponent(v.videoId)}/mqdefault.jpg`;
+        img.loading = 'lazy';
+        img.alt = '';
+
+        const text = document.createElement('div');
+        text.className = 'vid-text';
+        const h4 = document.createElement('h4');
+        h4.textContent = v.title || '—';
+        text.appendChild(h4);
+
+        const play = document.createElement('div');
+        play.className = 'vid-play-icon';
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-play';
+        play.appendChild(icon);
+
+        row.append(num, img, text, play);
+        vList.appendChild(row);
+    });
 };
 
 vSearch.addEventListener('input', e => render(e.target.value));

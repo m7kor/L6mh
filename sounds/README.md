@@ -1,19 +1,25 @@
 # Sounds folder
 
-Drop short audio clips here (`.mp3`, `.ogg`, `.wav`, `.m4a`, or `.flac`) and
-they'll automatically show up in Discord's `/sound` command — no restart or
-redeploy needed, the bot reads this folder fresh each time.
+Drop short audio clips here (`.mp3`, `.ogg`, `.wav`, `.m4a`, or `.flac`).
+These are used as **jingles** — automatically played between tracks and
+when the bot joins/moves to a voice channel.
 
-The file name (without extension) becomes the sound's name in Discord.
-For example:
+The bot picks a random clip using least-recently-played weighting, so
+the same sound doesn't repeat back-to-back.
+
+## Configuration
+
+Enable/disable sound effects in `.env`:
 
 ```
-sounds/
-  airhorn.mp3      → /sound name:airhorn
-  applause.ogg      → /sound name:applause
-  دخول.mp3          → /sound name:دخول   (Arabic names work fine too)
+SOUND_EFFECTS_ENABLED=true
+SOUND_EFFECTS_MIN_MINUTES=8    # minimum interval between jingles
+SOUND_EFFECTS_MAX_MINUTES=20   # maximum interval between jingles
 ```
 
-When triggered, the current stream (radio/video) is paused, the sound
-effect plays once, and playback resumes exactly where it left off
-afterward — nothing gets skipped or restarted.
+## Behavior
+
+- A jingle plays between tracks (masked by the track transition gap)
+- The current stream is **not** paused — the jingle plays as a separate
+  audio layer and the main playback resumes seamlessly after
+- Sound effects are internal only; there is no user-facing `/sound` command

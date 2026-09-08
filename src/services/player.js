@@ -6,8 +6,6 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import {
   joinVoiceChannel,
@@ -25,6 +23,7 @@ import {
   getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
 } from './session.js';
 import { createAudioStream, killProcesses, preValidateVideo } from './streaming.js';
+import { getCookieArgs } from './cookies.js';
 import { formatTime } from '../utils/format.js';
 import { listSounds, resolveSoundPath } from '../utils/sounds.js';
 import { config } from '../config.js';
@@ -132,7 +131,7 @@ async function enrichWithDetails(video) {
 // Public API
 // ---------------------------------------------------------------------------
 
-export function stopPlayback(guildId, { manual = true } = {}) {
+export async function stopPlayback(guildId, { manual = true } = {}) {
   const session = getSession(guildId);
   if (session.manualStop && manual) return;
   session.continuous = false;
@@ -164,7 +163,7 @@ export function stopPlayback(guildId, { manual = true } = {}) {
   }
 
   killProcesses(session);
-  saveState(session);
+  await saveState(session);
   playerEvents.emit('trackChange', { guildId, video: null, paused: false });
   logger.info(`[${guildId}] Stopped playback${manual ? ' and disconnected.' : '.'}`);
 }
@@ -235,19 +234,19 @@ export async function setVolume(guildId, volume) {
   return clamped;
 }
 
-export function pausePlayback(guildId) {
+export async function pausePlayback(guildId) {
   const session = getSession(guildId);
   if (!session.player || !session.current) return false;
   session.player.pause();
   session.paused = true;
   freezeProgress(session);
-  saveState(session);
+  await saveState(session);
   playerEvents.emit('trackChange', { guildId, video: session.current, paused: true });
   logger.info(`[${guildId}] Paused playback.`);
   return true;
 }
 
-export function resumePlayback(guildId) {
+export async function resumePlayback(guildId) {
   const session = getSession(guildId);
   if (!session.player || !session.current) return false;
   session.player.unpause();
@@ -370,15 +369,9 @@ async function preloadNextTrack(session) {
       '-o', '-',
       '--no-part',
       '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
+      ...getCookieArgs(),
+      next.url,
     ];
-    const browserCookieSource = process.env.COOKIE_BROWSER || 'edge';
-    const cookiesPath = join(process.cwd(), 'cookies.txt');
-    if (browserCookieSource !== 'none') {
-      ytDlpArgs.push('--cookies-from-browser', browserCookieSource);
-    } else if (existsSync(cookiesPath)) {
-      ytDlpArgs.push('--cookies', cookiesPath);
-    }
-    ytDlpArgs.push(next.url);
     const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     proc.stderr.on('data', () => {});
     proc.on('close', () => {

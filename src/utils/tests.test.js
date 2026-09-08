@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatTime } from './format.js';
 import { loadPlays } from './stats.js';
+import { getCookieArgs, describeCookieSource } from '../services/cookies.js';
 
 // ============================================
 // formatTime
@@ -48,13 +49,63 @@ describe('formatTime', () => {
 // loadPlays
 // ============================================
 describe('loadPlays', () => {
-  it('returns an object', () => {
-    const result = loadPlays();
+  it('returns an object', async () => {
+    const result = await loadPlays();
     assert.equal(typeof result, 'object');
   });
 
-  it('returns empty object if no file', () => {
-    const result = loadPlays();
+  it('returns empty object if no file', async () => {
+    const result = await loadPlays();
     assert.ok(result !== null);
+  });
+});
+
+// ============================================
+// cookies
+// ============================================
+describe('getCookieArgs', () => {
+  it('returns an array', () => {
+    const args = getCookieArgs();
+    assert.ok(Array.isArray(args));
+  });
+
+  it('returns valid cookie arg format', () => {
+    const args = getCookieArgs();
+    if (args.length > 0) {
+      assert.ok(args[0] === '--cookies' || args[0] === '--cookies-from-browser');
+      assert.ok(typeof args[1] === 'string' && args[1].length > 0);
+    }
+  });
+});
+
+describe('describeCookieSource', () => {
+  it('returns a string', () => {
+    assert.equal(typeof describeCookieSource(), 'string');
+  });
+});
+
+// ============================================
+// videoId validation
+// ============================================
+describe('videoId validation', () => {
+  const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+  it('accepts valid IDs', () => {
+    assert.ok(VIDEO_ID_RE.test('dQw4w9WgXcQ'));
+    assert.ok(VIDEO_ID_RE.test('jNQXAC9IVRw'));
+    assert.ok(VIDEO_ID_RE.test('9bZkp7q19f0'));
+  });
+
+  it('rejects too short', () => {
+    assert.ok(!VIDEO_ID_RE.test('abc'));
+  });
+
+  it('rejects too long', () => {
+    assert.ok(!VIDEO_ID_RE.test('dQw4w9WgXcQextra'));
+  });
+
+  it('rejects invalid characters', () => {
+    assert.ok(!VIDEO_ID_RE.test('dQw4w9WgXc$'));
+    assert.ok(!VIDEO_ID_RE.test('dQw4w9WgXc '));
   });
 });

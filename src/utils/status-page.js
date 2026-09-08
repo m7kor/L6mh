@@ -1,6 +1,6 @@
 /**
  * Dashboard — full HTML status page with live API.
- * New Layout: Workspace / Command Center Style.
+ * Auth: mutating endpoints require DASHBOARD_TOKEN (env) via Authorization header.
  */
 
 import { createServer } from 'node:http';
@@ -13,6 +13,16 @@ import { getVideos } from '../services/youtube.js';
 const logger = createLogger('dashboard');
 
 const PORT = Number(process.env.STATUS_PORT) || 0;
+const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || '';
+
+function checkAuth(req, res) {
+  if (!DASHBOARD_TOKEN) return true; // no token configured = open (local dev)
+  const auth = req.headers['authorization'] || '';
+  if (auth === `Bearer ${DASHBOARD_TOKEN}`) return true;
+  res.writeHead(401, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Unauthorized' }));
+  return false;
+}
 
 let getSessionInfoFn = null;
 let getAllSessionsFn = null;
@@ -75,9 +85,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   try {
     const server = createServer(async (req, res) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Origin', 'null');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -104,6 +114,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/command' && req.method === 'POST') {
+        if (!checkAuth(req, res)) return;
         let body = '';
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', async () => {
@@ -139,6 +150,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/skip' && req.method === 'POST') {
+        if (!checkAuth(req, res)) return;
         if (executeCommandFn) {
           try {
             await Promise.resolve(executeCommandFn('skip'));
@@ -156,6 +168,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/volume' && req.method === 'POST') {
+        if (!checkAuth(req, res)) return;
         let body = '';
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', async () => {
@@ -183,6 +196,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/pause' && req.method === 'POST') {
+        if (!checkAuth(req, res)) return;
         if (executeCommandFn) {
           try {
             await Promise.resolve(executeCommandFn('pause'));
@@ -200,6 +214,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/resume' && req.method === 'POST') {
+        if (!checkAuth(req, res)) return;
         if (executeCommandFn) {
           try {
             await Promise.resolve(executeCommandFn('unpause'));
@@ -241,15 +256,16 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
 
       if (req.url === '/api/play' && req.method === 'POST') {
+        if (!checkAuth(req, res)) return;
         let body = '';
         req.on('data', (chunk) => { body += chunk; });
         req.on('end', async () => {
           try {
             const parsed = JSON.parse(body);
             const videoId = parsed.videoId;
-            if (!videoId) {
+            if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
               res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'videoId required' }));
+              res.end(JSON.stringify({ error: 'Invalid videoId format' }));
               return;
             }
             if (executeCommandFn) {

@@ -1,8 +1,9 @@
 /**
  * Session management — GuildSession class, state persistence, progress tracking.
+ * All file I/O is async (non-blocking) to avoid hiccups on slow storage.
  */
 
-import { writeFileSync, readFileSync, existsSync, copyFileSync } from 'node:fs';
+import { writeFile, readFile, copyFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
@@ -58,30 +59,37 @@ export function getSession(guildId) {
 }
 
 // ---------------------------------------------------------------------------
-// State persistence
+// State persistence (async, debounced backups)
 // ---------------------------------------------------------------------------
 
-export function loadAllState() {
-  if (!existsSync(STATE_FILE)) {
-    if (existsSync(STATE_FILE + '.bak')) {
-      try { return JSON.parse(readFileSync(STATE_FILE + '.bak', 'utf-8')); } catch {}
+let lastBackupAt = 0;
+const BACKUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function fileExists(path) {
+  try { await access(path); return true; } catch { return false; }
+}
+
+export async function loadAllState() {
+  if (!(await fileExists(STATE_FILE))) {
+    if (await fileExists(STATE_FILE + '.bak')) {
+      try { return JSON.parse(await readFile(STATE_FILE + '.bak', 'utf-8')); } catch {}
     }
     return {};
   }
   try {
-    return JSON.parse(readFileSync(STATE_FILE, 'utf-8'));
+    return JSON.parse(await readFile(STATE_FILE, 'utf-8'));
   } catch (err) {
     logger.error('Failed to load state file, trying backup:', err.message);
-    if (existsSync(STATE_FILE + '.bak')) {
-      try { return JSON.parse(readFileSync(STATE_FILE + '.bak', 'utf-8')); } catch {}
+    if (await fileExists(STATE_FILE + '.bak')) {
+      try { return JSON.parse(await readFile(STATE_FILE + '.bak', 'utf-8')); } catch {}
     }
     return {};
   }
 }
 
-export function saveState(session) {
+export async function saveState(session) {
   try {
-    const all = loadAllState();
+    const all = await loadAllState();
     all[session.guildId] = {
       current: session.current,
       mode: session.mode,
@@ -89,17 +97,21 @@ export function saveState(session) {
       volume: session.volume,
       savedAt: new Date().toISOString(),
     };
-    if (existsSync(STATE_FILE)) {
-      try { copyFileSync(STATE_FILE, STATE_FILE + '.bak'); } catch {}
+    const now = Date.now();
+    if (now - lastBackupAt > BACKUP_INTERVAL_MS) {
+      if (await fileExists(STATE_FILE)) {
+        try { await copyFile(STATE_FILE, STATE_FILE + '.bak'); } catch {}
+      }
+      lastBackupAt = now;
     }
-    writeFileSync(STATE_FILE, JSON.stringify(all, null, 2));
+    await writeFile(STATE_FILE, JSON.stringify(all, null, 2));
   } catch (err) {
     logger.error('Failed to save state:', err.message);
   }
 }
 
-export function restoreLastVideo(guildId) {
-  const saved = loadAllState()[guildId];
+export async function restoreLastVideo(guildId) {
+  const saved = (await loadAllState())[guildId];
   if (!saved) return null;
   const session = getSession(guildId);
   session.current = saved.current || null;

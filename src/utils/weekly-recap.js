@@ -15,8 +15,8 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 let lastRecapDay = -1;
 
-function computeRecap() {
-  const plays = loadPlays();
+async function computeRecap() {
+  const plays = await loadPlays();
   const now = Date.now();
   const cutoff = now - WEEK_MS;
 
@@ -29,12 +29,12 @@ function computeRecap() {
   return sorted.slice(0, 5);
 }
 
-export function checkWeeklyRecap() {
+export async function checkWeeklyRecap() {
   const today = new Date().getDay();
   if (today !== 1 || today === lastRecapDay) return;
   lastRecapDay = today;
 
-  const top5 = computeRecap();
+  const top5 = await computeRecap();
   if (top5.length === 0) return;
 
   const lines = top5.map(([, v], i) =>

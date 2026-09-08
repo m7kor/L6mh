@@ -129,7 +129,9 @@ client.once(Events.ClientReady, async (c) => {
     }
     if (lower.startsWith('play ')) {
       const videoId = cmd.split(' ').slice(1).join(' ').trim();
-      if (!videoId) return 'Usage: play <videoId>';
+      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+        return 'Usage: play <videoId> (must be a valid 11-character YouTube ID)';
+      }
       let done = 0;
       for (const s of all) {
         const guild = c.guilds.cache.get(s.guildId);
