@@ -69,11 +69,12 @@ function buildDashboard() {
             --neon-purple: #bc13fe;
             --neon-green: #00ff9d;
             --neon-red: #ff0055;
+            --neon-orange: #ff9f1c;
             --text-main: #ffffff;
             --text-muted: #7a7a85;
-            --gap: 16px;
-            --rad-lg: 24px;
-            --rad-md: 16px;
+            --gap: 14px;
+            --rad-lg: 20px;
+            --rad-md: 14px;
             --rad-sm: 10px;
         }
 
@@ -101,80 +102,96 @@ function buildDashboard() {
         .glow-orb { position: fixed; border-radius: 50%; filter: blur(140px); z-index: 0; pointer-events: none; }
         .orb-1 { top: -15%; right: -5%; width: 500px; height: 500px; background: var(--neon-purple); opacity: 0.1; }
         .orb-2 { bottom: -15%; left: -5%; width: 600px; height: 600px; background: var(--neon-blue); opacity: 0.08; }
+        .orb-3 { top: 50%; left: 50%; width: 400px; height: 400px; background: var(--neon-green); opacity: 0.03; transform: translate(-50%, -50%); }
 
+        /* ===== SIDEBAR ===== */
         .sidebar {
-            width: 72px;
+            width: 64px;
             background: var(--bg-elevated);
             border-left: 1px solid var(--card-border);
-            padding: 24px 0;
-            display: flex; flex-direction: column; align-items: center; gap: 30px;
+            padding: 20px 0;
+            display: flex; flex-direction: column; align-items: center; gap: 24px;
             position: relative; z-index: 10;
+            flex-shrink: 0;
         }
         .sidebar-logo {
-            width: 42px; height: 42px; border-radius: var(--rad-md);
+            width: 38px; height: 38px; border-radius: var(--rad-sm);
             background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
-            display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #000;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+            display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; color: #000;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.25);
         }
-        .nav-items { display: flex; flex-direction: column; gap: 15px; flex: 1; }
+        .nav-items { display: flex; flex-direction: column; gap: 8px; flex: 1; }
         .nav-icon {
-            width: 42px; height: 42px; border-radius: var(--rad-sm);
+            width: 38px; height: 38px; border-radius: var(--rad-sm);
             display: flex; align-items: center; justify-content: center;
-            color: var(--text-muted); cursor: pointer; transition: 0.3s; font-size: 16px;
+            color: var(--text-muted); cursor: pointer; transition: 0.3s; font-size: 14px;
             border: 1px solid transparent; position: relative;
         }
         .nav-icon:hover { color: #fff; background: rgba(255,255,255,0.04); }
         .nav-icon.active { color: var(--neon-blue); background: rgba(0, 243, 255, 0.08); border-color: rgba(0, 243, 255, 0.15); }
         .nav-icon::after {
             content: attr(data-name);
-            position: absolute; left: 52px;
-            background: #000; color: #fff; padding: 6px 12px; border-radius: 6px;
-            font-size: 12px; white-space: nowrap; opacity: 0; transform: translateX(-10px);
+            position: absolute; right: 48px;
+            background: #111; color: #fff; padding: 5px 10px; border-radius: 6px;
+            font-size: 11px; white-space: nowrap; opacity: 0; transform: translateX(10px);
             transition: 0.2s; pointer-events: none; border: 1px solid var(--card-border); z-index: 100;
         }
         .nav-icon:hover::after { opacity: 1; transform: translateX(0); }
-        .yt-sidebar { color: var(--text-muted); font-size: 18px; transition: 0.3s; }
+        .yt-sidebar { color: var(--text-muted); font-size: 16px; transition: 0.3s; }
         .yt-sidebar:hover { color: #ff0000; transform: scale(1.1); }
 
+        /* ===== MAIN WRAPPER ===== */
         .main-wrapper {
-            flex: 1; padding: 24px; position: relative; z-index: 1;
+            flex: 1; padding: 20px; position: relative; z-index: 1;
             display: flex; flex-direction: column; overflow: hidden;
+            min-width: 0;
         }
 
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-shrink: 0; }
-        .header h1 { font-size: 28px; font-weight: 900; letter-spacing: -0.5px; display: flex; align-items: center; gap: 15px; }
-        .header h1 span { background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header p { color: var(--text-muted); font-size: 13px; margin-top: 3px; }
-        .header-right { display: flex; align-items: center; gap: 15px; }
-        .status-pill {
-            display: flex; align-items: center; gap: 8px;
-            padding: 8px 16px; background: rgba(0, 255, 157, 0.08); border: 1px solid rgba(0, 255, 157, 0.15);
-            border-radius: 30px; font-size: 11px; color: var(--neon-green); font-weight: 700;
+        /* ===== HEADER ===== */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px; flex-shrink: 0;
         }
-        .status-dot { width: 7px; height: 7px; background: var(--neon-green); border-radius: 50%; box-shadow: 0 0 10px var(--neon-green); animation: pulse 2s infinite; }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .header-left h1 {
+            font-size: 22px; font-weight: 900; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .header-left h1 span {
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-left p { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; background: rgba(0, 255, 157, 0.08); border: 1px solid rgba(0, 255, 157, 0.15);
+            border-radius: 20px; font-size: 10px; color: var(--neon-green); font-weight: 700;
+        }
+        .status-dot {
+            width: 6px; height: 6px; background: var(--neon-green); border-radius: 50%;
+            box-shadow: 0 0 8px var(--neon-green); animation: pulse 2s infinite;
+        }
         @keyframes pulse { 50% { opacity: 0.4; } }
 
+        /* ===== GRID ===== */
         .grid-layout {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: 130px 1fr 170px;
-            grid-template-areas:
-                "quote quote quote gauge"
-                "terminal terminal connection activity"
-                "terminal terminal quick activity";
+            grid-template-columns: 200px 1fr 1fr 320px;
+            grid-template-rows: 1fr;
             gap: var(--gap);
             flex: 1; min-height: 0;
         }
 
+        /* ===== CARD BASE ===== */
         .card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: var(--rad-lg);
-            padding: 20px;
+            padding: 18px;
             position: relative; overflow: hidden;
             transition: border-color 0.3s ease, background 0.3s ease;
             backdrop-filter: blur(16px) saturate(180%);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             display: flex; flex-direction: column;
         }
         .card::before {
@@ -185,116 +202,230 @@ function buildDashboard() {
         .card:hover::before { opacity: 1; }
         .card:hover { border-color: var(--card-hover-border); }
 
-        .quote-card { grid-area: quote; flex-direction: row; align-items: center; justify-content: space-between; padding: 0 30px; }
-        .gauge-card { grid-area: gauge; align-items: center; justify-content: center; text-align: center; }
-        .terminal-card { grid-area: terminal; padding: 0; }
-        .connection-card { grid-area: connection; align-items: center; justify-content: space-between; padding: 20px; }
-        .quick-card { grid-area: quick; justify-content: center; }
-        .activity-card { grid-area: activity; }
-
-        .quote-content h2 {
-            font-size: 32px; font-weight: 900; line-height: 1.1; letter-spacing: -1px;
-            background: linear-gradient(90deg, #fff, #999);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        .card-title {
+            font-size: 11px; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
         }
-        .quote-content h2 span {
-            display: block; font-size: 24px;
-            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        .quote-content p { color: var(--text-muted); font-size: 12px; margin-top: 5px; }
+        .card-title i { font-size: 12px; color: var(--neon-blue); }
 
-        .visualizer-3d { display: flex; gap: 4px; height: 50px; align-items: flex-end; }
-        .bar-3d {
-            width: 5px; background: linear-gradient(180deg, var(--neon-green), rgba(0, 255, 157, 0.1));
-            border-radius: 3px; box-shadow: 0 0 8px rgba(0, 255, 157, 0.5);
-            animation: wave 1.2s infinite ease-in-out;
+        /* ===== COL 1: STATUS SIDEBAR (right in RTL) ===== */
+        .col-status {
+            display: flex; flex-direction: column; gap: var(--gap);
         }
-        @keyframes wave { 0%, 100% { height: 10px; } 50% { height: 40px; } }
 
+        .gauge-card { align-items: center; justify-content: center; text-align: center; padding: 20px 12px; }
         .gauge-ring {
-            width: 80px; height: 80px; border-radius: 50%;
+            width: 90px; height: 90px; border-radius: 50%;
             background: conic-gradient(from 140deg, var(--neon-blue) 0%, var(--neon-purple) 75%, rgba(255,255,255,0.05) 75%);
             display: flex; align-items: center; justify-content: center;
-            position: relative; margin-bottom: 15px;
+            position: relative; margin-bottom: 12px;
         }
         .gauge-inner {
-            width: 66px; height: 66px; background: var(--bg-elevated); border-radius: 50%;
+            width: 74px; height: 74px; background: var(--bg-elevated); border-radius: 50%;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .gauge-value { font-size: 18px; font-weight: 800; color: #fff; }
-        .gauge-label { font-size: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-        .gauge-stats div { font-size: 24px; font-weight: 800; color: var(--neon-blue); }
-        .gauge-stats span { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+        .gauge-value { font-size: 20px; font-weight: 800; color: #fff; }
+        .gauge-label { font-size: 7px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .gauge-stats { margin-top: 8px; }
+        .gauge-stats div { font-size: 22px; font-weight: 800; color: var(--neon-blue); }
+        .gauge-stats span { font-size: 10px; color: var(--text-muted); display: block; margin-top: 1px; }
 
-        .terminal-header { padding: 12px 16px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.2); flex-shrink: 0; }
-        .dots { display: flex; gap: 5px; }
+        .top-tracks-card { flex: 1; overflow: hidden; }
+        .top-tracks-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .track-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+            background: rgba(0,0,0,0.2); border-radius: var(--rad-sm); border: 1px solid var(--card-border);
+            transition: 0.2s;
+        }
+        .track-item:hover { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.03); }
+        .track-rank {
+            width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: 800; flex-shrink: 0;
+            background: rgba(255,255,255,0.04); color: var(--text-muted);
+        }
+        .track-item:nth-child(1) .track-rank { background: rgba(255, 215, 0, 0.12); color: #ffd700; }
+        .track-item:nth-child(2) .track-rank { background: rgba(192, 192, 192, 0.12); color: #c0c0c0; }
+        .track-item:nth-child(3) .track-rank { background: rgba(205, 127, 50, 0.12); color: #cd7f32; }
+        .track-info { flex: 1; min-width: 0; }
+        .track-info p { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-info span { font-size: 9px; color: var(--text-muted); }
+        .track-plays { font-size: 10px; font-weight: 700; color: var(--neon-purple); flex-shrink: 0; }
+
+        /* ===== COL 2-3: MAIN CONTENT ===== */
+        .col-main {
+            display: flex; flex-direction: column; gap: var(--gap);
+            grid-column: 2 / 4;
+        }
+
+        .now-playing-card {
+            padding: 24px; flex-shrink: 0;
+        }
+        .np-inner { display: flex; align-items: center; gap: 20px; }
+        .np-thumb {
+            width: 90px; height: 90px; border-radius: var(--rad-md); overflow: hidden;
+            flex-shrink: 0; position: relative;
+            border: 2px solid var(--card-border);
+        }
+        .np-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .np-thumb::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.1), rgba(188, 19, 254, 0.1));
+            opacity: 0; transition: 0.3s;
+        }
+        .np-thumb:hover::after { opacity: 1; }
+        .np-info { flex: 1; min-width: 0; }
+        .np-title {
+            font-size: 20px; font-weight: 900; line-height: 1.2; margin-bottom: 6px;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .np-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .np-badge {
+            display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px;
+            border-radius: 20px; font-size: 10px; font-weight: 600;
+        }
+        .np-badge.mode { background: rgba(0, 243, 255, 0.1); color: var(--neon-blue); border: 1px solid rgba(0, 243, 255, 0.15); }
+        .np-badge.vol { background: rgba(0, 255, 157, 0.1); color: var(--neon-green); border: 1px solid rgba(0, 255, 157, 0.15); }
+        .np-badge.views { background: rgba(188, 19, 254, 0.1); color: var(--neon-purple); border: 1px solid rgba(188, 19, 254, 0.15); }
+        .np-badge.guild { background: rgba(255, 159, 28, 0.1); color: var(--neon-orange); border: 1px solid rgba(255, 159, 28, 0.15); }
+        .np-progress { margin-top: 14px; }
+        .progress-bar {
+            width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            border-radius: 2px; transition: width 1s linear;
+        }
+        .np-visualizer {
+            display: flex; gap: 3px; height: 32px; align-items: flex-end; flex-shrink: 0;
+        }
+        .v-bar {
+            width: 4px; border-radius: 2px;
+            background: linear-gradient(180deg, var(--neon-green), rgba(0, 255, 157, 0.15));
+            box-shadow: 0 0 6px rgba(0, 255, 157, 0.4);
+            animation: wave 1.2s infinite ease-in-out;
+        }
+        @keyframes wave { 0%, 100% { height: 6px; } 50% { height: 28px; } }
+
+        .middle-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap);
+            flex: 1; min-height: 0;
+        }
+
+        /* Voice Connection */
+        .voice-card { align-items: center; justify-content: center; text-align: center; }
+        .voice-visual {
+            width: 80px; height: 80px; border-radius: 50%;
+            background: rgba(0, 255, 157, 0.06); border: 2px solid rgba(0, 255, 157, 0.2);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; margin-bottom: 14px;
+        }
+        .voice-visual i { font-size: 28px; color: var(--neon-green); }
+        .voice-visual::before, .voice-visual::after {
+            content: ''; position: absolute; width: 100%; height: 100%;
+            border: 1px solid var(--neon-green); border-radius: 50%; opacity: 0;
+        }
+        .voice-visual.active::before { animation: ripple 2s infinite; }
+        .voice-visual.active::after { animation: ripple 2s infinite 1s; }
+        @keyframes ripple { 0% { transform: scale(0.85); opacity: 0.7; } 100% { transform: scale(1.4); opacity: 0; } }
+
+        .voice-info h4 { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+        .voice-info span { font-size: 11px; font-weight: 600; }
+        .voice-info .connected { color: var(--neon-green); }
+        .voice-info .disconnected { color: var(--neon-red); }
+        .voice-stats { display: flex; gap: 24px; margin-top: 14px; }
+        .vstat { text-align: center; }
+        .vstat div { font-size: 16px; font-weight: 800; color: var(--text-main); }
+        .vstat span { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .voice-btns { display: flex; gap: 8px; margin-top: 14px; }
+        .vbtn {
+            padding: 7px 14px; border-radius: var(--rad-sm); background: rgba(255,255,255,0.04);
+            border: 1px solid var(--card-border); color: #fff; cursor: pointer;
+            transition: 0.2s; font-size: 11px; font-weight: 600; font-family: inherit;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .vbtn:hover { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.06); }
+        .vbtn:active { transform: scale(0.96); }
+        .vbtn i { font-size: 11px; }
+
+        /* Quick Actions */
+        .quick-card .qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; }
+        .qbtn {
+            background: rgba(255,255,255,0.02); border: 1px solid var(--card-border);
+            border-radius: var(--rad-sm); padding: 12px 10px; color: #fff; cursor: pointer;
+            transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 11px; font-weight: 600; font-family: inherit;
+        }
+        .qbtn:hover { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.04); }
+        .qbtn:active { transform: scale(0.96); }
+        .qbtn i { font-size: 13px; color: var(--neon-blue); }
+
+        /* ===== COL 4: TERMINAL (left in RTL) ===== */
+        .col-terminal {
+            display: flex; flex-direction: column;
+        }
+
+        .terminal-card { flex: 1; padding: 0; }
+        .terminal-header {
+            padding: 10px 14px; border-bottom: 1px solid var(--card-border);
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.25); flex-shrink: 0;
+        }
+        .dots { display: flex; gap: 4px; }
         .dot { width: 7px; height: 7px; border-radius: 50%; }
         .dot.red { background: #ff5f56; } .dot.yellow { background: #ffbd2e; } .dot.green { background: #27c93f; }
-        .terminal-title { font-size: 11px; color: var(--text-muted); }
-        .terminal-body { flex: 1; padding: 16px; overflow-y: auto; font-family: 'Outfit', monospace; font-size: 13px; line-height: 1.5; }
-        .terminal-msg { margin-bottom: 10px; display: flex; gap: 8px; }
-        .terminal-msg .prompt { color: var(--neon-blue); font-weight: 700; }
-        .terminal-msg .text { color: #d1d1d1; }
+        .terminal-title { font-size: 10px; color: var(--text-muted); }
+        .terminal-body {
+            flex: 1; padding: 12px; overflow-y: auto;
+            font-family: 'Outfit', monospace; font-size: 12px; line-height: 1.5;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .terminal-msg { display: flex; gap: 6px; }
+        .terminal-msg .prompt { color: var(--neon-blue); font-weight: 700; flex-shrink: 0; }
+        .terminal-msg .text { color: #d1d1d1; word-break: break-word; }
         .terminal-msg.user .prompt { color: var(--neon-purple); }
-        .terminal-input-area { padding: 12px 16px; border-top: 1px solid var(--card-border); display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); flex-shrink: 0; }
-        .terminal-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-family: 'Outfit', monospace; font-size: 13px; }
+        .terminal-input-area {
+            padding: 10px 14px; border-top: 1px solid var(--card-border);
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(0,0,0,0.25); flex-shrink: 0;
+        }
+        .terminal-input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: #fff; font-family: 'Outfit', monospace; font-size: 12px;
+        }
         .terminal-input::placeholder { color: #444; }
+        .terminal-send {
+            width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--card-border);
+            background: rgba(0, 243, 255, 0.08); color: var(--neon-blue); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 11px;
+            transition: 0.2s;
+        }
+        .terminal-send:hover { background: rgba(0, 243, 255, 0.15); }
 
-        .conn-header { width: 100%; display: flex; justify-content: space-between; align-items: center; }
-        .conn-header h3 { font-size: 14px; font-weight: 700; }
-        .conn-visual { position: relative; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; }
-        .circle-pulse { width: 65px; height: 65px; border-radius: 50%; background: rgba(0, 255, 157, 0.1); border: 2px solid var(--neon-green); display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; }
-        .circle-pulse i { color: var(--neon-green); font-size: 24px; }
-        .conn-visual::before, .conn-visual::after { content: ''; position: absolute; width: 100%; height: 100%; border: 1px solid var(--neon-green); border-radius: 50%; opacity: 0; }
-        .conn-visual.active::before { animation: ripple 2s infinite; }
-        .conn-visual.active::after { animation: ripple 2s infinite 1s; }
-        @keyframes ripple { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
-
-        .conn-status { text-align: center; margin: 10px 0; }
-        .conn-status h4 { font-size: 16px; font-weight: 700; color: var(--text-main); }
-        .conn-status span { font-size: 11px; color: var(--neon-green); font-weight: 600; }
-
-        .conn-stats { display: flex; gap: 20px; width: 100%; justify-content: center; padding: 10px 0; border-top: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); margin-bottom: 15px; }
-        .stat-mini { text-align: center; }
-        .stat-mini div { font-size: 14px; font-weight: 700; color: var(--text-main); }
-        .stat-mini span { font-size: 9px; color: var(--text-muted); text-transform: uppercase; }
-
-        .conn-btns { display: flex; gap: 10px; }
-        .cbtn { flex: 1; padding: 8px; border-radius: var(--rad-sm); background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); color: #fff; cursor: pointer; transition: 0.2s; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; }
-        .cbtn:hover { background: rgba(255,255,255,0.08); }
-        .cbtn:active { transform: scale(0.96); }
-
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .card-header h3 { font-size: 14px; font-weight: 700; }
-        .qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .qbtn { background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); border-radius: var(--rad-sm); padding: 10px; color: #fff; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 11px; font-weight: 600; }
-        .qbtn:hover { border-color: var(--neon-blue); background: rgba(0, 243, 255, 0.04); }
-        .qbtn i { color: var(--neon-blue); font-size: 14px; }
-
-        .log-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; }
-        .log-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: var(--rad-sm); border: 1px solid var(--card-border); }
-        .log-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
-        .log-text { flex: 1; font-size: 12px; color: #ccc; }
-        .log-time { font-size: 10px; color: var(--text-muted); }
-
-        ::-webkit-scrollbar { width: 4px; }
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 
-        @media (max-width: 1100px) {
-            .grid-layout { grid-template-columns: repeat(2, 1fr); grid-template-areas: "quote quote" "gauge gauge" "terminal terminal" "connection quick" "activity activity"; }
-            body { overflow-y: auto; height: auto; }
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1200px) {
+            .grid-layout { grid-template-columns: 180px 1fr 280px; }
+            .col-main { grid-column: 2; }
+            .col-terminal { grid-column: 3; }
         }
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
+            body { overflow-y: auto; height: auto; }
+            .grid-layout { grid-template-columns: 1fr; grid-template-rows: auto; }
+            .col-main, .col-terminal { grid-column: 1; }
+            .middle-row { grid-template-columns: 1fr; }
             .sidebar { display: none; }
-            .grid-layout { grid-template-columns: 1fr; grid-template-areas: "quote" "gauge" "terminal" "connection" "quick" "activity"; }
         }
     </style>
 </head>
 <body>
     <div class="glow-orb orb-1"></div>
     <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
 
     <aside class="sidebar">
         <div class="sidebar-logo">W</div>
@@ -309,92 +440,113 @@ function buildDashboard() {
 
     <main class="main-wrapper">
         <header class="header">
-            <div>
-                <h1>Waheedomar <span>Radio</span>
-                    <div class="status-pill"><div class="status-dot" id="statusDot"></div> <span id="statusText">Loading...</span></div>
-                </h1>
-                <p>Bot Dashboard &mdash; Live Monitoring</p>
+            <div class="header-left">
+                <div>
+                    <h1>Waheedomar <span>Radio</span></h1>
+                    <p>Bot Dashboard &mdash; Live Monitoring</p>
+                </div>
             </div>
-            <div class="header-right"></div>
+            <div class="status-pill"><div class="status-dot" id="statusDot"></div> <span id="statusText">Loading...</span></div>
         </header>
 
         <div class="grid-layout">
-            <div class="card quote-card">
-                <div class="quote-content">
-                    <h2 id="nowPlayingTitle">Loading...<span id="nowPlayingChannel">--</span></h2>
-                    <p id="nowPlayingMeta">--</p>
-                </div>
-                <div class="visualizer-3d">
-                    <div class="bar-3d" style="animation-delay:0.1s"></div>
-                    <div class="bar-3d" style="animation-delay:0.3s"></div>
-                    <div class="bar-3d" style="animation-delay:0.5s"></div>
-                    <div class="bar-3d" style="animation-delay:0.2s"></div>
-                    <div class="bar-3d" style="animation-delay:0.4s"></div>
-                </div>
-            </div>
-
-            <div class="card gauge-card">
-                <div class="gauge-ring">
-                    <div class="gauge-inner">
-                        <div class="gauge-value" id="uptimeValue">--</div>
-                        <div class="gauge-label">Uptime</div>
+            <!-- RIGHT COL: Status + Top Tracks -->
+            <div class="col-status">
+                <div class="card gauge-card">
+                    <div class="gauge-ring">
+                        <div class="gauge-inner">
+                            <div class="gauge-value" id="uptimeValue">--</div>
+                            <div class="gauge-label">Uptime</div>
+                        </div>
+                    </div>
+                    <div class="gauge-stats">
+                        <div id="guildCount">--</div>
+                        <span>Servers</span>
                     </div>
                 </div>
-                <div class="gauge-stats">
-                    <div id="guildCount">--</div>
-                    <span>Servers Connected</span>
+                <div class="card top-tracks-card">
+                    <div class="card-title"><i class="fas fa-fire"></i> Top Played</div>
+                    <div class="top-tracks-list" id="topTracks">
+                        <div style="text-align:center;color:var(--text-muted);padding:20px;font-size:11px;">Loading...</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="card terminal-card">
-                <div class="terminal-header">
-                    <div class="dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
-                    <span class="terminal-title">Bot Terminal</span>
+            <!-- MIDDLE: Now Playing + Voice + Quick -->
+            <div class="col-main">
+                <div class="card now-playing-card">
+                    <div class="card-title"><i class="fas fa-music"></i> Now Playing</div>
+                    <div class="np-inner">
+                        <div class="np-thumb">
+                            <img id="npThumb" src="" alt="" onerror="this.style.display='none'">
+                        </div>
+                        <div class="np-info">
+                            <div class="np-title" id="npTitle">Loading...</div>
+                            <div class="np-meta">
+                                <span class="np-badge mode" id="npMode"><i class="fas fa-play"></i> --</span>
+                                <span class="np-badge vol" id="npVol"><i class="fas fa-volume-up"></i> --%</span>
+                                <span class="np-badge views" id="npViews"><i class="fas fa-eye"></i> --</span>
+                                <span class="np-badge guild" id="npGuild"><i class="fas fa-server"></i> --</span>
+                            </div>
+                            <div class="np-progress">
+                                <div class="progress-bar"><div class="progress-fill" id="npProgress" style="width:0%"></div></div>
+                            </div>
+                        </div>
+                        <div class="np-visualizer">
+                            <div class="v-bar" style="animation-delay:0.1s"></div>
+                            <div class="v-bar" style="animation-delay:0.3s"></div>
+                            <div class="v-bar" style="animation-delay:0.5s"></div>
+                            <div class="v-bar" style="animation-delay:0.2s"></div>
+                            <div class="v-bar" style="animation-delay:0.4s"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="terminal-body" id="terminalBody">
-                    <div class="terminal-msg"><span class="prompt">System:</span><span class="text">Type /help for commands.</span></div>
-                </div>
-                <div class="terminal-input-area">
-                    <i class="fas fa-chevron-left" style="color:var(--neon-green);font-size:12px;"></i>
-                    <input type="text" class="terminal-input" id="cmdInput" placeholder="Type command..." autofocus>
+
+                <div class="middle-row">
+                    <div class="card voice-card">
+                        <div class="card-title"><i class="fas fa-headphones"></i> Voice</div>
+                        <div class="voice-visual active"><i class="fas fa-microphone"></i></div>
+                        <div class="voice-info">
+                            <h4 id="voiceGuild">--</h4>
+                            <span id="voiceStatus" class="connected">--</span>
+                        </div>
+                        <div class="voice-stats">
+                            <div class="vstat"><div id="memValue">--</div><span>Memory</span></div>
+                            <div class="vstat"><div id="pidValue">--</div><span>PID</span></div>
+                            <div class="vstat"><div id="queueValue">0</div><span>Queue</span></div>
+                        </div>
+                        <div class="voice-btns">
+                            <button class="vbtn" onclick="sendCmd('/عشوائي')"><i class="fas fa-play"></i> Random</button>
+                            <button class="vbtn" onclick="sendCmd('/كمل')"><i class="fas fa-redo"></i> Resume</button>
+                            <button class="vbtn" onclick="sendCmd('/اخر_مقطع')"><i class="fas fa-forward"></i> Latest</button>
+                        </div>
+                    </div>
+
+                    <div class="card quick-card">
+                        <div class="card-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+                        <div class="qbtns">
+                            <button class="qbtn" onclick="sendCmd('skip')"><i class="fas fa-forward"></i> Skip</button>
+                            <button class="qbtn" onclick="sendCmd('np')"><i class="fas fa-info-circle"></i> Now Playing</button>
+                            <button class="qbtn" onclick="sendCmd('queue')"><i class="fas fa-list"></i> Queue</button>
+                            <button class="qbtn" onclick="sendCmd('status')"><i class="fas fa-chart-bar"></i> Status</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="card connection-card">
-                <div class="conn-header"><h3>Voice Connection</h3></div>
-                <div class="conn-visual active"><div class="circle-pulse"><i class="fas fa-microphone"></i></div></div>
-                <div class="conn-status">
-                    <h4 id="connGuildName">--</h4>
-                    <span id="connStatusText">--</span>
-                </div>
-                <div class="conn-stats">
-                    <div class="stat-mini"><div id="memValue">--</div><span>Memory</span></div>
-                    <div class="stat-mini"><div id="pidValue">--</div><span>PID</span></div>
-                </div>
-                <div class="conn-btns">
-                    <button class="cbtn" onclick="sendCmd('/عشوائي')"><i class="fas fa-play"></i> Random</button>
-                    <button class="cbtn" onclick="sendCmd('/كمل')"><i class="fas fa-redo"></i> Resume</button>
-                    <button class="cbtn" onclick="sendCmd('/اخر_مقطع')"><i class="fas fa-forward"></i> Latest</button>
-                </div>
-            </div>
-
-            <div class="card quick-card">
-                <div class="card-header"><h3 style="font-size:12px;color:var(--text-muted);">Quick Actions</h3></div>
-                <div class="qbtns">
-                    <button class="qbtn" onclick="sendCmd('skip')"><i class="fas fa-forward"></i> Skip</button>
-                    <button class="qbtn" onclick="sendCmd('np')"><i class="fas fa-info-circle"></i> Now Playing</button>
-                    <button class="qbtn" onclick="sendCmd('queue')"><i class="fas fa-list"></i> Queue</button>
-                    <button class="qbtn" onclick="sendCmd('status')"><i class="fas fa-chart-bar"></i> Status</button>
-                </div>
-            </div>
-
-            <div class="card activity-card">
-                <div class="card-header"><h3>Activity Log</h3></div>
-                <div class="log-list" id="logList">
-                    <div class="log-item">
-                        <div class="log-icon" style="background:rgba(0,255,157,0.08);color:var(--neon-green);"><i class="fas fa-check"></i></div>
-                        <div class="log-text">Dashboard connected</div>
-                        <div class="log-time">now</div>
+            <!-- LEFT COL: Terminal -->
+            <div class="col-terminal">
+                <div class="card terminal-card">
+                    <div class="terminal-header">
+                        <div class="dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div>
+                        <span class="terminal-title">Bot Terminal</span>
+                    </div>
+                    <div class="terminal-body" id="terminalBody">
+                        <div class="terminal-msg"><span class="prompt">System:</span><span class="text">Type /help for commands.</span></div>
+                    </div>
+                    <div class="terminal-input-area">
+                        <input type="text" class="terminal-input" id="cmdInput" placeholder="Type command..." autofocus>
+                        <button class="terminal-send" onclick="submitCmd()"><i class="fas fa-chevron-left"></i></button>
                     </div>
                 </div>
             </div>
@@ -404,17 +556,8 @@ function buildDashboard() {
     <script>
         const terminalBody = document.getElementById('terminalBody');
         const cmdInput = document.getElementById('cmdInput');
-        const logList = document.getElementById('logList');
         let cmdHistory = [];
         let cmdIndex = -1;
-
-        function addLog(icon, color, text) {
-            const item = document.createElement('div');
-            item.className = 'log-item';
-            item.innerHTML = '<div class="log-icon" style="background:' + color + '10;color:' + color + ';"><i class="fas fa-' + icon + '"></i></div><div class="log-text">' + text + '</div><div class="log-time">now</div>';
-            logList.insertBefore(item, logList.firstChild);
-            if (logList.children.length > 20) logList.removeChild(logList.lastChild);
-        }
 
         function addTerminalMsg(prompt, text, type) {
             const msg = document.createElement('div');
@@ -422,56 +565,78 @@ function buildDashboard() {
             msg.innerHTML = '<span class="prompt">' + prompt + '</span><span class="text">' + text + '</span>';
             terminalBody.appendChild(msg);
             terminalBody.scrollTop = terminalBody.scrollHeight;
+            if (terminalBody.children.length > 50) terminalBody.removeChild(terminalBody.firstChild);
         }
 
-        async function sendCmd(cmd) {
-            addTerminalMsg('Admin>', cmd, 'user');
-            addLog('terminal', '#bc13fe', 'Command: ' + cmd);
-            try {
-                const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd }) });
-                const data = await res.json();
-                addTerminalMsg('Bot>', data.reply || data.error || 'Done.', 'bot');
-            } catch (e) {
-                addTerminalMsg('Error>', e.message, 'bot');
-            }
-        }
-
-        cmdInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && cmdInput.value.trim()) {
+        function submitCmd() {
+            if (cmdInput.value.trim()) {
                 cmdHistory.push(cmdInput.value.trim());
                 cmdIndex = cmdHistory.length;
                 sendCmd(cmdInput.value.trim());
                 cmdInput.value = '';
-            } else if (e.key === 'ArrowUp') {
+            }
+        }
+
+        async function sendCmd(cmd) {
+            addTerminalMsg('Admin>', cmd, 'user');
+            try {
+                const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd }) });
+                const data = await res.json();
+                addTerminalMsg('Bot>', data.reply || data.error || 'Done.');
+            } catch (e) {
+                addTerminalMsg('Error>', e.message);
+            }
+        }
+
+        cmdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { submitCmd(); }
+            else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 if (cmdIndex > 0) { cmdIndex--; cmdInput.value = cmdHistory[cmdIndex]; }
             } else if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                if (cmdIndex < cmdHistory.length - 1) { cmdIndex++; cmdInput.value = cmdHistory[cmdIndex]; } else { cmdIndex = cmdHistory.length; cmdInput.value = ''; }
+                if (cmdIndex < cmdHistory.length - 1) { cmdIndex++; cmdInput.value = cmdHistory[cmdIndex]; }
+                else { cmdIndex = cmdHistory.length; cmdInput.value = ''; }
             }
         });
 
         async function refreshData() {
             try {
                 const res = await fetch('/api/status');
-                const data = await res.json();
+                const d = await res.json();
 
                 document.getElementById('statusDot').style.background = 'var(--neon-green)';
                 document.getElementById('statusText').textContent = 'Bot Online';
 
-                document.getElementById('uptimeValue').textContent = formatUptime(data.uptime);
-                document.getElementById('guildCount').textContent = data.guilds;
-                document.getElementById('memValue').textContent = data.memMB + 'MB';
-                document.getElementById('pidValue').textContent = data.pid;
+                document.getElementById('uptimeValue').textContent = fmt(d.uptime);
+                document.getElementById('guildCount').textContent = d.guilds;
+                document.getElementById('memValue').textContent = d.memMB + 'MB';
+                document.getElementById('pidValue').textContent = d.pid;
 
-                if (data.sessions.length > 0) {
-                    const s = data.sessions[0];
-                    document.getElementById('nowPlayingTitle').textContent = s.title || 'No Track';
-                    document.getElementById('nowPlayingChannel').textContent = s.guildName || '--';
-                    document.getElementById('nowPlayingMeta').textContent = (s.mode || '') + ' | Volume: ' + (s.volume || 0) + '% | ' + (s.connected ? 'Connected' : 'Disconnected');
-                    document.getElementById('connGuildName').textContent = s.guildName || '--';
-                    document.getElementById('connStatusText').textContent = s.connected ? 'Connected' : 'Disconnected';
-                    document.getElementById('connStatusText').style.color = s.connected ? 'var(--neon-green)' : 'var(--neon-red)';
+                if (d.sessions.length > 0) {
+                    const s = d.sessions[0];
+                    document.getElementById('npTitle').textContent = s.title || 'No Track';
+                    document.getElementById('npThumb').src = s.thumbnail || '';
+                    document.getElementById('npMode').innerHTML = '<i class="fas fa-play"></i> ' + (s.mode || '--');
+                    document.getElementById('npVol').innerHTML = '<i class="fas fa-volume-up"></i> ' + (s.volume || 0) + '%';
+                    document.getElementById('npGuild').innerHTML = '<i class="fas fa-server"></i> ' + (s.guildName || '--');
+                    document.getElementById('queueValue').textContent = s.queueCount || 0;
+
+                    document.getElementById('voiceGuild').textContent = s.guildName || '--';
+                    var vs = document.getElementById('voiceStatus');
+                    vs.textContent = s.connected ? 'Connected' : 'Disconnected';
+                    vs.className = s.connected ? 'connected' : 'disconnected';
+                }
+
+                if (d.topPlayed.length > 0) {
+                    var html = '';
+                    d.topPlayed.forEach(function(t, i) {
+                        html += '<div class="track-item">'
+                            + '<div class="track-rank">' + (i + 1) + '</div>'
+                            + '<div class="track-info"><p>' + esc(t.title || t.id) + '</p><span>' + (t.count || 0) + ' plays</span></div>'
+                            + '</div>';
+                    });
+                    document.getElementById('topTracks').innerHTML = html;
                 }
             } catch (e) {
                 document.getElementById('statusText').textContent = 'Offline';
@@ -479,11 +644,17 @@ function buildDashboard() {
             }
         }
 
-        function formatUptime(s) {
+        function fmt(s) {
             var d = Math.floor(s / 86400);
             var h = Math.floor((s % 86400) / 3600);
             var m = Math.floor((s % 3600) / 60);
             return d > 0 ? d + 'd ' + h + 'h' : h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+        }
+
+        function esc(s) {
+            var div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
         }
 
         document.querySelectorAll('.card').forEach(function(card) {
@@ -509,27 +680,23 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
 
   try {
     var server = createServer(function(req, res) {
-      // CORS
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
       if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-      // Health check
       if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, uptime: process.uptime() }));
         return;
       }
 
-      // API: status
       if (req.url === '/api/status') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(getApiData()));
         return;
       }
 
-      // API: command
       if (req.url === '/api/command' && req.method === 'POST') {
         var body = '';
         req.on('data', function(chunk) { body += chunk; });
@@ -558,7 +725,6 @@ export function startStatusPage(getSessionInfoFn, getAllSessionsFn, executeComma
         return;
       }
 
-      // Dashboard HTML
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(buildDashboard());
     });
