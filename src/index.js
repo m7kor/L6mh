@@ -145,14 +145,18 @@ client.once(Events.ClientReady, async (c) => {
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
     const guild = newState.guild;
+
+    // Ignore all bot voice state changes
+    if (newState.member?.user.bot) return;
+
     const session = getSessionInfo(guild.id);
 
+    // --- User joined a channel ---
     const joinedChannel = newState.channel;
-    if (joinedChannel && oldState.channelId !== newState.channelId && !newState.member?.user.bot) {
+    if (joinedChannel && oldState.channelId !== newState.channelId) {
       const debounceKey = `join-${guild.id}`;
       const existing = voiceActionTimeouts.get(debounceKey);
       if (existing) clearTimeout(existing);
-
       voiceActionTimeouts.set(debounceKey, setTimeout(() => {
         voiceActionTimeouts.delete(debounceKey);
       }, VOICE_DEBOUNCE_MS));
@@ -169,7 +173,6 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
             const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
             const soundPath = resolveSoundPath(randomSound);
             if (soundPath) {
-              logger.info(`[${guild.id}] Playing join sound: ${randomSound}`);
               const { playSoundEffect } = await import('./services/player.js');
               await playSoundEffect(guild, joinedChannel, soundPath);
             }
@@ -186,26 +189,30 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       return;
     }
 
+    // --- User left a channel ---
     const leftChannel = oldState.channel;
     if (leftChannel && oldState.channelId !== newState.channelId) {
-      const debounceKey = `leave-${guild.id}`;
+      const debounceKey = `leave-${guild.id}-${leftChannel.id}`;
       const existing = voiceActionTimeouts.get(debounceKey);
       if (existing) clearTimeout(existing);
 
-      voiceActionTimeouts.set(debounceKey, setTimeout(() => {
+      voiceActionTimeouts.set(debounceKey, setTimeout(async () => {
         voiceActionTimeouts.delete(debounceKey);
-      }, VOICE_DEBOUNCE_MS));
 
-      const botMember = await guild.members.fetchMe();
-      const botIsThere = leftChannel.members.has(botMember.id);
-      if (!botIsThere) return;
+        const botMember = await guild.members.fetchMe().catch(() => null);
+        if (!botMember) return;
+        const botIsThere = leftChannel.members.has(botMember.id);
+        if (!botIsThere) return;
 
-      const humansLeft = leftChannel.members.filter((m) => !m.user.bot).size;
-      if (humansLeft === 0) {
-        logger.info(`[${guild.id}] Everyone left #${leftChannel.name} — stopping and leaving.`);
-        const { stopPlayback } = await import('./services/player.js');
-        stopPlayback(guild.id, { manual: false });
-      }
+        try { await leftChannel.fetch(); } catch {}
+
+        const humansLeft = leftChannel.members.filter((m) => !m.user.bot).size;
+        if (humansLeft === 0) {
+          logger.info(`[${guild.id}] No humans in #${leftChannel.name} — stopping and leaving.`);
+          const { stopPlayback } = await import('./services/player.js');
+          stopPlayback(guild.id, { manual: false });
+        }
+      }, 5_000));
     }
   } catch (err) {
     logger.error('VoiceStateUpdate handler error:', err.message);
