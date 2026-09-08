@@ -148,16 +148,18 @@
                 </div>
             </div>
 
-            <!-- Volume -->
+            <!-- Played Counter -->
             <div class="card stat-card">
-                <div class="stat-icon" style="color: var(--neon-purple); background: rgba(188, 19, 254, 0.1);"><i class="fas fa-volume-up"></i></div>
-                <div class="vol-slider" style="width: 100%; padding: 0;">
-                    <i class="fas fa-volume-down" style="color: var(--text-muted); font-size: 16px;"></i>
-                    <input type="range" id="volSlider" min="0" max="200" value="100">
-                    <i class="fas fa-volume-up" style="color: var(--text-muted); font-size: 16px;"></i>
-                </div>
-                <div class="stat-val" id="volText" style="font-size: 20px; margin-top: 10px;">100%</div>
-                <p class="stat-lbl">الصوت</p>
+                <div class="stat-icon" style="color: var(--neon-green); background: rgba(0, 255, 157, 0.1);"><i class="fas fa-check-double"></i></div>
+                <h4 class="stat-val" id="statPlayed">0 / 0</h4>
+                <p class="stat-lbl">مشغل / متبقي</p>
+            </div>
+
+            <!-- Server Status -->
+            <div class="card stat-card">
+                <div class="stat-icon" style="color: var(--neon-yellow); background: rgba(255, 215, 0, 0.1);"><i class="fas fa-users"></i></div>
+                <h4 class="stat-val" id="statServers" style="font-size: 18px;">لا يوجد سيرفر</h4>
+                <p class="stat-lbl">حالة الاتصال</p>
             </div>
 
             <!-- Video Browser -->
@@ -210,13 +212,29 @@
         };
 
         // === Update UI ===
-        const volSlider = document.getElementById('volSlider');
         const updateUI = (data) => {
+            // Uptime
             const upH = Math.floor(data.uptime / 3600);
             const upM = Math.floor((data.uptime % 3600) / 60);
             document.getElementById('statUptime').innerText = `${upH}h ${upM}m`;
 
-            const session = data.sessions && data.sessions[0];
+            // Servers
+            const sessions = data.sessions || [];
+            const serverInfo = document.getElementById('statServers');
+            if (sessions.length > 0) {
+                const s = sessions[0];
+                serverInfo.innerText = `${s.guildName || s.guildId} | #${s.channelName || 'صوتي'}`;
+            } else {
+                serverInfo.innerText = 'لا يوجد اتصال';
+            }
+
+            // Played Counter
+            const played = sessions[0]?.playedCount || 0;
+            const total = allVideos.length || 0;
+            const remaining = total - played;
+            document.getElementById('statPlayed').innerText = `${played} / ${remaining}`;
+
+            const session = sessions[0];
             const visualizer = document.getElementById('visualizer');
 
             if (session && session.title) {
@@ -232,10 +250,6 @@
                 } else {
                     document.getElementById('npBar').style.width = '100%';
                     document.getElementById('npBar').style.background = 'var(--neon-red)';
-                }
-                if (session.volume !== undefined) {
-                    volSlider.value = session.volume;
-                    document.getElementById('volText').innerText = `${session.volume}%`;
                 }
                 if (session.paused) {
                     Array.from(visualizer.children).forEach(b => b.classList.add('paused'));
@@ -264,17 +278,6 @@
         };
         setInterval(fetchStatus, 2000);
         fetchStatus();
-
-        // === Volume ===
-        let volTimeout;
-        volSlider.addEventListener('input', (e) => {
-            const val = e.target.value;
-            document.getElementById('volText').innerText = `${val}%`;
-            clearTimeout(volTimeout);
-            volTimeout = setTimeout(() => {
-                fetch('/api/volume', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ volume: parseInt(val) }) });
-            }, 600);
-        });
 
         // === Video Browser ===
         let allVideos = [];

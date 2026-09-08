@@ -183,6 +183,7 @@ export function getAllSessions() {
     result.push({
       guildId,
       guildName: session.guild?.name || guildId,
+      channelName: session.channel?.name || null,
       title: session.current?.title || null,
       videoId: session.current?.videoId || null,
       url: session.current?.url || null,
@@ -195,6 +196,7 @@ export function getAllSessions() {
       queueCount: session.queue.length,
       elapsedSeconds: session.current ? getElapsedSeconds(session) : 0,
       durationSeconds: session.current?.durationSeconds || null,
+      playedCount: session.playedIds.size,
     });
   }
   return result;
