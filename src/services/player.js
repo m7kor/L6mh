@@ -262,8 +262,13 @@ async function preloadNextTrack(session) {
       '--no-part',
       '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
     ];
+    const browserCookieSource = process.env.COOKIE_BROWSER || 'edge';
     const cookiesPath = join(process.cwd(), 'cookies.txt');
-    if (existsSync(cookiesPath)) ytDlpArgs.push('--cookies', cookiesPath);
+    if (browserCookieSource !== 'none') {
+      ytDlpArgs.push('--cookies-from-browser', browserCookieSource);
+    } else if (existsSync(cookiesPath)) {
+      ytDlpArgs.push('--cookies', cookiesPath);
+    }
     ytDlpArgs.push(next.url);
     const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     proc.stderr.on('data', () => {});

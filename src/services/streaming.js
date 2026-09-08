@@ -29,11 +29,19 @@ export function killProcesses(session) {
 
 export async function preValidateVideo(url) {
   return new Promise((resolve) => {
-    const proc = spawn('yt-dlp', [
+    const args = [
       '--simulate', '--no-warnings', '--no-playlist',
       '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
-      url,
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    ];
+    const browserCookieSource = process.env.COOKIE_BROWSER || 'edge';
+    const cookiesPath = join(process.cwd(), 'cookies.txt');
+    if (browserCookieSource !== 'none') {
+      args.push('--cookies-from-browser', browserCookieSource);
+    } else if (existsSync(cookiesPath)) {
+      args.push('--cookies', cookiesPath);
+    }
+    args.push(url);
+    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
     const timer = setTimeout(() => { proc.kill(); resolve(true); }, 5_000);
     proc.on('close', (code) => {
       clearTimeout(timer);
@@ -82,8 +90,14 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
     ];
 
+    // Auto-extract cookies from Edge browser (logged into YouTube)
+    // Falls back to cookies.txt if browser extraction fails
+    const browserCookieSource = process.env.COOKIE_BROWSER || 'edge';
     const cookiesPath = join(process.cwd(), 'cookies.txt');
-    if (existsSync(cookiesPath)) {
+
+    if (browserCookieSource !== 'none') {
+      ytDlpArgs.push('--cookies-from-browser', browserCookieSource);
+    } else if (existsSync(cookiesPath)) {
       ytDlpArgs.push('--cookies', cookiesPath);
     }
 
