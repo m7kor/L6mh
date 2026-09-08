@@ -316,7 +316,7 @@ export async function playRandom(guild, channel) {
   session.mode = 'random';
   session.continuous = true;
 
-  const video = await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
+  const video = await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds, session.failedIds);
   session.current = video;
   session.playedIds.add(video.videoId);
 
@@ -704,7 +704,7 @@ async function onTrackFinished(guild, channel) {
       const playedSeconds = (Date.now() - session.segmentStartedAt) / 1000;
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
-        session.playedIds.add(session.current.videoId);
+        session.failedIds.add(session.current.videoId);
         await sleep(3000);
       }
     }
@@ -729,7 +729,7 @@ async function onTrackFinished(guild, channel) {
         const valid = await preValidateVideo(next.url);
         if (!valid) {
           logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
-          session.playedIds.add(next.videoId);
+          session.failedIds.add(next.videoId);
           continue;
         }
         session.current = next;

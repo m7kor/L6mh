@@ -192,12 +192,13 @@ export async function getLatestVideo(channelId = config.channelId, apiKey = conf
 }
 
 /**
- * Pick a random video, avoiding already-played IDs.
- * When all videos are played, resets so continuous playback never stalls.
+ * Pick a random video, avoiding already-played and failed IDs.
+ * When all videos are played/failed, resets so continuous playback never stalls.
  * @param {string[]} exclude - unused, kept for API compat
- * @param {Set} playedSet - mutable Set of played video IDs; auto-resets when exhausted
+ * @param {Set} playedSet - mutable Set of played video IDs
+ * @param {Set} failedSet - mutable Set of failed video IDs
  */
-export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = [], playedSet = null) {
+export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = [], playedSet = null, failedSet = null) {
   const videos = await getVideos(channelId, apiKey);
   const noShorts = videos.filter((v) => {
     const title = (v.title || '').toLowerCase();
@@ -206,9 +207,11 @@ export async function getRandomVideo(channelId = config.channelId, apiKey = conf
   const pool = noShorts.length > 0 ? noShorts : videos;
 
   if (playedSet) {
-    const candidates = pool.filter((v) => !playedSet.has(v.videoId));
+    const excluded = new Set([...playedSet, ...(failedSet || [])]);
+    const candidates = pool.filter((v) => !excluded.has(v.videoId));
     if (candidates.length === 0) {
       playedSet.clear();
+      if (failedSet) failedSet.clear();
       return pool[Math.floor(Math.random() * pool.length)];
     }
     return candidates[Math.floor(Math.random() * candidates.length)];
