@@ -22,6 +22,8 @@ import {
   resume,
   playerEvents,
   getSessionInfo,
+  getAllSessions,
+  setVolume,
 } from './services/player.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -81,7 +83,34 @@ client.once(Events.ClientReady, async (c) => {
 
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**.`, 'ok');
   startHeartbeat();
-  startStatusPage(getSessionInfo);
+
+  // Dashboard command handler
+  function handleDashboardCommand(cmd) {
+    const lower = cmd.toLowerCase().trim();
+    if (lower === 'help') return 'Commands: status, np, skip, volume <0-200>, servers';
+    if (lower === 'status') {
+      const all = getAllSessions();
+      return 'Guilds: ' + all.length + ' | ' + all.map(function(s) { return s.guildName + ': ' + (s.connected ? 'Connected' : 'Idle'); }).join(', ');
+    }
+    if (lower === 'np' || lower === 'nowplaying') {
+      const all = getAllSessions();
+      return all.map(function(s) { return s.guildName + ': ' + (s.title || 'No track'); }).join('\n');
+    }
+    if (lower === 'servers') {
+      const all = getAllSessions();
+      return 'Connected to ' + all.length + ' server(s): ' + all.map(function(s) { return s.guildName; }).join(', ');
+    }
+    if (lower.startsWith('volume ')) {
+      const vol = parseInt(lower.split(' ')[1]);
+      if (isNaN(vol)) return 'Usage: volume <0-200>';
+      const all = getAllSessions();
+      all.forEach(function(s) { setVolume(s.guildId, vol); });
+      return 'Volume set to ' + vol + '%';
+    }
+    return 'Unknown command: ' + cmd + '. Type /help for list.';
+  }
+
+  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
 
   // Weekly recap — check daily
   setInterval(checkWeeklyRecap, 60 * 60 * 1000);

@@ -176,6 +176,35 @@ export function stopAllSessions() {
   }
 }
 
+export function getAllSessions() {
+  const result = [];
+  for (const [guildId, session] of sessions) {
+    if (!session.connection && !session.current) continue;
+    result.push({
+      guildId,
+      guildName: session.guild?.name || guildId,
+      title: session.current?.title || null,
+      videoId: session.current?.videoId || null,
+      url: session.current?.url || null,
+      thumbnail: session.current?.thumbnail || null,
+      mode: session.mode,
+      volume: session.volume,
+      paused: session.paused,
+      connected: Boolean(session.connection),
+      continuous: session.continuous,
+      queueCount: session.queue.length,
+    });
+  }
+  return result;
+}
+
+export function setVolume(guildId, volume) {
+  const session = getSession(guildId);
+  const clamped = Math.max(0, Math.min(200, volume));
+  session.volume = clamped;
+  return clamped;
+}
+
 export function getSessionInfo(guildId) {
   const session = getSession(guildId);
   return {
