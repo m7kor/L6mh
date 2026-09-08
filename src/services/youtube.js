@@ -43,7 +43,7 @@ async function alertQuotaExhausted(err) {
 
 const LIST_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes — the video catalog rarely changes
 const DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — duration/thumbnail never change
-const MAX_PAGES = 10; // up to 500 videos; plenty for a channel archive, keeps quota bounded
+const MAX_PAGES = 18; // up to 900 videos; covers the full channel archive
 
 const VIDEO_CACHE_FILE = join(process.cwd(), 'video-cache.json');
 
