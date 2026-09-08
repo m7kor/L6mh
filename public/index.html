@@ -52,46 +52,40 @@
             padding: 0;
             overflow: hidden;
             border: none;
-            background: linear-gradient(90deg, rgba(0,243,255,0.25) 0%, rgba(188,19,254,0.35) 35%, rgba(20,20,25,0.95) 35%, #141419 100%);
-        }
-        .np-thumb {
-            width: 35%;
+            background: #111116;
             min-height: 160px;
+        }
+        .np-left {
+            width: 180px;
+            min-width: 180px;
             position: relative;
             overflow: hidden;
-            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(0,243,255,0.3), rgba(188,19,254,0.4));
         }
-        .np-thumb iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        .np-thumb img {
+        .np-left img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            display: block;
-        }
-        .np-thumb-overlay {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            inset: 0;
+        }
+        .np-left-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0,243,255,0.2), rgba(188,19,254,0.3));
             display: flex;
             align-items: flex-end;
             justify-content: flex-start;
-            padding: 10px;
-            gap: 4px;
-            z-index: 2;
-            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            padding: 12px;
+            z-index: 1;
         }
         .np-visualizer {
             display: flex;
             gap: 4px;
-            height: 40px;
+            height: 35px;
             align-items: flex-end;
         }
         .np-bar {
@@ -106,7 +100,7 @@
         .np-bar:nth-child(5) { animation-delay: 0.15s; height: 80%; }
         .np-bar.paused { animation-play-state: paused; height: 6px !important; background: var(--text-muted); }
         @keyframes bounce { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
-        .np-info {
+        .np-center {
             flex: 1;
             padding: 20px 25px;
             display: flex;
@@ -121,10 +115,10 @@
             font-family: 'Outfit';
         }
         .np-title {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 800;
             line-height: 1.4;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
@@ -155,6 +149,27 @@
             background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
             width: 0%;
             transition: width 1s linear;
+        }
+        .np-right {
+            width: 300px;
+            min-width: 300px;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+        .np-right iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .np-right img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
         }
 
         /* Stats */
@@ -214,17 +229,16 @@
         <div class="bento-grid">
             <!-- Now Playing -->
             <div class="card now-playing-card">
-                <div class="np-thumb">
-                    <div id="npEmbed"></div>
+                <div class="np-left">
                     <img id="npThumb" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E" alt="">
-                    <div class="np-thumb-overlay">
+                    <div class="np-left-overlay">
                         <div class="np-visualizer" id="visualizer">
                             <div class="np-bar"></div><div class="np-bar"></div><div class="np-bar"></div>
                             <div class="np-bar"></div><div class="np-bar"></div>
                         </div>
                     </div>
                 </div>
-                <div class="np-info">
+                <div class="np-center">
                     <div class="np-mode" id="npMode">📻 يتم الآن عرض البث</div>
                     <div class="np-title" id="npTitle">جاري تحميل البيانات...</div>
                     <div class="np-progress">
@@ -232,6 +246,10 @@
                         <div class="np-progress-bar"><div class="np-progress-fill" id="npBar"></div></div>
                         <span id="npDuration">0:00</span>
                     </div>
+                </div>
+                <div class="np-right">
+                    <div id="npEmbed"></div>
+                    <img id="npEmbedFallback" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Crect fill='%23222' width='400' height='225'/%3E%3C/svg%3E" alt="" style="display:none">
                 </div>
             </div>
 
@@ -319,17 +337,20 @@
         let currentVideoId = null;
         const npEmbed = document.getElementById('npEmbed');
         const npThumb = document.getElementById('npThumb');
+        const npEmbedFallback = document.getElementById('npEmbedFallback');
         const setEmbed = (videoId) => {
             if (!videoId) {
                 npEmbed.innerHTML = '';
                 npThumb.style.display = 'block';
+                npEmbedFallback.style.display = 'none';
                 currentVideoId = null;
                 return;
             }
             if (currentVideoId === videoId) return;
             currentVideoId = videoId;
             npThumb.style.display = 'none';
-            npEmbed.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=0&controls=0&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+            npEmbedFallback.style.display = 'none';
+            npEmbed.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&rel=0&modestbranding=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
         };
 
         // === Update UI ===
