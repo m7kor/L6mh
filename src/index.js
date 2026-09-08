@@ -35,6 +35,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
+const soundsEnabled = (process.env.SOUND_EFFECTS_ENABLED || 'true') === 'true';
 
 // Optional Sentry error tracking — SENTRY_DSN must be set in .env
 if (process.env.SENTRY_DSN) {
@@ -182,6 +183,10 @@ client.once(Events.ClientReady, async (c) => {
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
+  if (process.env.STATUS_PORT && !process.env.DASHBOARD_TOKEN) {
+    logger.warn('Dashboard is running with no DASHBOARD_TOKEN — mutating endpoints are unauthenticated.');
+    notify('Dashboard unauthenticated', 'STATUS_PORT is set but DASHBOARD_TOKEN is empty. The dashboard has no auth.', 'warn');
+  }
   startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
 
   // Weekly recap — check daily
@@ -211,16 +216,18 @@ client.once(Events.ClientReady, async (c) => {
         logger.info(`[${guild.id}] Auto-joining #${targetChannel.name} (${maxHumans} humans)…`);
 
         try {
-          const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
-          const sounds = listSounds();
-          if (sounds.length > 0) {
-            const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
-            const soundPath = resolveSoundPath(randomSound);
-            if (soundPath) {
-              logger.info(`[${guild.id}] Playing startup sound: ${randomSound}`);
-              const { playSoundEffect } = await import('./services/player.js');
-              await playSoundEffect(guild, targetChannel, soundPath);
-              logger.info(`[${guild.id}] Startup sound finished.`);
+          if (soundsEnabled) {
+            const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
+            const sounds = listSounds();
+            if (sounds.length > 0) {
+              const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+              const soundPath = resolveSoundPath(randomSound);
+              if (soundPath) {
+                logger.info(`[${guild.id}] Playing startup sound: ${randomSound}`);
+                const { playSoundEffect } = await import('./services/player.js');
+                await playSoundEffect(guild, targetChannel, soundPath);
+                logger.info(`[${guild.id}] Startup sound finished.`);
+              }
             }
           }
         } catch (soundErr) {
@@ -269,14 +276,16 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       if (humanCount >= 1 && isBotIdle) {
         logger.info(`[${guild.id}] ${newState.member?.user.tag} joined #${joinedChannel.name} — auto-starting radio.`);
         try {
-          const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
-          const sounds = listSounds();
-          if (sounds.length > 0) {
-            const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
-            const soundPath = resolveSoundPath(randomSound);
-            if (soundPath) {
-              const { playSoundEffect } = await import('./services/player.js');
-              await playSoundEffect(guild, joinedChannel, soundPath);
+          if (soundsEnabled) {
+            const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
+            const sounds = listSounds();
+            if (sounds.length > 0) {
+              const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+              const soundPath = resolveSoundPath(randomSound);
+              if (soundPath) {
+                const { playSoundEffect } = await import('./services/player.js');
+                await playSoundEffect(guild, joinedChannel, soundPath);
+              }
             }
           }
         } catch (soundErr) {

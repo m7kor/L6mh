@@ -85,10 +85,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   try {
     const server = createServer(async (req, res) => {
-      res.setHeader('Access-Control-Allow-Origin', 'null');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();

@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { playRandom, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
 import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from '../utils/cooldown.js';
+import { requireDjRole } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('عشوائي')
@@ -13,6 +14,8 @@ export async function execute(interaction) {
     await interaction.reply({ content: '❌ لازم تكون في قناة صوتية.', ephemeral: true });
     return;
   }
+
+  if (!(await requireDjRole(interaction))) return;
 
   if (isOnCooldown(interaction.user.id, 'عشوائي')) {
     const secs = getRemainingCooldown(interaction.user.id, 'عشوائي');

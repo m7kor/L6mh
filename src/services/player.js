@@ -46,7 +46,12 @@ const PRELOAD_THRESHOLD_MS = 10_000;
 // Jingle rotation — least-recently-played weighting
 // ---------------------------------------------------------------------------
 
+const SOUNDS_ENABLED = (process.env.SOUND_EFFECTS_ENABLED || 'true') === 'true';
+const SOUNDS_MIN_MS = Number(process.env.SOUND_EFFECTS_MIN_MINUTES || 10) * 60_000;
+const SOUNDS_MAX_MS = Number(process.env.SOUND_EFFECTS_MAX_MINUTES || 30) * 60_000;
+
 const jingleLastPlayed = new Map();
+const nextAllowedJingle = new Map();
 
 function pickJingle(sounds) {
   if (sounds.length === 0) return null;
@@ -455,7 +460,10 @@ export function playSoundEffect(guild, channel, filePath) {
 // ---------------------------------------------------------------------------
 
 async function playRandomSound(guild, channel) {
+  if (!SOUNDS_ENABLED) return;
   const session = getSession(guild.id);
+  const allowed = nextAllowedJingle.get(guild.id) || 0;
+  if (Date.now() < allowed) return;
   try {
     const sounds = listSounds();
     if (sounds.length === 0) return;
@@ -495,6 +503,8 @@ async function playRandomSound(guild, channel) {
       session.connection.subscribe(jinglePlayer);
       jinglePlayer.play(resource);
     });
+    const interval = SOUNDS_MIN_MS + Math.random() * (SOUNDS_MAX_MS - SOUNDS_MIN_MS);
+    nextAllowedJingle.set(guild.id, Date.now() + interval);
   } catch (err) {
     logger.warn(`[${guild.id}] Jingle failed:`, err.message);
   }

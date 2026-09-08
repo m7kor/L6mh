@@ -8,8 +8,12 @@ import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { formatTime } from '../utils/format.js';
 import { getCookieArgs } from './cookies.js';
+import { notify } from '../utils/webhook.js';
 
 const logger = createLogger('audio');
+
+let consecutiveAuthFails = 0;
+const AUTH_FAIL_THRESHOLD = 3;
 
 export function killProcesses(session) {
   if (session.ffmpegProcess) {
@@ -34,7 +38,17 @@ export async function preValidateVideo(url) {
     const timer = setTimeout(() => { proc.kill(); resolve(true); }, 5_000);
     proc.on('close', (code) => {
       clearTimeout(timer);
-      resolve(code === 0);
+      if (code === 0) {
+        consecutiveAuthFails = 0;
+        resolve(true);
+      } else {
+        consecutiveAuthFails++;
+        if (consecutiveAuthFails >= AUTH_FAIL_THRESHOLD) {
+          notify('Cookie expired?', `${consecutiveAuthFails} consecutive yt-dlp pre-validation failures. Cookies may need refreshing.`, 'error');
+          consecutiveAuthFails = 0;
+        }
+        resolve(false);
+      }
     });
     proc.on('error', () => { clearTimeout(timer); resolve(true); });
   });
