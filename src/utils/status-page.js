@@ -15,7 +15,7 @@ const PORT = Number(process.env.STATUS_PORT) || 0;
 
 let getSessionInfoFn = null;
 let getAllSessionsFn = null;
-let executeCommandFnFn = null;
+let executeCommandFn = null;
 
 let cachedHtml = null;
 
@@ -66,11 +66,11 @@ async function getApiData() {
   };
 }
 
-export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnFnArg) {
+export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnArg) {
   if (!PORT) return;
   getSessionInfoFn = getSessionInfoFnArg;
   getAllSessionsFn = getAllSessionsFnArg || null;
-  executeCommandFnFn = executeCommandFnFnArg || null;
+  executeCommandFn = executeCommandFnArg || null;
 
   try {
     const server = createServer(async (req, res) => {
@@ -116,9 +116,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
               return;
             }
             
-            if (executeCommandFnFn) {
+            if (executeCommandFn) {
               try {
-                const reply = await Promise.resolve(executeCommandFnFn(cmd));
+                const reply = await Promise.resolve(executeCommandFn(cmd));
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ ok: true, reply: reply || 'Command executed.' }));
               } catch (cmdErr) {
