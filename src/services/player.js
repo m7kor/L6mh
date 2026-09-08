@@ -334,6 +334,11 @@ async function preloadNextTrack(session) {
     ytDlpArgs.push(next.url);
     const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     proc.stderr.on('data', () => {});
+    proc.on('close', () => {
+      if (session.preloaded?.proc === proc) {
+        session.preloaded = null;
+      }
+    });
     const firstChunk = await new Promise((resolve) => {
       const timer = setTimeout(() => { proc.kill(); resolve(null); }, 5000);
       proc.stdout.once('data', (data) => { clearTimeout(timer); resolve(data); });
@@ -526,8 +531,17 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   const { stream, ffmpegProcess } = await createAudioStream(session, video.url, startSeconds, session.volume);
   session.ffmpegProcess = ffmpegProcess;
 
+  stream.on('error', (err) => {
+    if (err.code === 'EPIPE') return;
+    logger.error(`[${guild.id}] Audio stream error: ${err.message}`);
+    if (session.player === player) {
+      try { session.player.stop(true); } catch {}
+    }
+  });
+
   const resource = createAudioResource(stream, {
     inputType: StreamType.Raw,
+    highWaterMark: 1024 * 64,
   });
   session.resource = resource;
 
@@ -546,11 +560,14 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
     } else if (newState.status === AudioPlayerStatus.AutoPaused || newState.status === AudioPlayerStatus.Buffering) {
       if (!session.stallTimeout) {
         session.stallTimeout = setTimeout(() => {
-          logger.warn(`[${guild.id}] Stream stalled for 30s. Skipping track.`);
+          logger.warn(`[${guild.id}] Stream stalled for 10s. Restarting track.`);
           if (session.player === player) {
-            onTrackFinished(guild, channel);
+            const elapsed = Math.floor(getElapsedSeconds(session));
+            session.current = { ...session.current, progressSeconds: elapsed };
+            connectAndPlay(guild, channel, session.current, { countPlay: false })
+              .catch(() => onTrackFinished(guild, channel));
           }
-        }, 30_000);
+        }, 10_000);
       }
     } else {
       if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
@@ -654,6 +671,9 @@ async function onTrackFinished(guild, channel) {
         let next;
         if (session.preloaded?.video) {
           next = session.preloaded.video;
+          if (session.preloaded.proc) {
+            try { session.preloaded.proc.kill('SIGKILL'); } catch {}
+          }
           session.preloaded = null;
         } else {
           next = session.queue.shift()

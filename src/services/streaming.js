@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { PassThrough } from 'node:stream';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -104,8 +105,9 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     ytDlpArgs.push(
       '--socket-timeout', '30',
       '--retries', '5',
-      '--fragment-retries', '5',
-      youtubeUrl
+      '--fragment-retries', '10',
+      '--retry-sleep', '2',
+      youtubeUrl,
     );
 
     const ffmpegArgs = [];
@@ -113,10 +115,10 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       ffmpegArgs.push('-ss', String(startSeconds));
     }
     ffmpegArgs.push(
-      '-probesize', '32',
+      '-probesize', '32768',
       '-analyzeduration', '0',
       '-i', 'pipe:0',
-      '-bufsize', '64k',
+      '-bufsize', '512k',
       '-af', `volume=${volume / 100},afade=t=in:ss=0:d=0.4,aresample=48000`,
       '-vn',
       '-f', 's16le',
@@ -141,6 +143,11 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     });
     session.ffmpegProcess = ffmpegProcess;
 
+    ytDlpProcess.stdout.on('error', (err) => {
+      if (!ffmpegProcess.killed) {
+        try { ffmpegProcess.kill('SIGKILL'); } catch {}
+      }
+    });
     ytDlpProcess.stdout.pipe(ffmpegProcess.stdin);
 
     ffmpegProcess.stdin.on('error', (err) => {
@@ -165,9 +172,14 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     });
 
     let dataReceived = false;
-    ffmpegProcess.stdout.once('data', () => {
+
+    const bufferingStream = new PassThrough({ highWaterMark: 1024 * 128 });
+    ffmpegProcess.stdout.pipe(bufferingStream);
+
+    bufferingStream.once('data', () => {
       dataReceived = true;
       cleanup();
+      safeResolve({ stream: bufferingStream, ffmpegProcess });
     });
 
     ffmpegProcess.on('close', (code) => {
@@ -182,6 +194,5 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
         ? `Resuming from ${formatTime(startSeconds)}…`
         : 'Streaming audio…',
     );
-    safeResolve({ stream: ffmpegProcess.stdout, ffmpegProcess });
   });
 }
