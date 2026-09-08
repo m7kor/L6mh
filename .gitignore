@@ -2,6 +2,10 @@ node_modules/
 .env
 .env.*
 *.log
+node_modules/
+.env
+.env.*
+*.log
 playback-state.json
 video-cache.json
 heartbeat.json
@@ -18,4 +22,5 @@ test_*.py
 .pytest_cache/
 .pytestcache/
 *.bak
+*.ps1
 cdp_export.py
