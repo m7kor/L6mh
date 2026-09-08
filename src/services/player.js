@@ -46,7 +46,7 @@ const PRELOAD_THRESHOLD_MS = 10_000;
 // Jingle rotation — least-recently-played weighting
 // ---------------------------------------------------------------------------
 
-const SOUNDS_ENABLED = (process.env.SOUND_EFFECTS_ENABLED || 'true') === 'true';
+const SOUNDS_ENABLED = (process.env.SOUND_EFFECTS_ENABLED || 'false') === 'true';
 const SOUNDS_MIN_MS = Number(process.env.SOUND_EFFECTS_MIN_MINUTES || 10) * 60_000;
 const SOUNDS_MAX_MS = Number(process.env.SOUND_EFFECTS_MAX_MINUTES || 30) * 60_000;
 

@@ -5,6 +5,9 @@ set -e
 
 echo "=== Discord YT Audio Bot — Oracle Cloud Setup ==="
 
+# Track whether .env already existed (to decide auto-start later)
+ENV_EXISTED=false
+
 # 1. System updates
 echo "[1/12] Updating system..."
 sudo apt update && sudo apt upgrade -y
@@ -22,16 +25,12 @@ else
   echo "Swapfile already exists."
 fi
 
-# 3. Firewall
+# 3. Firewall (STATUS_PORT rule added later after .env is created)
 echo "[3/12] Configuring firewall..."
 if ! command -v ufw &> /dev/null; then
   sudo apt install -y ufw
 fi
 sudo ufw allow OpenSSH
-# Only open STATUS_PORT if explicitly set (dashboard); PoT provider stays localhost-only
-if [ -n "$STATUS_PORT" ]; then
-  sudo ufw allow "$STATUS_PORT/tcp"
-fi
 sudo ufw --force enable
 sudo ufw status verbose
 
@@ -65,45 +64,28 @@ if ! command -v pm2 &> /dev/null; then
   sudo pm2 startup systemd -u $USER --hp $HOME
 fi
 
-# 8. Install bgutil-ytdlp-pot-provider (PoT provider)
-echo "[8/12] Installing PoT provider..."
-if ! command -v bgutil-ytdlp-pot-provider &> /dev/null; then
-  sudo npm install -g bgutil-ytdlp-pot-provider
+# 8. Install PoT provider (Docker — brainicism/bgutil-ytdlp-pot-provider)
+echo "[8/12] Installing PoT provider (Docker)..."
+if ! command -v docker &> /dev/null; then
+  sudo apt install -y docker.io
+  sudo systemctl enable --now docker
 fi
-
-# Create systemd unit for PoT provider (runs on 127.0.0.1:4416, localhost-only)
-POT_SERVICE_FILE="/etc/systemd/system/pot-provider.service"
-if [ ! -f "$POT_SERVICE_FILE" ]; then
-  sudo tee "$POT_SERVICE_FILE" > /dev/null <<EOF
-[Unit]
-Description=bgutil-ytdlp-pot-provider
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=$(which bgutil-ytdlp-pot-provider) --port 4416
-Restart=always
-RestartSec=5
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=multi-user.target
-EOF
-  sudo systemctl daemon-reload
-  sudo systemctl enable pot-provider
-  sudo systemctl start pot-provider
-  echo "PoT provider installed and started on 127.0.0.1:4416"
+if ! sudo docker ps -a --format '{{.Names}}' | grep -q '^bgutil-provider$'; then
+  sudo docker run --name bgutil-provider -d --init --restart unless-stopped \
+    -p 127.0.0.1:4416:4416 \
+    brainicism/bgutil-ytdlp-pot-provider
+  echo "PoT provider container started on 127.0.0.1:4416"
 else
-  echo "PoT provider service already exists."
-  sudo systemctl restart pot-provider
+  sudo docker start bgutil-provider
+  echo "PoT provider container already exists, started."
 fi
 
 # Verify PoT provider is listening
-sleep 2
+sleep 3
 if curl -s http://127.0.0.1:4416 > /dev/null 2>&1; then
   echo "PoT provider confirmed listening on 127.0.0.1:4416"
 else
-  echo "WARNING: PoT provider may not be running. Check: sudo systemctl status pot-provider"
+  echo "WARNING: PoT provider may not be running. Check: sudo docker logs bgutil-provider"
 fi
 
 # 9. Clone and setup bot
@@ -117,15 +99,23 @@ npm install
 
 # 10. Create .env if missing
 echo "[10/12] Configuring .env..."
-if [ ! -f .env ]; then
+if [ -f .env ]; then
+  ENV_EXISTED=true
+else
   cp .env.example .env
-  echo ""
-  echo "=== EDIT .env WITH YOUR TOKENS ==="
-  echo "nano /home/$USER/discord-yt-audio-bot/.env"
-  echo ""
 fi
 
-# 11. cookies.txt permissions
+# 11. Open dashboard port in firewall if STATUS_PORT is set in .env
+STATUS_PORT_VAL=$(grep -E '^STATUS_PORT=' .env 2>/dev/null | cut -d '=' -f2)
+if [ -n "$STATUS_PORT_VAL" ]; then
+  sudo ufw allow "$STATUS_PORT_VAL/tcp" 2>/dev/null || true
+  echo "Firewall: opened port $STATUS_PORT_VAL for dashboard."
+else
+  echo "Note: STATUS_PORT not set in .env — dashboard port not opened."
+  echo "To enable dashboard later: sudo ufw allow <PORT>/tcp"
+fi
+
+# 12. cookies.txt permissions
 echo "[11/12] Checking cookies.txt..."
 if [ -f cookies.txt ]; then
   chmod 600 cookies.txt
@@ -134,24 +124,44 @@ else
   echo "cookies.txt not found — place it manually and run: chmod 600 cookies.txt"
 fi
 
-# 12. Start bot
+# 13. Start bot (only if .env already existed — fresh installs need manual .env edit first)
 echo "[12/12] Starting bot..."
-pm2 start src/index.js --name yt-audio-bot
-pm2 save
+if [ "$ENV_EXISTED" = true ]; then
+  pm2 start src/index.js --name yt-audio-bot
+  pm2 save
+  echo "Bot started."
+else
+  echo ""
+  echo "=== FIRST RUN — EDIT .env BEFORE STARTING ==="
+  echo "nano /home/$USER/discord-yt-audio-bot/.env"
+  echo ""
+  echo "After editing .env, run:"
+  echo "  pm2 start src/index.js --name yt-audio-bot"
+  echo "  pm2 save"
+fi
 
 echo ""
 echo "=== SETUP COMPLETE ==="
 echo ""
-echo "1. Edit .env:  nano /home/$USER/discord-yt-audio-bot/.env"
-echo "2. Place cookies.txt:  nano /home/$USER/discord-yt-audio-bot/cookies.txt"
-echo "3. Set cookie perms:   chmod 600 /home/$USER/discord-yt-audio-bot/cookies.txt"
-echo "4. Deploy commands:    npm run deploy"
-echo "5. Restart bot:        pm2 restart yt-audio-bot"
+if [ "$ENV_EXISTED" = false ]; then
+  echo "1. Edit .env:  nano /home/$USER/discord-yt-audio-bot/.env"
+  echo "2. Place cookies.txt:  nano /home/$USER/discord-yt-audio-bot/cookies.txt"
+  echo "3. Set cookie perms:   chmod 600 /home/$USER/discord-yt-audio-bot/cookies.txt"
+  echo "4. Start bot:          pm2 start src/index.js --name yt-audio-bot"
+  echo "5. Deploy commands:    npm run deploy"
+  echo "6. Save pm2:           pm2 save"
+else
+  echo "1. Place cookies.txt:  nano /home/$USER/discord-yt-audio-bot/cookies.txt"
+  echo "2. Set cookie perms:   chmod 600 /home/$USER/discord-yt-audio-bot/cookies.txt"
+  echo "3. Deploy commands:    npm run deploy"
+  echo "4. Restart bot:        pm2 restart yt-audio-bot"
+fi
 echo ""
 echo "Useful commands:"
-echo "  pm2 logs yt-audio-bot           — view logs"
-echo "  pm2 restart yt-audio-bot        — restart"
-echo "  pm2 status                      — check status"
-echo "  sudo systemctl status pot-provider — PoT provider status"
-echo "  sudo ufw status                 — firewall rules"
-echo "  swapon --show                   — verify swap"
+echo "  pm2 logs yt-audio-bot              — view logs"
+echo "  pm2 restart yt-audio-bot           — restart"
+echo "  pm2 status                         — check status"
+echo "  sudo docker logs bgutil-provider   — PoT provider logs"
+echo "  sudo docker restart bgutil-provider — restart PoT provider"
+echo "  sudo ufw status                    — firewall rules"
+echo "  swapon --show                      — verify swap"

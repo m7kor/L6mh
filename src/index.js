@@ -35,7 +35,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
-const soundsEnabled = (process.env.SOUND_EFFECTS_ENABLED || 'true') === 'true';
+const soundsEnabled = (process.env.SOUND_EFFECTS_ENABLED || 'false') === 'true';
 
 // Optional Sentry error tracking — SENTRY_DSN must be set in .env
 if (process.env.SENTRY_DSN) {
