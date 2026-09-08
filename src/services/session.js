@@ -37,6 +37,8 @@ export class GuildSession {
     this.guild = null;
     this.channel = null;
     this.preloaded = null;
+    this.volumeChanging = false;
+    this.stallTimeout = null;
   }
 }
 

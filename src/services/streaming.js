@@ -53,7 +53,7 @@ export async function preValidateVideo(url) {
 
 export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) {
   return new Promise((resolve, reject) => {
-    const STREAM_TIMEOUT_MS = 30_000;
+    const STREAM_TIMEOUT_MS = 45_000;
     let resolved = false;
     let streamTimeout = null;
 
@@ -101,16 +101,24 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       ytDlpArgs.push('--cookies', cookiesPath);
     }
 
-    ytDlpArgs.push(youtubeUrl);
+    ytDlpArgs.push(
+      '--socket-timeout', '30',
+      '--retries', '5',
+      '--fragment-retries', '5',
+      youtubeUrl
+    );
 
     const ffmpegArgs = [];
     if (startSeconds > 0) {
       ffmpegArgs.push('-ss', String(startSeconds));
     }
     ffmpegArgs.push(
-      '-re',
+      '-probesize', '32',
+      '-analyzeduration', '0',
       '-i', 'pipe:0',
-      '-af', `volume=${volume / 100},loudnorm=I=-16:TP=-1.5:LRA=11`,
+      '-bufsize', '64k',
+      '-af', `volume=${volume / 100},afade=t=in:ss=0:d=0.4,aresample=48000`,
+      '-vn',
       '-f', 's16le',
       '-ar', '48000',
       '-ac', '2',

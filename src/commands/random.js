@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { playRandom, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
-import { buildNowPlayingEmbed } from '../utils/embeds.js';
+import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from '../utils/cooldown.js';
 
 export const data = new SlashCommandBuilder()
@@ -26,7 +26,7 @@ export async function execute(interaction) {
     const video = await playRandom(interaction.guild, voiceChannel);
     const info = getSessionInfo(interaction.guild.id);
 
-    const embed = buildNowPlayingEmbed(video, {
+    const msg = buildNowPlayingMessage(video, {
       volume: info.volume,
       mode: info.mode,
       continuous: info.continuous,
@@ -34,7 +34,7 @@ export async function execute(interaction) {
       elapsedSeconds: info.elapsedSeconds,
     });
 
-    const message = await interaction.editReply({ embeds: [embed] });
+    const message = await interaction.editReply(msg);
     attachNowPlayingMessage(interaction.guild.id, message);
   } catch (err) {
     await interaction.editReply(`❌ خطأ: ${err.message}`);

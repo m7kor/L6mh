@@ -1,0 +1,42 @@
+{
+  "lastVideo": {
+    "title": "نقاش حياة وكمبيوتر ونصلح جهاز 22/08/2026 (بث الليل)",
+    "url": "https://www.youtube.com/watch?v=tP5kwUkFpD4"
+  },
+  "channelId": "UCCXeB-jWXbrAwcR0Yjl0Ygw",
+  "playbackMode": "resume",
+  "continuous": false,
+  "savedAt": "2026-08-27T19:32:34.839Z",
+  "1097041210608205844": {
+    "current": {
+      "title": "بث كمبيوتر وحياة وتصليح جهاز 06/09/2026",
+      "videoId": "SlKBuAYc4xU",
+      "url": "https://www.youtube.com/watch?v=SlKBuAYc4xU",
+      "thumbnail": "https://i.ytimg.com/vi/SlKBuAYc4xU/maxresdefault.jpg",
+      "publishedAt": "2026-09-07T14:00:31Z",
+      "progressSeconds": 1665,
+      "durationSeconds": 11454,
+      "viewCount": 179
+    },
+    "mode": "resume",
+    "continuous": true,
+    "volume": 99,
+    "savedAt": "2026-09-08T13:15:44.041Z"
+  },
+  "1374444507726348398": {
+    "current": {
+      "title": "نقاشات وأسئلة عن الكمبيوتر والحياة 19/06/2024",
+      "videoId": "bCegN57b-OU",
+      "url": "https://www.youtube.com/watch?v=bCegN57b-OU",
+      "thumbnail": "https://i.ytimg.com/vi/bCegN57b-OU/maxresdefault.jpg",
+      "publishedAt": "2024-06-20T09:15:01Z",
+      "progressSeconds": 1413,
+      "durationSeconds": 11361,
+      "viewCount": 444
+    },
+    "mode": "resume",
+    "continuous": true,
+    "volume": 100,
+    "savedAt": "2026-09-08T11:01:28.979Z"
+  }
+}

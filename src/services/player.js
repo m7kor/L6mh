@@ -29,7 +29,7 @@ import { createAudioStream, killProcesses, preValidateVideo, formatTime } from '
 import { listSounds, resolveSoundPath } from '../utils/sounds.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
-import { buildNowPlayingEmbed } from '../utils/embeds.js';
+import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { recordPlay } from '../utils/stats.js';
 import { notify } from '../utils/webhook.js';
 
@@ -102,14 +102,14 @@ function stopUiRefresh(session) {
 async function updateNowPlayingMessage(session) {
   if (!session.nowPlayingMessage || !session.current) return;
   try {
-    const embed = buildNowPlayingEmbed(session.current, {
+    const msg = buildNowPlayingMessage(session.current, {
       volume: session.volume,
       mode: session.mode,
       continuous: session.continuous,
       paused: session.paused,
       elapsedSeconds: getElapsedSeconds(session),
     });
-    await session.nowPlayingMessage.edit({ embeds: [embed] });
+    await session.nowPlayingMessage.edit(msg);
   } catch {
     session.nowPlayingMessage = null;
     stopUiRefresh(session);
@@ -193,15 +193,44 @@ export function getAllSessions() {
       connected: Boolean(session.connection),
       continuous: session.continuous,
       queueCount: session.queue.length,
+      elapsedSeconds: session.current ? getElapsedSeconds(session) : 0,
+      durationSeconds: session.current?.durationSeconds || null,
     });
   }
   return result;
 }
 
-export function setVolume(guildId, volume) {
+export function skipTrack(guildId) {
+  const session = getSession(guildId);
+  if (!session.player) return;
+  // Kill the media processes to force audio to stop
+  killProcesses(session);
+  // Stop the player — this fires Idle event which will call onTrackFinished
+  // We do NOT null session.player here so the Idle handler recognizes it
+  try { session.player.stop(true); } catch {}
+  logger.info(`[${guildId}] Track skipped.`);
+}
+
+export async function setVolume(guildId, volume) {
   const session = getSession(guildId);
   const clamped = Math.max(0, Math.min(200, volume));
   session.volume = clamped;
+  saveState(session);
+
+  // If currently playing, restart stream with new volume
+  if (session.current && session.connection && session.guild && session.channel && !session.volumeChanging) {
+    session.volumeChanging = true;
+    try {
+      const elapsed = Math.floor(getElapsedSeconds(session));
+      const video = { ...session.current, progressSeconds: elapsed };
+      await connectAndPlay(session.guild, session.channel, video, { countPlay: false });
+    } catch (err) {
+      logger.warn(`[${guildId}] Volume change restart failed:`, err.message);
+    } finally {
+      session.volumeChanging = false;
+    }
+  }
+
   return clamped;
 }
 
@@ -216,6 +245,10 @@ export function getSessionInfo(guildId) {
     connected: Boolean(session.connection),
     elapsedSeconds: session.current ? getElapsedSeconds(session) : 0,
     queueCount: session.queue.length,
+    videoId: session.current?.videoId || null,
+    videoUrl: session.current?.url || null,
+    thumbnail: session.current?.thumbnail || null,
+    durationSeconds: session.current?.durationSeconds || null,
   };
 }
 
@@ -505,22 +538,23 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   session.player = player;
   session.paused = false;
 
-  let stallTimeout = null;
+  if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
+  session.stallTimeout = null;
   player.on('stateChange', (oldState, newState) => {
     if (session.player !== player) return;
     if (newState.status === AudioPlayerStatus.Playing) {
-      if (stallTimeout) { clearTimeout(stallTimeout); stallTimeout = null; }
+      if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
     } else if (newState.status === AudioPlayerStatus.AutoPaused || newState.status === AudioPlayerStatus.Buffering) {
-      if (!stallTimeout) {
-        stallTimeout = setTimeout(() => {
-          logger.warn(`[${guild.id}] Stream stalled for 20s. Skipping track.`);
+      if (!session.stallTimeout) {
+        session.stallTimeout = setTimeout(() => {
+          logger.warn(`[${guild.id}] Stream stalled for 30s. Skipping track.`);
           if (session.player === player) {
             onTrackFinished(guild, channel);
           }
-        }, 20_000);
+        }, 30_000);
       }
     } else {
-      if (stallTimeout) { clearTimeout(stallTimeout); stallTimeout = null; }
+      if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
     }
   });
 

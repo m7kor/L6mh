@@ -199,8 +199,28 @@ export async function getLatestVideo(channelId = config.channelId, apiKey = conf
 export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = []) {
   const videos = await getVideos(channelId, apiKey);
   const pool = videos.filter((v) => !exclude.includes(v.videoId));
-  const list = pool.length > 0 ? pool : videos;
-  return list[Math.floor(Math.random() * list.length)];
+  let list = pool.length > 0 ? pool : videos;
+
+  const noShorts = list.filter((v) => {
+    const title = (v.title || '').toLowerCase();
+    return !title.includes('#short') && !title.includes('#shorts');
+  });
+  if (noShorts.length > 0) {
+    list = noShorts;
+  }
+
+  const now = Date.now();
+  const weights = list.map(v => {
+    const age = now - new Date(v.publishedAt || 0).getTime();
+    return Math.max(1, Math.min(5, age / (1000 * 60 * 60 * 24 * 30)));
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < list.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return list[i];
+  }
+  return list[list.length - 1];
 }
 
 /** Parse an ISO-8601 duration (e.g. "PT1H2M3S") into whole seconds. */

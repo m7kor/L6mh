@@ -18,7 +18,10 @@ import { startStatusPage } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
 import {
   stopAllSessions,
+  stopPlayback,
+  skipTrack,
   playRandom,
+  playLatest,
   resume,
   playerEvents,
   getSessionInfo,
@@ -72,7 +75,7 @@ playerEvents.on('trackChange', ({ video, paused }) => {
     return;
   }
   client.user.setActivity(paused ? `⏸️ ${video.title}` : video.title, {
-    type: ActivityType.Watching,
+    type: ActivityType.Listening,
   });
 });
 
@@ -85,29 +88,63 @@ client.once(Events.ClientReady, async (c) => {
   startHeartbeat();
 
   // Dashboard command handler
-  function handleDashboardCommand(cmd) {
+  async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, skip, volume <0-200>, servers';
+    if (lower === 'help') return 'Commands: status, np, skip, stop, volume <0-200>, random, resume, latest';
+    
+    const all = getAllSessions();
+    
     if (lower === 'status') {
-      const all = getAllSessions();
-      return 'Guilds: ' + all.length + ' | ' + all.map(function(s) { return s.guildName + ': ' + (s.connected ? 'Connected' : 'Idle'); }).join(', ');
+      return 'Guilds: ' + all.length + ' | ' + all.map(s => s.guildName + ': ' + (s.connected ? 'Connected' : 'Idle')).join(', ');
     }
     if (lower === 'np' || lower === 'nowplaying') {
-      const all = getAllSessions();
-      return all.map(function(s) { return s.guildName + ': ' + (s.title || 'No track'); }).join('\n');
+      return all.map(s => s.guildName + ': ' + (s.title || 'No track')).join('\n');
     }
     if (lower === 'servers') {
-      const all = getAllSessions();
-      return 'Connected to ' + all.length + ' server(s): ' + all.map(function(s) { return s.guildName; }).join(', ');
+      return 'Connected to ' + all.length + ' server(s): ' + all.map(s => s.guildName).join(', ');
     }
     if (lower.startsWith('volume ')) {
       const vol = parseInt(lower.split(' ')[1]);
-      if (isNaN(vol)) return 'Usage: volume <0-200>';
-      const all = getAllSessions();
-      all.forEach(function(s) { setVolume(s.guildId, vol); });
-      return 'Volume set to ' + vol + '%';
+      if (isNaN(vol) || vol < 0 || vol > 200) return 'Usage: volume <0-200>';
+      for (const s of all) {
+        await setVolume(s.guildId, vol);
+      }
+      return `Volume set to ${vol}% on all servers.`;
     }
-    return 'Unknown command: ' + cmd + '. Type /help for list.';
+    if (lower === 'skip') {
+      const count = all.length;
+      all.forEach(s => skipTrack(s.guildId));
+      return count > 0 ? `Skipped track on ${count} server(s).` : 'No active sessions to skip.';
+    }
+    if (lower === 'stop' || lower === 'leave') {
+      stopAllSessions();
+      return 'Stopped playback and disconnected from all servers.';
+    }
+    if (lower === '/عشوائي' || lower === 'random') {
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) { await playRandom(guild, guild.members.me.voice.channel); done++; }
+      }
+      return done > 0 ? `Playing random on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower === '/كمل' || lower === 'resume') {
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) { await resume(guild, guild.members.me.voice.channel); done++; }
+      }
+      return done > 0 ? `Resumed on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower === '/اخر_مقطع' || lower === 'latest') {
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) { await playLatest(guild, guild.members.me.voice.channel); done++; }
+      }
+      return done > 0 ? `Playing latest on ${done} server(s).` : 'No active servers found.';
+    }
+    return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
   startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
@@ -193,6 +230,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       const humanCount = joinedChannel.members.filter((m) => !m.user.bot).size;
       const isBotIdle = !session.connected;
 
+      // Bot was idle → start playing in the newly joined channel
       if (humanCount >= 1 && isBotIdle) {
         logger.info(`[${guild.id}] ${newState.member?.user.tag} joined #${joinedChannel.name} — auto-starting radio.`);
         try {
@@ -214,12 +252,52 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         } catch {
           await playRandom(guild, joinedChannel);
         }
+        return;
+      }
+
+      // Bot is active → check if the new channel has MORE humans and auto-move
+      if (session.connected && humanCount >= 1) {
+        const botChannel = guild.members.me?.voice?.channel;
+        if (botChannel && botChannel.id !== joinedChannel.id) {
+          const currentHumans = botChannel.members.filter((m) => !m.user.bot).size;
+          // Only move if joined channel now has strictly more humans
+          if (humanCount > currentHumans) {
+            const moveKey = `move-${guild.id}`;
+            if (!voiceActionTimeouts.has(moveKey)) {
+              voiceActionTimeouts.set(moveKey, setTimeout(async () => {
+                voiceActionTimeouts.delete(moveKey);
+                // Re-verify situation hasn't changed
+                const freshJoined = guild.channels.cache.get(joinedChannel.id);
+                if (!freshJoined) return;
+                const freshHumans = freshJoined.members.filter((m) => !m.user.bot).size;
+                const freshCurrent = guild.members.me?.voice?.channel?.members.filter((m) => !m.user.bot).size || 0;
+                if (freshHumans > freshCurrent) {
+                  logger.info(`[${guild.id}] Auto-moving to #${joinedChannel.name} (${freshHumans} humans vs ${freshCurrent}).`);
+                  try {
+                    await resume(guild, freshJoined);
+                  } catch {
+                    await playRandom(guild, freshJoined);
+                  }
+                }
+              }, VOICE_DEBOUNCE_MS));
+            }
+          }
+        }
       }
       return;
     }
 
-    // --- User left a channel ---
-    // Bot stays in the channel permanently, no leave logic needed
+    // --- User left a channel (oldState has channel, newState doesn't) ---
+    // If bot's channel is now empty of humans, wait — someone might come back
+    if (oldState.channel && !newState.channel) {
+      const botChannel = guild.members.me?.voice?.channel;
+      if (botChannel && botChannel.id === oldState.channelId) {
+        const remaining = botChannel.members.filter((m) => !m.user.bot).size;
+        if (remaining === 0) {
+          logger.info(`[${guild.id}] Channel #${botChannel.name} is now empty. Bot stays but will auto-move when someone joins.`);
+        }
+      }
+    }
   } catch (err) {
     logger.error('VoiceStateUpdate handler error:', err.message);
   }
@@ -263,12 +341,21 @@ function redactSecrets(str) {
 }
 
 process.on('unhandledRejection', (reason) => {
+  // EPIPE errors from broken pipes are non-fatal — Discord voice sockets close abruptly
+  if (reason?.code === 'EPIPE' || reason?.message?.includes('EPIPE')) return;
+  if (reason?.message?.includes('Cannot perform IP discovery')) return;
   logger.error('Unhandled promise rejection:', redactSecrets(reason));
 });
 
 process.on('uncaughtException', (err) => {
-  if (err && err.code === 'EPIPE') {
-    logger.warn('Ignored uncaught EPIPE error');
+  // EPIPE = broken pipe (e.g. ffmpeg/Discord UDP socket closed) — safe to ignore
+  if (err?.code === 'EPIPE' || err?.message?.includes('EPIPE')) {
+    logger.warn('Ignored EPIPE (broken pipe) error.');
+    return;
+  }
+  // IP discovery failure on voice reconnect — recoverable, no restart needed
+  if (err?.message?.includes('Cannot perform IP discovery')) {
+    logger.warn('Ignored IP discovery error (voice reconnect in progress).');
     return;
   }
   logger.error('Uncaught exception — restarting:', redactSecrets(err?.stack || err));

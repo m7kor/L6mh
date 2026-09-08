@@ -1,110 +1,58 @@
-# Discord YouTube Audio Bot
+<div align="center">
+  <h1>🎙️ WaheedTech Radio Bot</h1>
+  <p><strong>بوت ديسكورد موسيقي متطور يعمل كإذاعة مستمرة (24/7) مع لوحة تحكم ويب عصرية ومحرك صوتي مخصص.</strong></p>
+</div>
 
-Discord bot that plays **[وحيد عمر's YouTube channel](https://www.youtube.com/@Waheedomar)** audio in voice channels 24/7. Three simple commands.
+---
 
-## Commands
+## ✨ الميزات الرئيسية (Key Features)
 
-| Command | Description |
-|---|---|
-| `/عشوائي` | Pick a random video and play it forever |
-| `/اخر_مقطع` | Play the latest video and continue forever |
-| `/كمل` | Resume the last video that was playing |
+### 📻 راديو مستمر وذكي
+- **بث 24/7:** تشغيل متواصل من فيديوهات القناة، مع خوارزمية ذكية لاختيار الفيديوهات (Weighted Random) لضمان تنوع المحتوى.
+- **تخطي الـ Shorts تلقائياً:** فلترة ذكية تمنع تشغيل الفيديوهات القصيرة للحفاظ على جو الراديو.
+- **التنقل الذكي (Smart Auto-Move):** يراقب البوت القنوات الصوتية وينتقل تلقائياً للقناة التي تحتوي على العدد الأكبر من المستمعين!
+- **مؤثرات صوتية (Jingles):** تشغيل مقاطع صوتية ترحيبية عند الدخول للقناة أو بين المقاطع.
 
-## How It Works
+### 🌐 لوحة تحكم تفاعلية (Web Dashboard)
+- **تصميم عصري (Dark Mode):** واجهة ويب حديثة وسريعة الاستجابة.
+- **تحكم فوري (Live Control):** تغيير مستوى الصوت، تخطي المقاطع، أو إيقافها بضغطة زر.
+- **شريط تقدم مباشر (Progress Bar):** يتزامن مع المقطع الحالي بالثانية.
+- **سطر أوامر (Terminal):** مدمج في المتصفح لإرسال أوامر مباشرة للبوت (`help`, `skip`, `volume`).
+- **إحصائيات حية:** عرض عدد السيرفرات المتصلة، مدة التشغيل (Uptime)، وقائمة بأكثر المقاطع استماعاً (Top Tracks).
 
-```
-YouTube video
-    ↓  yt-dlp (streams audio directly)
-    ↓  ffmpeg (transcodes to PCM s16le 48kHz stereo)
-    ↓  @discordjs/voice
-Plays in voice channel
-```
+### 🎚️ محرك صوتي احترافي
+- **صوت نقي وبدون فرقعة:** استخدام فلاتر `FFmpeg` متقدمة (مثل `afade`) لدخول سلس للصوت بداية كل مقطع.
+- **تخطي حظر يوتيوب:** استخدام `POT Provider` و `Cookies` متجددة لسحب المقاطع بسلاسة وتخطي حظر الـ IPs.
+- **بدء فوري (Zero-Latency):** تقليل حجم الـ Buffer لتحميل المقطع وتشغيله في أجزاء من الثانية.
 
-## Project Structure
+### 💬 رسائل ديسكورد أنيقة (Premium Embeds)
+- رسائل بتصميم "مسطح ونظيف" (Flat Design).
+- شريط تقدم (Slider) حصري وعصري للمقاطع داخل الشات.
+- خالية من حقول ديسكورد المزعجة لضمان التوافق التام مع اللغة العربية (RTL).
 
-```
-src/
-  index.js            entry point — auto-join, slash commands, voice events
-  config.js           validates environment variables
-  deploy-commands.js  registers slash commands with Discord
-  commands/
-    random.js         /عشوائي
-    watch.js          /اخر_مقطع
-    resume.js         /كمل
-  services/
-    player.js         playback engine — voice connection, yt-dlp→ffmpeg pipeline, jingles
-    youtube.js        YouTube Data API v3 with caching
-  utils/
-    logger.js         timestamped console logger
-    sounds.js         discover sound files from /sounds
-    embeds.js         "Now Playing" embed
-sounds/               mp3 files used as jingles between tracks
-```
+### 🛡️ استقرار عالي (Self-Healing)
+- **Stall Detection:** يكتشف البوت إذا علق المقطع بسبب شبكة يوتيوب (لأكثر من 30 ثانية) ويتخطاه تلقائياً بدل الانهيار.
+- **EPIPE Fix:** يتخطى مشاكل فصل الاتصال المفاجئ من خوادم ديسكورد ويكمل البث بأمان.
 
-## Setup
+---
 
-### Prerequisites
+## 🚀 الأوامر (Slash Commands)
 
-- Node.js 18+
-- FFmpeg (`winget install Gyan.FFmpeg`)
-- yt-dlp (`winget install yt-dlp.yt-dlp`)
-- [bgutil-pot](https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs) running on port 4416 (for YouTube bot protection bypass)
-- yt-dlp plugin for bgutil-pot
-- Discord Bot token + YouTube Data API key
+- `/عشوائي` - تشغيل الراديو المستمر من قائمة فيديوهات القناة.
+- `/اخر_مقطع` - تشغيل أحدث فيديو تم رفعه في القناة.
+- `/كمل` - استكمال التشغيل إذا تم إيقافه مؤقتاً.
 
-### Install
+---
 
-```powershell
-git clone https://github.com/m7kor/L6mh.git
-cd L6mh
-npm install
-copy .env.example .env
-```
+## 🛠️ التقنيات المستخدمة (Tech Stack)
 
-Edit `.env` with your tokens and IDs, then:
+- **[Node.js](https://nodejs.org/)** & **[discord.js v14](https://discord.js.org/)**
+- **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** (لجلب الصوت بأعلى جودة وتجاوز القيود)
+- **FFmpeg** (لمعالجة الصوتيات)
+- **Express / HTTP Server** (للوحة التحكم)
+- **PM2** (لإدارة التشغيل المستمر 24/7)
 
-```powershell
-npm run deploy
-npm start
-```
-
-### Run 24/7 with pm2
-
-```powershell
-npm install -g pm2
-pm2 start src/index.js --name yt-audio-bot
-pm2 save
-```
-
-To auto-start on Windows login, create a shortcut in:
-```
-C:\Users\<you>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
-```
-with target: `pm2 resurrect`
-
-| Command | Description |
-|---|---|
-| `pm2 list` | Show running processes |
-| `pm2 logs yt-audio-bot` | Tail logs |
-| `pm2 restart yt-audio-bot` | Restart the bot |
-
-## Environment Variables
-
-| Variable | Required | Description |
-|---|---|---|
-| `DISCORD_TOKEN` | Yes | Bot token from Discord Developer Portal |
-| `CLIENT_ID` | Yes | Application ID from Discord Developer Portal |
-| `YOUTUBE_API_KEY` | Yes | YouTube Data API v3 key |
-| `CHANNEL_ID` | Yes | YouTube channel ID to pull videos from |
-| `VOICE_CHANNEL_ID` | No | Voice channel to auto-join on startup |
-| `HEALTH_WEBHOOK_URL` | No | Discord webhook for crash/quota notifications |
-| `GUILD_ID` | No | Server ID for instant command updates (testing) |
-| `DEFAULT_VOLUME` | No | Default volume 0-200 (default: 100) |
-
-## Features
-
-- **Auto-join**: joins voice channel on startup if `VOICE_CHANNEL_ID` is set; also joins when someone is alone in a channel
-- **Jingles**: random sound files from `/sounds/` play between tracks
-- **Progress saving**: saves playback position every 15 seconds; `/كمل` resumes from where it left off
-- **Broken URL handling**: skips videos with expired CDN URLs automatically
-- **24/7 playback**: never stops — when a video ends, picks the next one
+---
+<div align="center">
+  <p><i>Developed with ❤️ for WaheedTech Studio</i></p>
+</div>
