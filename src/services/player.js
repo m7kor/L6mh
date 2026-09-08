@@ -283,7 +283,7 @@ export function getSessionInfo(guildId) {
 
 export async function playLatest(guild, channel) {
   const session = getSession(guild.id);
-  stopPlayback(guild.id, { manual: false });
+  await stopPlayback(guild.id, { manual: false });
 
   const video = await getLatestVideo();
   session.mode = 'latest';
@@ -297,7 +297,7 @@ export async function playLatest(guild, channel) {
 
 export async function playVideo(guild, channel, video) {
   const session = getSession(guild.id);
-  stopPlayback(guild.id, { manual: false });
+  await stopPlayback(guild.id, { manual: false });
 
   session.mode = 'manual';
   session.continuous = true;
@@ -310,7 +310,7 @@ export async function playVideo(guild, channel, video) {
 
 export async function playRandom(guild, channel) {
   const session = getSession(guild.id);
-  stopPlayback(guild.id, { manual: false });
+  await stopPlayback(guild.id, { manual: false });
 
   session.mode = 'random';
   session.continuous = true;
@@ -326,9 +326,9 @@ export async function playRandom(guild, channel) {
 export async function resume(guild, channel) {
   const session = getSession(guild.id);
   // Save current video BEFORE stopPlayback resets state
-  const savedVideo = session.current || restoreLastVideo(guild.id);
+  const savedVideo = session.current || await restoreLastVideo(guild.id);
   const savedElapsed = session.current ? Math.floor(getElapsedSeconds(session)) : (session.current?.progressSeconds || 0);
-  stopPlayback(guild.id, { manual: false });
+  await stopPlayback(guild.id, { manual: false });
 
   if (!savedVideo) {
     throw new Error('لا يوجد مقطع سابق للاستكمال.');
@@ -635,7 +635,7 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
   session.segmentStartedAt = Date.now();
   session.current = { ...video, progressSeconds: startSeconds };
   startProgressAutosave(session);
-  saveState(session);
+  await saveState(session);
   updateNowPlayingMessage(session).catch(() => {});
   playerEvents.emit('trackChange', { guildId: guild.id, video: session.current, paused: false });
 
