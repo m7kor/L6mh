@@ -93,29 +93,21 @@ client.once(Events.ClientReady, async (c) => {
 
   for (const guild of c.guilds.cache.values()) {
     try {
+      // Find the voice channel with the most humans across all channels in this guild
+      const voiceChannels = guild.channels.cache.filter((ch) => ch.isVoiceBased());
       let targetChannel = null;
+      let maxHumans = 0;
 
-      if (config.voiceChannelId) {
-        const configuredChannel = await guild.channels.fetch(config.voiceChannelId).catch(() => null);
-        if (configuredChannel && configuredChannel.isVoiceBased()) {
-          targetChannel = configuredChannel;
+      for (const ch of voiceChannels.values()) {
+        const humans = ch.members.filter((m) => !m.user.bot).size;
+        if (humans > maxHumans) {
+          maxHumans = humans;
+          targetChannel = ch;
         }
       }
 
-      if (!targetChannel) {
-        const voiceChannels = guild.channels.cache.filter((ch) => ch.isVoiceBased());
-        let maxHumans = 0;
-        for (const ch of voiceChannels.values()) {
-          const humans = ch.members.filter((m) => !m.user.bot).size;
-          if (humans > maxHumans) {
-            maxHumans = humans;
-            targetChannel = ch;
-          }
-        }
-      }
-
-      if (targetChannel) {
-        logger.info(`[${guild.id}] Auto-joining #${targetChannel.name}…`);
+      if (targetChannel && maxHumans > 0) {
+        logger.info(`[${guild.id}] Auto-joining #${targetChannel.name} (${maxHumans} humans)…`);
 
         try {
           const { resolveSoundPath, listSounds } = await import('./utils/sounds.js');
@@ -142,7 +134,7 @@ client.once(Events.ClientReady, async (c) => {
           await playRandom(guild, targetChannel);
         }
       } else {
-        logger.info(`[${guild.id}] No populated voice channel found to auto-join.`);
+        logger.info(`[${guild.id}] No voice channel with humans found — waiting for someone to join.`);
       }
     } catch (err) {
       logger.error(`[${guild.id}] Failed to auto-join voice channel:`, err.message);

@@ -21,7 +21,6 @@ function loadConfig() {
     clientId: process.env.CLIENT_ID,
     youtubeApiKey: process.env.YOUTUBE_API_KEY,
     channelId: process.env.CHANNEL_ID,
-    voiceChannelId: process.env.VOICE_CHANNEL_ID || null,
     healthWebhookUrl: process.env.HEALTH_WEBHOOK_URL || null,
     defaultVolume: clampNumber(Number(process.env.DEFAULT_VOLUME), 100, 0, 200),
     potProviderUrl: process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416',
