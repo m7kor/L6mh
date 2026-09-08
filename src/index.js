@@ -190,30 +190,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     }
 
     // --- User left a channel ---
-    const leftChannel = oldState.channel;
-    if (leftChannel && oldState.channelId !== newState.channelId) {
-      const debounceKey = `leave-${guild.id}-${leftChannel.id}`;
-      const existing = voiceActionTimeouts.get(debounceKey);
-      if (existing) clearTimeout(existing);
-
-      voiceActionTimeouts.set(debounceKey, setTimeout(async () => {
-        voiceActionTimeouts.delete(debounceKey);
-
-        const botMember = await guild.members.fetchMe().catch(() => null);
-        if (!botMember) return;
-        const botIsThere = leftChannel.members.has(botMember.id);
-        if (!botIsThere) return;
-
-        try { await leftChannel.fetch(); } catch {}
-
-        const humansLeft = leftChannel.members.filter((m) => !m.user.bot).size;
-        if (humansLeft === 0) {
-          logger.info(`[${guild.id}] No humans in #${leftChannel.name} — stopping and leaving.`);
-          const { stopPlayback } = await import('./services/player.js');
-          stopPlayback(guild.id, { manual: false });
-        }
-      }, 5_000));
-    }
+    // Bot stays in the channel permanently, no leave logic needed
   } catch (err) {
     logger.error('VoiceStateUpdate handler error:', err.message);
   }
