@@ -295,6 +295,19 @@ export async function playLatest(guild, channel) {
   return session.current;
 }
 
+export async function playVideo(guild, channel, video) {
+  const session = getSession(guild.id);
+  stopPlayback(guild.id, { manual: false });
+
+  session.mode = 'manual';
+  session.continuous = true;
+  session.current = video;
+  trackRecent(session, video.videoId);
+
+  await connectAndPlay(guild, channel, video);
+  return session.current;
+}
+
 export async function playRandom(guild, channel) {
   const session = getSession(guild.id);
   stopPlayback(guild.id, { manual: false });
@@ -312,18 +325,21 @@ export async function playRandom(guild, channel) {
 
 export async function resume(guild, channel) {
   const session = getSession(guild.id);
-  const last = session.current || restoreLastVideo(guild.id);
+  // Save current video BEFORE stopPlayback resets state
+  const savedVideo = session.current || restoreLastVideo(guild.id);
+  const savedElapsed = session.current ? Math.floor(getElapsedSeconds(session)) : (session.current?.progressSeconds || 0);
   stopPlayback(guild.id, { manual: false });
 
-  if (!last) {
+  if (!savedVideo) {
     throw new Error('لا يوجد مقطع سابق للاستكمال.');
   }
 
   session.mode = 'resume';
   session.continuous = true;
-  session.current = last;
+  // Restore with saved progress so connectAndPlay resumes from the right position
+  session.current = { ...savedVideo, progressSeconds: savedElapsed };
 
-  await connectAndPlay(guild, channel, last);
+  await connectAndPlay(guild, channel, session.current);
   return session.current;
 }
 

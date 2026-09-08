@@ -22,6 +22,7 @@ import {
   skipTrack,
   playRandom,
   playLatest,
+  playVideo,
   resume,
   playerEvents,
   getSessionInfo,
@@ -93,7 +94,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, skip, stop, volume <0-200>, random, resume, latest, pause, queue';
+    if (lower === 'help') return 'Commands: status, np, skip, volume <0-200>, random, resume, latest, pause, play <videoId>';
     
     const all = getAllSessions();
     
@@ -102,9 +103,6 @@ client.once(Events.ClientReady, async (c) => {
     }
     if (lower === 'np' || lower === 'nowplaying') {
       return all.map(s => s.guildName + ': ' + (s.title || 'No track')).join('\n');
-    }
-    if (lower === 'servers') {
-      return 'Connected to ' + all.length + ' server(s): ' + all.map(s => s.guildName).join(', ');
     }
     if (lower.startsWith('volume ')) {
       const vol = parseInt(lower.split(' ')[1]);
@@ -119,10 +117,6 @@ client.once(Events.ClientReady, async (c) => {
       all.forEach(s => skipTrack(s.guildId));
       return count > 0 ? `Skipped track on ${count} server(s).` : 'No active sessions to skip.';
     }
-    if (lower === 'stop' || lower === 'leave') {
-      stopAllSessions();
-      return 'Stopped playback and disconnected from all servers.';
-    }
     if (lower === 'pause') {
       let done = 0;
       all.forEach(s => { if (pausePlayback(s.guildId)) done++; });
@@ -133,13 +127,31 @@ client.once(Events.ClientReady, async (c) => {
       all.forEach(s => { if (resumePlayback(s.guildId)) done++; });
       return done > 0 ? `Resumed on ${done} server(s).` : 'No active sessions to resume.';
     }
-    if (lower === 'queue') {
-      if (all.length === 0) return 'No active sessions.';
-      const lines = all.map(s => {
-        const q = getQueue(s.guildId);
-        return s.guildName + ': ' + (q.length > 0 ? q.map(v => v.title || v.videoId).join(', ') : 'Empty');
-      });
-      return lines.join('\n');
+    if (lower.startsWith('play ')) {
+      const videoId = cmd.split(' ').slice(1).join(' ').trim();
+      if (!videoId) return 'Usage: play <videoId>';
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) {
+          try {
+            const { getVideoDetails } = await import('./services/youtube.js');
+            const details = await getVideoDetails(videoId);
+            const video = {
+              videoId,
+              title: details?.title || videoId,
+              url: `https://www.youtube.com/watch?v=${videoId}`,
+              thumbnail: details?.thumbnail || null,
+              durationSeconds: details?.durationSeconds || null,
+            };
+            await playVideo(guild, guild.members.me.voice.channel, video);
+            done++;
+          } catch (err) {
+            return `Error playing video: ${err.message}`;
+          }
+        }
+      }
+      return done > 0 ? `Playing on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === '/عشوائي' || lower === 'random') {
       let done = 0;

@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createLogger } from './logger.js';
 import { loadPlays, getPlayHistory } from './stats.js';
+import { getVideos } from '../services/youtube.js';
 
 const logger = createLogger('dashboard');
 
@@ -224,6 +225,46 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to fetch servers' }));
         }
+        return;
+      }
+
+      if (req.url === '/api/videos' && req.method === 'GET') {
+        try {
+          const videos = await getVideos();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ videos: videos.slice(0, 200) }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to fetch videos: ' + err.message }));
+        }
+        return;
+      }
+
+      if (req.url === '/api/play' && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk) => { body += chunk; });
+        req.on('end', async () => {
+          try {
+            const parsed = JSON.parse(body);
+            const videoId = parsed.videoId;
+            if (!videoId) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'videoId required' }));
+              return;
+            }
+            if (executeCommandFn) {
+              const reply = await Promise.resolve(executeCommandFn('play ' + videoId));
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ ok: true, reply: reply || 'Playing.' }));
+            } else {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'executeCommandFn not available' }));
+            }
+          } catch (e) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid request' }));
+          }
+        });
         return;
       }
 
