@@ -25,7 +25,8 @@ import {
   getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
   trackRecent,
 } from './session.js';
-import { createAudioStream, killProcesses, preValidateVideo, formatTime } from './streaming.js';
+import { createAudioStream, killProcesses, preValidateVideo } from './streaming.js';
+import { formatTime } from '../utils/format.js';
 import { listSounds, resolveSoundPath } from '../utils/sounds.js';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';

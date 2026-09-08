@@ -4,31 +4,19 @@
  */
 
 import { createServer } from 'node:http';
-import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createLogger } from './logger.js';
+import { loadPlays } from './stats.js';
 
 const logger = createLogger('dashboard');
 
 const PORT = Number(process.env.STATUS_PORT) || 0;
-const PLAYS_FILE = join(process.cwd(), 'play-counts.json');
 
 let getSessionInfo = null;
 let getAllSessions = null;
 let executeCommand = null;
 
-
-
-async function loadPlays() {
-  if (!existsSync(PLAYS_FILE)) return {};
-  try {
-    const data = await readFile(PLAYS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return {};
-  }
-}
+let cachedHtml = null;
 
 async function getApiData() {
   const plays = await loadPlays();

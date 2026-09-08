@@ -5,22 +5,15 @@
  * from play-counts.json and posts via notify(). No new dependencies.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { createLogger } from './logger.js';
 import { notify } from './webhook.js';
+import { loadPlays } from './stats.js';
 
 const logger = createLogger('recap');
 
-const PLAYS_FILE = join(process.cwd(), 'play-counts.json');
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 let lastRecapDay = -1;
-
-function loadPlays() {
-  if (!existsSync(PLAYS_FILE)) return {};
-  try { return JSON.parse(readFileSync(PLAYS_FILE, 'utf-8')); } catch { return {}; }
-}
 
 function computeRecap() {
   const plays = loadPlays();

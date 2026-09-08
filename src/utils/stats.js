@@ -31,6 +31,11 @@ function saveJson(path, data) {
   }
 }
 
+/** Load all play counts. */
+export function loadPlays() {
+  return loadJson(PLAYS_FILE);
+}
+
 /** Bump a video's play count. Called once per track start (see player.js). */
 export function recordPlay(video) {
   if (!video?.videoId) return;

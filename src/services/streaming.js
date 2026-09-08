@@ -8,14 +8,9 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
+import { formatTime } from '../utils/format.js';
 
 const logger = createLogger('audio');
-
-export function formatTime(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = Math.floor(totalSeconds % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
 
 export function killProcesses(session) {
   if (session.ffmpegProcess) {

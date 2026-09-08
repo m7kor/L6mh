@@ -3,6 +3,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { formatTime } from './format.js';
 
 const ROYAL_GOLD = 0xD4AF37; // Classic Gold
 const PAUSED_COLOR = 0x2B2D31; // Invisible/Dark
@@ -13,17 +14,6 @@ const MODE_LABEL = {
   url: 'طلب حصري',
   resume: 'استكمال',
 };
-
-export function formatTime(totalSeconds) {
-  if (totalSeconds == null || Number.isNaN(totalSeconds)) return '0:00';
-  const total = Math.max(0, Math.floor(totalSeconds));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-  const ss = String(s).padStart(2, '0');
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-}
 
 function formatViewCount(viewCount) {
   if (viewCount == null) return null;
