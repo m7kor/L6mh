@@ -200,8 +200,17 @@ const fmt = s => {
     return h ? `${h}:${mm}:${String(ss).padStart(2,'0')}` : `${mm}:${String(ss).padStart(2,'0')}`;
 };
 
+// ── Auth ──
+const getToken = () => localStorage.getItem('dashboard_token') || '';
+const authFetch = (url, opts = {}) => {
+    const token = getToken();
+    if (!token) { if (url.startsWith('/api/')) return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }); }
+    const headers = { ...opts.headers, 'Authorization': `Bearer ${token}` };
+    return fetch(url, { ...opts, headers });
+};
+
 // ── Commands ──
-const cmd = async c => { if(!c) return; try { await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:c})}); } catch{} refresh(); };
+const cmd = async c => { if(!c) return; try { await authFetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:c})}); } catch{} refresh(); };
 
 // ── YouTube Embed (safe — no innerHTML with user data) ──
 let curVid = null;
@@ -224,7 +233,7 @@ const clearEmb = () => { npEmb.innerHTML=''; npEmbImg.style.display='block'; cur
 // ── Status ──
 const refresh = async () => {
     try {
-        const r = await fetch('/api/status');
+        const r = await authFetch('/api/status');
         if (!r.ok) return;
         const d = await r.json();
         const s = (d.sessions||[])[0];
@@ -328,7 +337,7 @@ vSearch.addEventListener('input', e => render(e.target.value));
 
 const fetchVid = async () => {
     try {
-        const r = await fetch('/api/videos');
+        const r = await authFetch('/api/videos');
         if (r.ok) { const d = await r.json(); allVid = d.videos||[]; render(); }
     } catch {}
 };
