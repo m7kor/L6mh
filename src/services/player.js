@@ -401,7 +401,7 @@ async function preloadNextTrack(session) {
       ...getCookieArgs(),
       next.url,
     ];
-    const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     proc.stderr.on('data', () => {});
     proc.on('close', () => {
       if (session.preloaded?.proc === proc) {
@@ -599,6 +599,10 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
     }
   } else {
     logger.info(`[${guild.id}] Already connected to #${channel.name}, reusing connection.`);
+  }
+
+  if (countPlay) {
+    await playRandomSound(guild, channel);
   }
 
   const startSeconds = Math.max(0, Math.floor(video.progressSeconds || 0));

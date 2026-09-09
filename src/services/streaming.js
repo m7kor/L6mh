@@ -44,7 +44,7 @@ export async function preValidateVideo(url) {
       ...getCookieArgs(),
       url,
     ];
-    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     let stderrTail = '';
     proc.stderr.on('data', (chunk) => {
       stderrTail += chunk.toString();
@@ -146,6 +146,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
 
     const ytDlpProcess = spawn('yt-dlp', ytDlpArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
     });
     session.resolveProcess = ytDlpProcess;
 
@@ -161,6 +162,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
 
     const ffmpegProcess = spawn('ffmpeg', ffmpegArgs, {
       stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
     });
     session.ffmpegProcess = ffmpegProcess;
 

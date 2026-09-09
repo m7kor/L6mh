@@ -210,8 +210,14 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       if (req.url === '/api/videos' && req.method === 'GET') {
         try {
           const videos = await getVideos();
+          const plays = await loadPlays();
+          const videosWithPlays = videos.map(v => ({
+            ...v,
+            playCount: plays[v.videoId]?.playCount || plays[v.videoId]?.count || 0,
+            lastPlayedAt: plays[v.videoId]?.lastPlayedAt || null,
+          }));
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ videos }));
+          res.end(JSON.stringify({ videos: videosWithPlays }));
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to fetch videos: ' + err.message }));
