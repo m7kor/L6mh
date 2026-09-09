@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>راديو وحيد عمر — الآن يُبث</title>
+  <meta name="description" content="راديو قناة وحيد عمر — بث مباشر 24/7">
+  <meta property="og:title" content="راديو وحيد عمر — الآن يُبث">
+  <meta property="og:description" content="استمع الآن معنا">
+  <meta property="og:type" content="music.song">
+  <link rel="stylesheet" href="/css/theme.css">
+  <style>
+    /* ── Page Layout ── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    /* ── Hero / Now Playing ── */
+    .hero { display: grid; grid-template-columns: 300px 1fr; gap: 32px; margin-bottom: 40px; animation: slideUp .5s ease; }
+    .hero-thumb { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 16/9; background: var(--surface-2); }
+    .hero-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-thumb .live-badge { position: absolute; top: 12px; right: 12px; z-index: 2; }
+    .hero-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.6)); pointer-events: none; }
+
+    .hero-info { display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+    .hero-tag { font-size: 13px; font-weight: 700; color: var(--cyan); font-family: var(--font-en); letter-spacing: 0.5px; text-transform: uppercase; }
+    .hero-title { font-size: 28px; font-weight: 900; line-height: 1.4; letter-spacing: -0.3px; }
+    .hero-meta { display: flex; gap: 16px; font-size: 13px; color: var(--text-2); font-family: var(--font-en); font-weight: 600; }
+    .hero-progress { margin-top: 8px; }
+    .hero-times { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 600; margin-top: 6px; }
+
+    /* ── Equalizer ── */
+    .eq { display: flex; gap: 3px; height: 24px; align-items: flex-end; }
+    .eq span { width: 3px; background: var(--cyan); border-radius: 2px; animation: eq .8s infinite ease-in-out; }
+    .eq span:nth-child(1) { animation-delay: 0s; height: 60%; }
+    .eq span:nth-child(2) { animation-delay: .12s; height: 40%; }
+    .eq span:nth-child(3) { animation-delay: .24s; height: 100%; }
+    .eq span:nth-child(4) { animation-delay: .08s; height: 55%; }
+    .eq span:nth-child(5) { animation-delay: .18s; height: 70%; }
+    .eq.off span { animation-play-state: paused; height: 3px !important; background: var(--text-3); }
+    @keyframes eq { 0%,100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+
+    /* ── Stats Grid ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; animation: slideUp .6s ease; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 16px; text-align: center; transition: all .3s; }
+    .stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .stat-icon { font-size: 24px; margin-bottom: 8px; }
+    .stat-num { font-family: var(--font-en); font-size: 28px; font-weight: 900; color: var(--cyan); font-variant-numeric: tabular-nums; }
+    .stat-lbl { font-size: 12px; color: var(--text-2); margin-top: 4px; font-weight: 600; }
+
+    /* ── Section Headers ── */
+    .section { margin-bottom: 32px; animation: slideUp .7s ease; }
+    .section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-hdr h2 { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .section-hdr h2 i { color: var(--cyan); }
+
+    /* ── Top Played ── */
+    .top-list { display: flex; flex-direction: column; gap: 8px; }
+    .top-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: all .2s; }
+    .top-item:hover { border-color: var(--cyan); background: var(--cyan-glow); }
+    .top-rank { font-family: var(--font-en); font-size: 14px; font-weight: 900; color: var(--text-3); width: 24px; text-align: center; }
+    .top-rank.gold { color: var(--yellow); }
+    .top-rank.silver { color: var(--text-2); }
+    .top-rank.bronze { color: var(--orange); }
+    .top-img { width: 56px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+    .top-info { flex: 1; min-width: 0; }
+    .top-info h4 { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-plays { font-family: var(--font-en); font-size: 12px; font-weight: 700; color: var(--cyan); flex-shrink: 0; }
+
+    /* ── History ── */
+    .history-list { display: flex; flex-direction: column; gap: 6px; }
+    .history-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; }
+    .history-time { font-family: var(--font-en); font-size: 11px; color: var(--text-3); font-weight: 600; flex-shrink: 0; width: 60px; }
+    .history-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
+    /* ── Footer ── */
+    .footer { text-align: center; padding: 32px; color: var(--text-3); font-size: 12px; border-top: 1px solid var(--border); margin-top: 40px; }
+    .footer a { color: var(--cyan); text-decoration: none; }
+
+    /* ── Loading ── */
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+    .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--surface-3); border-top-color: var(--cyan); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .hero { grid-template-columns: 1fr; gap: 20px; }
+      .hero-thumb { max-width: 400px; margin: 0 auto; }
+      .hero-title { font-size: 22px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat-num { font-size: 22px; }
+    }
+    @media (max-width: 480px) {
+      .page { padding: 16px 12px 60px; }
+      .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .stat { padding: 16px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <!-- Now Playing Hero -->
+  <div class="hero" id="hero">
+    <div class="hero-thumb">
+      <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230D1117'/%3E%3Cstop offset='100%25' stop-color='%23161B22'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='400' height='225'/%3E%3Ctext x='200' y='120' text-anchor='middle' fill='%2330363D' font-size='48'%3E♪%3C/text%3E%3C/svg%3E" alt="">
+      <div class="live-badge" id="liveBadge"></div>
+    </div>
+    <div class="hero-info">
+      <div class="hero-tag" id="npTag">راديو وحيد عمر</div>
+      <div class="hero-title" id="npTitle">جاري التحميل...</div>
+      <div class="hero-meta">
+        <span id="npMode">—</span>
+        <span id="npServers">—</span>
+      </div>
+      <div class="hero-progress">
+        <div class="progress"><div class="progress-fill" id="npFill"></div></div>
+        <div class="hero-times">
+          <span id="npElapsed">0:00</span>
+          <span id="npDur">0:00</span>
+        </div>
+      </div>
+      <div class="eq" id="npEq"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="statsGrid">
+    <div class="stat">
+      <div class="stat-icon">🎵</div>
+      <div class="stat-num" id="sTotal">—</div>
+      <div class="stat-lbl">إجمالي التشغيلات</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">⏱️</div>
+      <div class="stat-num" id="sHours">—</div>
+      <div class="stat-lbl">ساعات البث</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">📺</div>
+      <div class="stat-num" id="sGuilds">—</div>
+      <div class="stat-lbl">السيرفرات المتصلة</div>
+    </div>
+    <div class="stat">
+      <div class="stat-icon">🎬</div>
+      <div class="stat-num" id="sVideos">—</div>
+      <div class="stat-lbl">مقاطع القناة</div>
+    </div>
+  </div>
+
+  <!-- Top Played -->
+  <div class="section">
+    <div class="section-hdr">
+      <h2><i class="fas fa-trophy"></i> الأكثر تشغيلاً</h2>
+    </div>
+    <div class="top-list" id="topList">
+      <div class="skeleton" style="height:52px"></div>
+      <div class="skeleton" style="height:52px"></div>
+      <div class="skeleton" style="height:52px"></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="section">
+    <div class="section-hdr">
+      <h2><i class="fas fa-clock-rotate-left"></i> آخر ما شُغّل</h2>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="skeleton" style="height:40px"></div>
+      <div class="skeleton" style="height:40px"></div>
+      <div class="skeleton" style="height:40px"></div>
+    </div>
+  </div>
+
+  <!-- Channel Info -->
+  <div class="section">
+    <div class="card">
+      <div class="card-header">
+        <h2><i class="fas fa-tv"></i> عن القناة</h2>
+      </div>
+      <div class="card-body" id="channelInfo">
+        <p style="color:var(--text-2)">قناة وحيد عمر — محتوى تقني تفاعلي عن الحياة والكمبيوتر، بنكهة عراقية كوميدية مميزة.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>راديو وحيد عمر — بث مباشر 24/7 ♪</p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
+<script>
+const API = '/api/public';
+let lastVideoId = null;
+
+const fmt = s => {
+  if (!s) return '0:00';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+};
+
+const timeAgo = d => {
+  if (!d) return '';
+  const diff = (Date.now() - new Date(d).getTime()) / 1000;
+  if (diff < 60) return 'الآن';
+  if (diff < 3600) return `قبل ${Math.floor(diff/60)} دقيقة`;
+  if (diff < 86400) return `قبل ${Math.floor(diff/3600)} ساعة`;
+  return `قبل ${Math.floor(diff/86400)} يوم`;
+};
+
+async function refresh() {
+  try {
+    const r = await fetch(API);
+    if (!r.ok) return;
+    const d = await r.json();
+
+    // Now Playing
+    if (d.nowPlaying) {
+      const np = d.nowPlaying;
+      if (np.videoId && np.videoId !== lastVideoId) {
+        lastVideoId = np.videoId;
+        document.getElementById('npImg').src = `https://img.youtube.com/vi/${encodeURIComponent(np.videoId)}/mqdefault.jpg`;
+      }
+      document.getElementById('npTitle').textContent = np.title || '—';
+      const mode = np.mode === 'random' ? 'عشوائي مستمر' : np.mode === 'latest' ? 'أحدث مقطع' : 'استكمال';
+      document.getElementById('npMode').textContent = `📻 ${mode}`;
+      document.getElementById('npServers').textContent = `📺 ${d.guilds || 1} سيرفر`;
+      const el = np.elapsed || 0, dur = np.duration || 0;
+      document.getElementById('npElapsed').textContent = fmt(el);
+      document.getElementById('npDur').textContent = dur ? fmt(dur) : 'لايف';
+      document.getElementById('npFill').style.width = dur ? `${Math.min(100, el/dur*100)}%` : '100%';
+      const eq = document.getElementById('npEq');
+      eq.classList.toggle('off', !!np.paused);
+
+      // Live badge
+      const badge = document.getElementById('liveBadge');
+      if (np.paused) {
+        badge.innerHTML = '<span class="badge offline">متوقف مؤقتاً</span>';
+      } else {
+        badge.innerHTML = '<span class="badge live">مباشر الآن</span>';
+      }
+    } else {
+      document.getElementById('npTitle').textContent = 'لا يوجد بث حالياً';
+      document.getElementById('npEq').classList.add('off');
+      document.getElementById('liveBadge').innerHTML = '<span class="badge offline">offline</span>';
+    }
+
+    // Stats
+    document.getElementById('sTotal').textContent = d.totalPlays || 0;
+    document.getElementById('sHours').textContent = d.uptimeHours || 0;
+    document.getElementById('sGuilds').textContent = d.guilds || 0;
+    document.getElementById('sVideos').textContent = d.totalVideos || 0;
+
+    // Top Played
+    const topList = document.getElementById('topList');
+    if (d.topPlayed && d.topPlayed.length) {
+      topList.innerHTML = d.topPlayed.map((v, i) => {
+        const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+        return `<div class="top-item">
+          <span class="top-rank ${rankClass}">${i+1}</span>
+          <img class="top-img" src="https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg" alt="" loading="lazy">
+          <div class="top-info"><h4>${v.title || '—'}</h4></div>
+          <span class="top-plays">${v.playCount}×</span>
+        </div>`;
+      }).join('');
+    } else {
+      topList.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:24px">لا توجد بيانات بعد</div>';
+    }
+
+    // History
+    const historyList = document.getElementById('historyList');
+    if (d.history && d.history.length) {
+      historyList.innerHTML = d.history.slice(0, 15).map(h => {
+        return `<div class="history-item">
+          <span class="history-time">${timeAgo(h.playedAt)}</span>
+          <span class="history-title">${h.title || '—'}</span>
+        </div>`;
+      }).join('');
+    } else {
+      historyList.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:24px">لا يوجد سجل بعد</div>';
+    }
+
+  } catch (e) {
+    console.error('Refresh failed:', e);
+  }
+}
+
+// Initial load + polling
+refresh();
+setInterval(refresh, 5000);
+
+// SSE for real-time updates
+if (typeof EventSource !== 'undefined') {
+  const sse = new EventSource('/api/sse');
+  sse.onmessage = () => refresh();
+  sse.onerror = () => { setTimeout(() => { sse.close(); }, 5000); };
+}
+</script>
+</body>
+</html>

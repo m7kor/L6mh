@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
+import { timingSafeEqual } from 'node:crypto';
 import { createLogger } from './logger.js';
 import { loadPlays, getPlayHistory } from './stats.js';
 import { getVideos } from '../services/youtube.js';
@@ -21,7 +22,15 @@ const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || '';
 function checkAuth(req, res) {
   if (!DASHBOARD_TOKEN) return false;
   const auth = req.headers['authorization'] || '';
-  if (auth === `Bearer ${DASHBOARD_TOKEN}`) return true;
+  const expected = `Bearer ${DASHBOARD_TOKEN}`;
+  if (auth.length !== expected.length) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Unauthorized' }));
+    return false;
+  }
+  const a = Buffer.from(auth);
+  const b = Buffer.from(expected);
+  if (timingSafeEqual(a, b)) return true;
   res.writeHead(401, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: 'Unauthorized' }));
   return false;
@@ -109,6 +118,58 @@ async function getApiData() {
   };
 }
 
+/** Public data for the live page — no auth required. */
+async function getPublicData() {
+  const sessions = getAllSessionsFn ? getAllSessionsFn() : [];
+  const plays = await loadPlays();
+  const videos = await getVideos();
+
+  let totalPlays = 0;
+  for (const key in plays) {
+    totalPlays += plays[key].playCount || plays[key].count || 0;
+  }
+
+  const sorted = Object.entries(plays)
+    .sort((a, b) => (b[1].playCount || b[1].count || 0) - (a[1].playCount || a[1].count || 0))
+    .slice(0, 10);
+
+  const activeSession = sessions.find(s => s.title) || sessions[0] || null;
+
+  return {
+    nowPlaying: activeSession ? {
+      title: activeSession.title,
+      videoId: activeSession.guildId ? (getSessionInfoFn?.(activeSession.guildId)?.current?.videoId || null) : null,
+      mode: activeSession.mode,
+      elapsed: activeSession.elapsedSeconds || 0,
+      duration: activeSession.durationSeconds || null,
+      paused: activeSession.paused || false,
+    } : null,
+    guilds: sessions.length,
+    totalPlays,
+    totalVideos: videos.length,
+    uptimeHours: Math.floor(process.uptime() / 3600),
+    topPlayed: sorted.map(([id, data]) => ({
+      id,
+      title: data.title,
+      playCount: data.playCount || data.count || 0,
+    })),
+    history: await getPlayHistory(15),
+  };
+}
+
+/** SSE broadcast — call this when track changes. */
+const sseClients = new Set();
+
+export function broadcastTrackChange() {
+  for (const client of sseClients) {
+    try {
+      client.write('data: update\n\n');
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
 export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnArg, getQueueFnArg) {
   if (!PORT) return;
 
@@ -153,14 +214,40 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         return;
       }
 
-      // All API endpoints require auth
-      if (req.url.startsWith('/api/')) {
+      // All API endpoints require auth (except public + SSE)
+      if (req.url.startsWith('/api/') && req.url !== '/api/public' && req.url !== '/api/sse') {
         if (isRateLimited(ip, req.url)) {
           res.writeHead(429, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Too many requests' }));
           return;
         }
         if (!checkAuth(req, res)) return;
+      }
+
+      // ── Public API (no auth) ──
+      if (req.url === '/api/public') {
+        try {
+          const data = await getPublicData();
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+          res.end(JSON.stringify(data));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to fetch public data' }));
+        }
+        return;
+      }
+
+      // ── SSE (no auth) ──
+      if (req.url === '/api/sse') {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        });
+        sseClients.add(res);
+        req.on('close', () => sseClients.delete(res));
+        return;
       }
 
       if (req.url === '/api/status') {
@@ -283,6 +370,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       // Static files — no auth needed (HTML/JS/CSS only)
       try {
         let filePath = req.url === '/' ? '/index.html' : req.url;
+        if (filePath === '/live') filePath = '/live.html';
         filePath = filePath.replace(/\.\./g, '');
         const fullPath = join(process.cwd(), 'public', filePath);
         

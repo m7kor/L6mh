@@ -353,7 +353,14 @@ describe('database', () => {
 import { recordPlay, getPlayHistory } from './stats.js';
 
 describe('stats (SQLite)', () => {
+  // Clean up test data before each test
+  const cleanup = () => {
+    const db = getDb();
+    db.prepare('DELETE FROM play_counts WHERE video_id LIKE ?').run('test_%');
+  };
+
   it('recordPlay inserts a new video', async () => {
+    cleanup();
     await recordPlay({ videoId: 'test_video_1', title: 'Test Video', guildId: '123' });
     const plays = await loadPlays();
     assert.ok(plays['test_video_1']);
@@ -362,19 +369,22 @@ describe('stats (SQLite)', () => {
   });
 
   it('recordPlay increments play count', async () => {
+    cleanup();
     await recordPlay({ videoId: 'test_video_1', title: 'Test Video' });
     await recordPlay({ videoId: 'test_video_1', title: 'Test Video' });
     const plays = await loadPlays();
-    assert.equal(plays['test_video_1'].playCount, 3);
+    assert.equal(plays['test_video_1'].playCount, 2);
   });
 
   it('recordPlay tracks completion', async () => {
+    cleanup();
     await recordPlay({ videoId: 'test_video_2', title: 'Test 2' }, { completed: true });
     const plays = await loadPlays();
     assert.equal(plays['test_video_2'].lastCompleted, true);
   });
 
   it('recordPlay tracks failures', async () => {
+    cleanup();
     await recordPlay({ videoId: 'test_video_3', title: 'Test 3' }, { failed: true });
     const plays = await loadPlays();
     assert.equal(plays['test_video_3'].failCount, 1);

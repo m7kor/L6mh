@@ -14,7 +14,7 @@ import { createLogger } from './utils/logger.js';
 import { notify } from './utils/webhook.js';
 import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
 import { startHeartbeat } from './utils/heartbeat.js';
-import { startStatusPage } from './utils/status-page.js';
+import { startStatusPage, broadcastTrackChange } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
 import {
   stopAllSessions,
@@ -81,6 +81,7 @@ playerEvents.on('trackChange', ({ video, paused }) => {
   client.user.setActivity(paused ? `⏸️ ${video.title}` : video.title, {
     type: ActivityType.Listening,
   });
+  broadcastTrackChange();
 });
 
 client.once(Events.ClientReady, async (c) => {
@@ -343,17 +344,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-function shutdown(signal) {
-  logger.info(`Received ${signal}, shutting down…`);
-  stopAllSessions();
-  client.destroy();
-  process.exit(0);
-}
-
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGBREAK', () => shutdown('SIGBREAK'));
-
 function redactSecrets(str) {
   return String(str)
     .replace(/Bot\s+[A-Za-z0-9._-]+/g, 'Bot [REDACTED]')
@@ -398,6 +388,7 @@ function gracefulShutdown(signal) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK'));
 
 client.login(config.discordToken).catch(async (err) => {
   logger.error('Login failed:', err.message);

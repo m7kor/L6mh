@@ -1,0 +1,100 @@
+/* ═══════════════════════════════════════════════════════════
+   Waheed Omar Radio — Visual Identity
+   Inspired by: Tech/Gaming vibes, Iraqi warmth, Digital energy
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  /* ── Core Palette ── */
+  --cyan: #00E5FF;
+  --cyan-glow: rgba(0,229,255,0.08);
+  --orange: #FF6B35;
+  --orange-glow: rgba(255,107,53,0.1);
+  --purple: #A855F7;
+  --purple-glow: rgba(168,85,247,0.1);
+  --green: #22C55E;
+  --red: #EF4444;
+  --yellow: #EAB308;
+
+  /* ── Surfaces ── */
+  --bg: #060A13;
+  --surface: #0D1117;
+  --surface-2: #161B22;
+  --surface-3: #21262D;
+  --border: #21262D;
+  --border-hover: #30363D;
+
+  /* ── Text ── */
+  --text: #F0F6FC;
+  --text-1: #F0F6FC;
+  --text-2: #8B949E;
+  --text-3: #484F58;
+
+  /* ── Radius ── */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+
+  /* ── Typography ── */
+  --font-ar: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
+  --font-en: 'Inter', 'Segoe UI', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-ar);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+/* ── Animations ── */
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes glow { 0%,100% { box-shadow: 0 0 20px rgba(0,229,255,0.2); } 50% { box-shadow: 0 0 40px rgba(0,229,255,0.4); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes barPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+/* ── Skeleton ── */
+.skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Toast ── */
+.toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.toast { padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; color: #fff; backdrop-filter: blur(12px); animation: slideUp .3s ease; white-space: nowrap; }
+.toast.success { background: rgba(34,197,94,0.9); }
+.toast.error { background: rgba(239,68,68,0.9); }
+.toast.info { background: rgba(0,229,255,0.9); color: #000; }
+
+/* ── Common Card ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: all .3s ease; }
+.card:hover { border-color: var(--border-hover); }
+.card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-header h2 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.card-body { padding: 24px; }
+
+/* ── Badges ── */
+.badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: var(--font-en); }
+.badge.live { background: rgba(239,68,68,0.15); color: var(--red); animation: glow 2s infinite; }
+.badge.live::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 1.5s infinite; }
+.badge.offline { background: rgba(139,148,158,0.15); color: var(--text-2); }
+.badge.stat { background: var(--cyan-glow); color: var(--cyan); }
+
+/* ── Progress Bar ── */
+.progress { height: 4px; background: var(--surface-3); border-radius: 2px; overflow: hidden; position: relative; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); border-radius: 2px; transition: width 1s linear; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  :root { --radius: 12px; }
+}

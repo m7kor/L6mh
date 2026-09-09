@@ -11,6 +11,9 @@ cookies.txt
 cookies_strip.txt
 helium_cookies.db
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 check_*.py
 debug_*.py
 export_*.py
@@ -22,3 +25,4 @@ test_*.py
 *.ps1
 cdp_export.py
 *.tmp-*
+data/
