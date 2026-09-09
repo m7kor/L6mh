@@ -102,7 +102,7 @@
         .np-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); width: 0%; transition: width 1s linear; border-radius: 3px; box-shadow: 0 0 12px rgba(0,229,255,0.3); }
 
         /* ── Stats Row ── */
-        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
         .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all .3s ease; position: relative; overflow: hidden; }
         .stat::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 60%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent); }
         .stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
@@ -239,6 +239,11 @@
             <div class="stat-icon" style="color:var(--green);background:var(--green-glow)"><i class="fas fa-check-double"></i></div>
             <div class="stat-num" id="sPlayed">0 / 0</div>
             <div class="stat-lbl">مشغل / متبقي</div>
+        </div>
+        <div class="stat">
+            <div class="stat-icon" style="color:var(--purple);background:rgba(168,85,247,0.1)"><i class="fas fa-rotate"></i></div>
+            <div class="stat-num" id="sCycle">#1</div>
+            <div class="stat-lbl">الدورة</div>
         </div>
         <div class="stat">
             <div class="stat-icon" style="color:var(--yellow);background:rgba(234,179,8,0.1)"><i class="fas fa-server"></i></div>
@@ -393,6 +398,7 @@ const refresh = async () => {
         const played = s?.playedCount || 0;
         const total = allVid.length || 0;
         document.getElementById('sPlayed').innerText = `${played} / ${total - played}`;
+        document.getElementById('sCycle').innerText = `#${s?.cycleCount || 1}`;
     } catch {
         document.getElementById('connPill').className = 'hdr-pill off';
         document.getElementById('connText').textContent = 'تعذر الاتصال';

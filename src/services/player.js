@@ -17,10 +17,11 @@ import {
   StreamType,
   NoSubscriberBehavior,
 } from '@discordjs/voice';
-import { getRandomVideo, getLatestVideo, getVideoDetails } from './youtube.js';
+import { getLatestVideo, getVideoDetails, getVideos } from './youtube.js';
 import {
   getSession, sessions, saveState, restoreLastVideo, loadAllState,
   getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
+  popFromQueue, migrateSessionToQueue,
 } from './session.js';
 import { createAudioStream, killProcesses, preValidateVideo } from './streaming.js';
 import { getCookieArgs } from './cookies.js';
@@ -200,6 +201,7 @@ export function getAllSessions() {
       elapsedSeconds: session.current ? getElapsedSeconds(session) : 0,
       durationSeconds: session.current?.durationSeconds || null,
       playedCount: session.playedIds.size,
+      cycleCount: session.cycleCount,
     });
   }
   return result;
@@ -296,6 +298,9 @@ export async function playLatest(guild, channel) {
   session.current = video;
   session.playedIds.add(video.videoId);
 
+  const catalog = await getVideos();
+  migrateSessionToQueue(session, catalog);
+
   await connectAndPlay(guild, channel, video);
   return session.current;
 }
@@ -309,6 +314,9 @@ export async function playVideo(guild, channel, video) {
   session.current = video;
   session.playedIds.add(video.videoId);
 
+  const catalog = await getVideos();
+  migrateSessionToQueue(session, catalog);
+
   await connectAndPlay(guild, channel, video);
   return session.current;
 }
@@ -320,7 +328,16 @@ export async function playRandom(guild, channel) {
   session.mode = 'random';
   session.continuous = true;
 
-  const video = await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds, session.failedIds);
+  const catalog = await getVideos();
+  migrateSessionToQueue(session, catalog);
+
+  const { videoId, newCycle } = popFromQueue(session, catalog);
+  const video = catalog.find(v => v.videoId === videoId);
+  if (!video) {
+    logger.error(`[${guild.id}] Video ${videoId} not found in catalog.`);
+    return null;
+  }
+
   session.current = video;
   session.playedIds.add(video.videoId);
 
@@ -363,8 +380,10 @@ function sleep(ms) {
 async function preloadNextTrack(session) {
   if (session.preloaded) return;
   try {
-    const next = session.queue[0]
-      || await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
+    const nextId = session.queue[0];
+    if (!nextId) return;
+    const catalog = await getVideos();
+    const next = catalog.find(v => v.videoId === nextId);
     if (!next?.url) return;
     const ytDlpArgs = [
       '-f', 'bestaudio/best',
@@ -708,8 +727,13 @@ async function onTrackFinished(guild, channel) {
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
         session.failedIds.add(session.current.videoId);
+        recordPlay(session.current, { failed: true }).catch(() => {});
         await sleep(3000);
+      } else if (session.current?.videoId) {
+        recordPlay(session.current, { completed: true }).catch(() => {});
       }
+    } else if (session.current?.videoId) {
+      recordPlay(session.current, { completed: true }).catch(() => {});
     }
 
     let attempt = 0;
@@ -726,13 +750,19 @@ async function onTrackFinished(guild, channel) {
           }
           session.preloaded = null;
         } else {
-          next = session.queue.shift()
-            || await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
+          const catalog = await getVideos();
+          const { videoId, newCycle } = popFromQueue(session, catalog);
+          next = catalog.find(v => v.videoId === videoId);
+        }
+        if (!next) {
+          logger.warn(`[${guild.id}] No next video found, stopping.`);
+          break;
         }
         const valid = await preValidateVideo(next.url);
         if (!valid) {
           logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
           session.failedIds.add(next.videoId);
+          recordPlay(next, { failed: true }).catch(() => {});
           continue;
         }
         session.current = next;
@@ -776,8 +806,12 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
       return;
     }
 
-    const video = session.current
-      || await getRandomVideo(config.channelId, config.youtubeApiKey, [], session.playedIds);
+    let video = session.current;
+    if (!video) {
+      const catalog = await getVideos();
+      const { videoId } = popFromQueue(session, catalog);
+      video = catalog.find(v => v.videoId === videoId);
+    }
     await connectAndPlay(guild, freshChannel, video, { countPlay: false });
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {

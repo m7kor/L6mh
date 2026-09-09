@@ -1,9 +1,10 @@
 /**
  * Session management — GuildSession class, state persistence, progress tracking.
  * All file I/O is async (non-blocking) to avoid hiccups on slow storage.
+ * Uses atomic writes (write tmp + rename) to prevent corruption on crash.
  */
 
-import { writeFile, readFile, copyFile, access } from 'node:fs/promises';
+import { writeFile, readFile, copyFile, access, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
@@ -11,6 +12,16 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('audio');
 const STATE_FILE = join(process.cwd(), 'playback-state.json');
 const PROGRESS_AUTOSAVE_MS = 15_000;
+
+// ---------------------------------------------------------------------------
+// Atomic write helper — prevents corrupt state on crash/power-loss
+// ---------------------------------------------------------------------------
+
+async function atomicWriteJson(path, data) {
+  const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
+  await writeFile(tmp, JSON.stringify(data, null, 2));
+  await rename(tmp, path);
+}
 
 export class GuildSession {
   constructor(guildId) {
@@ -42,6 +53,8 @@ export class GuildSession {
     this.preloaded = null;
     this.volumeChanging = false;
     this.stallTimeout = null;
+    this.cycleCount = 0;
+    this.cycleStartedAt = null;
   }
 }
 
@@ -95,8 +108,11 @@ export async function saveState(session) {
       mode: session.mode,
       continuous: session.continuous,
       volume: session.volume,
+      queue: session.queue,
       playedIds: [...session.playedIds],
       failedIds: [...session.failedIds],
+      cycleCount: session.cycleCount,
+      cycleStartedAt: session.cycleStartedAt,
       savedAt: new Date().toISOString(),
     };
     const now = Date.now();
@@ -106,7 +122,7 @@ export async function saveState(session) {
       }
       lastBackupAt = now;
     }
-    await writeFile(STATE_FILE, JSON.stringify(all, null, 2));
+    await atomicWriteJson(STATE_FILE, all);
   } catch (err) {
     logger.error('Failed to save state:', err.message);
   }
@@ -120,6 +136,9 @@ export async function restoreLastVideo(guildId) {
   session.volume = saved.volume ?? config.defaultVolume;
   if (Array.isArray(saved.playedIds)) session.playedIds = new Set(saved.playedIds);
   if (Array.isArray(saved.failedIds)) session.failedIds = new Set(saved.failedIds);
+  if (Array.isArray(saved.queue)) session.queue = saved.queue;
+  if (typeof saved.cycleCount === 'number') session.cycleCount = saved.cycleCount;
+  if (saved.cycleStartedAt) session.cycleStartedAt = saved.cycleStartedAt;
   return session.current;
 }
 
@@ -162,4 +181,88 @@ export function trackRecent(session, videoId) {
   if (!videoId) return;
   session.recentIds.push(videoId);
   if (session.recentIds.length > RECENT_HISTORY_SIZE) session.recentIds.shift();
+}
+
+// ---------------------------------------------------------------------------
+// Shuffle-bag queue management
+// ---------------------------------------------------------------------------
+
+const CYCLE_OVERLAP_K = 20;
+
+/** Fisher–Yates shuffle (returns new array). */
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Build a fresh shuffled queue from the catalog, excluding failed IDs.
+ * Guarantees no near-repeat across the cycle boundary by checking
+ * the first K entries against the previous cycle's last K played entries.
+ */
+export function buildNewQueue(catalog, failedIds = [], previousCyclePlayed = []) {
+  const exclude = new Set(failedIds);
+  const pool = catalog.filter(v => !exclude.has(v.videoId));
+  let q = shuffle(pool);
+
+  if (previousCyclePlayed.length > 0 && q.length > 0) {
+    const prevTail = new Set(previousCyclePlayed.slice(-CYCLE_OVERLAP_K));
+    const headSlice = q.slice(0, CYCLE_OVERLAP_K);
+    const overlap = headSlice.filter(id => prevTail.has(id));
+    if (overlap.length > 0) {
+      for (const bad of overlap) {
+        const headIdx = q.indexOf(bad);
+        const midIdx = Math.floor(q.length / 2 + Math.random() * (q.length / 2));
+        [q[headIdx], q[midIdx]] = [q[midIdx], q[headIdx]];
+      }
+    }
+  }
+
+  return q;
+}
+
+/**
+ * Pop the next videoId from the persisted queue. If the queue is empty,
+ * reshuffle the full catalog (cycle boundary).
+ * Returns { videoId, newCycle }.
+ */
+export function popFromQueue(session, catalog) {
+  if (session.queue.length === 0) {
+    const prevPlayed = [...session.playedIds];
+    session.queue = buildNewQueue(catalog, [...session.failedIds], prevPlayed);
+    session.playedIds.clear();
+    session.failedIds.clear();
+    session.cycleCount += 1;
+    session.cycleStartedAt = new Date().toISOString();
+    saveState(session);
+    return { videoId: session.queue.shift(), newCycle: true };
+  }
+  return { videoId: session.queue.shift(), newCycle: false };
+}
+
+/**
+ * Migration: convert old playedIds-based state to new queue-based state.
+ * Run once on first boot after deploy. If session already has a queue,
+ * this is a no-op.
+ */
+export async function migrateSessionToQueue(session, catalog) {
+  if (session.queue.length > 0) return false;
+  if (session.playedIds.size === 0 && catalog.length > 0) {
+    session.queue = buildNewQueue(catalog, [...session.failedIds]);
+    session.cycleCount = 1;
+    session.cycleStartedAt = new Date().toISOString();
+    await saveState(session);
+    return true;
+  }
+  const exclude = new Set([...session.playedIds, ...session.failedIds]);
+  const remaining = catalog.filter(v => !exclude.has(v.videoId));
+  session.queue = shuffle(remaining);
+  session.cycleCount = 1;
+  session.cycleStartedAt = new Date().toISOString();
+  await saveState(session);
+  return true;
 }

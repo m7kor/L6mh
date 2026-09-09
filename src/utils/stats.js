@@ -1,8 +1,9 @@
 /**
  * Lightweight play-count persistence (async, non-blocking).
+ * Unified stats: per-video play count, completion, and failure tracking.
  */
 
-import { writeFile, readFile, copyFile, access } from 'node:fs/promises';
+import { writeFile, readFile, copyFile, access, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createLogger } from './logger.js';
 
@@ -38,6 +39,12 @@ async function loadArray(path) {
   }
 }
 
+async function atomicWriteJson(path, data) {
+  const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
+  await writeFile(tmp, JSON.stringify(data, null, 2));
+  await rename(tmp, path);
+}
+
 async function saveJson(path, data) {
   try {
     const now = Date.now();
@@ -47,7 +54,7 @@ async function saveJson(path, data) {
       }
       lastBackupAt = now;
     }
-    await writeFile(path, JSON.stringify(data, null, 2));
+    await atomicWriteJson(path, data);
   } catch (err) {
     logger.error(`Failed to write ${path}:`, err.message);
   }
@@ -58,29 +65,52 @@ export async function loadPlays() {
   return loadJson(PLAYS_FILE);
 }
 
-/** Bump a video's play count. Called once per track start (see player.js). */
-export async function recordPlay(video) {
+/**
+ * Record a play event. Called once per track start, and optionally
+ * again on completion/failure to update lastCompleted and failCount.
+ *
+ * @param {object} video - { videoId, title, url }
+ * @param {object} [opts]
+ * @param {boolean} [opts.completed] - true if the track played to the end
+ * @param {boolean} [opts.failed] - true if the track failed (broken URL etc.)
+ */
+export async function recordPlay(video, opts = {}) {
   if (!video?.videoId) return;
   const all = await loadJson(PLAYS_FILE);
-  const existing = all[video.videoId] || { title: video.title, url: video.url, count: 0 };
-  all[video.videoId] = {
+  const now = new Date().toISOString();
+  const existing = all[video.videoId] || {
     title: video.title,
     url: video.url,
-    count: existing.count + 1,
-    lastPlayedAt: new Date().toISOString(),
+    playCount: 0,
+    firstPlayedAt: now,
+    lastPlayedAt: now,
+    lastCompleted: false,
+    failCount: 0,
   };
+
+  if (opts.completed !== undefined) existing.lastCompleted = opts.completed;
+  if (opts.failed) existing.failCount = (existing.failCount || 0) + 1;
+  if (!opts.completed && !opts.failed) {
+    existing.playCount = (existing.playCount || 0) + 1;
+    existing.lastPlayedAt = now;
+    if (!existing.firstPlayedAt) existing.firstPlayedAt = now;
+  }
+
+  all[video.videoId] = existing;
   await saveJson(PLAYS_FILE, all);
 
-  // Append to history
-  const history = await loadArray(HISTORY_FILE);
-  history.unshift({
-    videoId: video.videoId,
-    title: video.title,
-    url: video.url,
-    playedAt: new Date().toISOString(),
-  });
-  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
-  await saveJson(HISTORY_FILE, history);
+  // Append to history (only on track start, not on completion/failure updates)
+  if (!opts.completed && !opts.failed) {
+    const history = await loadArray(HISTORY_FILE);
+    history.unshift({
+      videoId: video.videoId,
+      title: video.title,
+      url: video.url,
+      playedAt: now,
+    });
+    if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+    await saveJson(HISTORY_FILE, history);
+  }
 }
 
 /** Get recent play history (last N tracks). */

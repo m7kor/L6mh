@@ -71,11 +71,11 @@ async function getApiData() {
   
   let totalPlays = 0;
   for (const key in plays) {
-    totalPlays += plays[key].count || 0;
+    totalPlays += plays[key].playCount || plays[key].count || 0;
   }
   
   const sorted = Object.entries(plays)
-    .sort((a, b) => (b[1].count || 0) - (a[1].count || 0))
+    .sort((a, b) => (b[1].playCount || b[1].count || 0) - (a[1].playCount || a[1].count || 0))
     .slice(0, 10);
 
   let sessions = [];
@@ -96,7 +96,7 @@ async function getApiData() {
     totalPlays,
     sessions: sessions,
     topPlayed: sorted.map((entry) => {
-      return { id: entry[0], title: entry[1].title, count: entry[1].count, lastPlayedAt: entry[1].lastPlayedAt };
+      return { id: entry[0], title: entry[1].title, playCount: entry[1].playCount || entry[1].count || 0, lastPlayedAt: entry[1].lastPlayedAt };
     }),
     history: getPlayHistory(15),
     errors: errorLog.slice(0, 20),

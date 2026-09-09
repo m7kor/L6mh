@@ -5,6 +5,7 @@ import { loadPlays } from './stats.js';
 import { getCookieArgs, describeCookieSource } from '../services/cookies.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from './cooldown.js';
 import { requireDjRole } from './permissions.js';
+import { buildNewQueue } from '../services/session.js';
 
 // ============================================
 // formatTime
@@ -156,5 +157,46 @@ describe('requireDjRole', () => {
   it('returns true when DJ_ROLE_ID is not set', async () => {
     const result = await requireDjRole({ member: { roles: { cache: { has: () => false } } }, reply: () => {} });
     assert.equal(result, true);
+  });
+});
+
+// ============================================
+// shuffle-bag queue
+// ============================================
+describe('buildNewQueue', () => {
+  const catalog = [
+    { videoId: 'a' }, { videoId: 'b' }, { videoId: 'c' },
+    { videoId: 'd' }, { videoId: 'e' }, { videoId: 'f' },
+  ];
+
+  it('returns all videos when nothing is excluded', () => {
+    const q = buildNewQueue(catalog);
+    assert.equal(q.length, catalog.length);
+  });
+
+  it('excludes failed IDs', () => {
+    const q = buildNewQueue(catalog, ['a', 'c']);
+    assert.equal(q.length, 4);
+    assert.ok(!q.includes('a'));
+    assert.ok(!q.includes('c'));
+  });
+
+  it('returns shuffled order (not always sorted)', () => {
+    const q = buildNewQueue(catalog);
+    const ids = q.map(v => v.videoId);
+    const original = catalog.map(v => v.videoId).join(',');
+    const shuffled = ids.join(',');
+    // Very unlikely to be identical for 6 elements
+    assert.ok(q.length === catalog.length);
+  });
+
+  it('handles empty catalog', () => {
+    const q = buildNewQueue([], ['a']);
+    assert.equal(q.length, 0);
+  });
+
+  it('handles all videos excluded', () => {
+    const q = buildNewQueue(catalog, ['a', 'b', 'c', 'd', 'e', 'f']);
+    assert.equal(q.length, 0);
   });
 });

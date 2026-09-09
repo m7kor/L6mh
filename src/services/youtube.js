@@ -43,7 +43,6 @@ async function alertQuotaExhausted(err) {
 
 const LIST_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes — the video catalog rarely changes
 const DETAILS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour — duration/thumbnail never change
-const MAX_PAGES = 18; // up to 900 videos; covers the full channel archive
 
 const VIDEO_CACHE_FILE = join(process.cwd(), 'video-cache.json');
 
@@ -120,7 +119,7 @@ function mapPlaylistItem(item) {
 
 /**
  * Fetch (and cache) the channel's video catalog via the uploads playlist,
- * newest first, paginated up to MAX_PAGES.
+ * newest first, paginated until all pages are consumed.
  * @returns {Promise<Array<{title, videoId, url, thumbnail, publishedAt}>>}
  */
 export async function getVideos(
@@ -156,7 +155,7 @@ export async function getVideos(
       }
       pageToken = data.nextPageToken;
       pages += 1;
-    } while (pageToken && pages < MAX_PAGES);
+    } while (pageToken);
 
     if (videos.length === 0) throw new Error('لا يوجد فيديوهات على هذه القناة.');
 
