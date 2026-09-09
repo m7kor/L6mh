@@ -1,29 +1,17 @@
 /**
  * "Now Playing" embed builder — Waheed Omar Radio identity.
  * Cyan/Orange theme with Iraqi personality.
+ *
+ * النصوص مُستوردة من lang.js بدلاً من تعريفها هنا.
  */
 
 import { EmbedBuilder } from 'discord.js';
 import { formatTime } from './format.js';
+import { MODE_LABELS, randomPersonalityLine } from '../lang.js';
 
-const RADIO_CYAN = 0x00E5FF;
+const RADIO_CYAN   = 0x00E5FF;
 const RADIO_ORANGE = 0xFF6B35;
 const PAUSED_COLOR = 0x2B2D31;
-
-const MODE_LABEL = {
-  random: '🎲 عشوائي مستمر',
-  latest: '🆕 آخر إصدار',
-  url: '🎯 طلب خاص',
-  resume: '🔄 استكمال',
-};
-
-const PERSONALITY = [
-  'الآن معكم على الهوا 🎙️',
-  'البث مباشر ahora 📡',
-  'نشتغل بشدة 💪',
-  'waheed Radio live 🔴',
-  'الحياة والكمبيوتر continues 🖥️',
-];
 
 function progressBar(elapsed, duration) {
   if (!duration || duration <= 0) return '🔴 **بث مباشر**';
@@ -35,9 +23,9 @@ function progressBar(elapsed, duration) {
 }
 
 export function buildNowPlayingMessage(video, state) {
-  const modeLabel = MODE_LABEL[state.mode] || '▶️ تشغيل';
+  const modeLabel = MODE_LABELS[state.mode] || '▶️ تشغيل';
   const color = state.paused ? PAUSED_COLOR : RADIO_CYAN;
-  const personality = PERSONALITY[Math.floor(Math.random() * PERSONALITY.length)];
+  const personality = randomPersonalityLine();
 
   const progress = progressBar(state.elapsedSeconds ?? 0, video.durationSeconds);
 

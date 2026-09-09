@@ -28,7 +28,7 @@ import {
   getSessionInfo,
   getAllSessions,
   getQueue,
-} from './services/player.js';
+} from './services/player/index.js';
 import { sessions } from './services/session.js';
 import { closeDb } from './utils/database.js';
 import { migrateJsonToSqlite } from './utils/migration.js';

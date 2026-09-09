@@ -1,5 +1,9 @@
 /**
  * Audio streaming — yt-dlp → ffmpeg → PCM, plus process cleanup and pre-validation.
+ *
+ * الإضافات:
+ *   - Dynamic PoT Provider Switching: يمكن تعريف عدة مزودات في POT_PROVIDER_URLS
+ *   - isLiveStream: يكتشف إذا كان الرابط بثاً مباشراً
  */
 
 import { spawn } from 'node:child_process';
@@ -16,7 +20,39 @@ let consecutiveAuthFails = 0;
 const AUTH_FAIL_THRESHOLD = 3;
 const STDERR_TAIL_BYTES = 2048;
 
+// ---------------------------------------------------------------------------
+// Dynamic PoT Provider Switching
+// ---------------------------------------------------------------------------
+
+/** قائمة مزودات PoT (يمكن تعريف أكثر من مزود عبر POT_PROVIDER_URLS مفصولة بفاصلة) */
+const POT_PROVIDERS = (process.env.POT_PROVIDER_URLS || config.potProviderUrl)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+let activeProviderIdx = 0;
+
+/**
+ * يُرجع عنوان المزود النشط حالياً.
+ * @returns {string}
+ */
+export function getActiveProvider() {
+  return POT_PROVIDERS[activeProviderIdx] || config.potProviderUrl;
+}
+
+/**
+ * ينتقل للمزود التالي في القائمة (دائري).
+ * يُستدعى تلقائياً عند فشل المزود الحالي.
+ */
+export function switchToNextProvider() {
+  if (POT_PROVIDERS.length <= 1) return;
+  activeProviderIdx = (activeProviderIdx + 1) % POT_PROVIDERS.length;
+  logger.warn(`[streaming] Switched to PoT provider #${activeProviderIdx}: ${getActiveProvider()}`);
+  notify('🔄 تبديل مزود', `تم التبديل إلى PoT Provider: \`${getActiveProvider()}\``, 'warn').catch(() => {});
+}
+
 export function getConsecutiveAuthFails() { return consecutiveAuthFails; }
+
 
 export function killProcesses(session) {
   if (session.ffmpegProcess) {
@@ -42,7 +78,7 @@ export async function preValidateVideo(url) {
   return new Promise((resolve) => {
     const args = [
       '--simulate', '--no-warnings', '--no-playlist',
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
+      '--extractor-args', `youtubepot-bgutilhttp:base_url=${getActiveProvider()}`,
       ...getCookieArgs(),
       url,
     ];
@@ -61,23 +97,43 @@ export async function preValidateVideo(url) {
       } else {
         consecutiveAuthFails++;
         if (isPotProviderError(stderrTail)) {
-          notify(
-            '⚠️ PoT غير متاح',
-            `تعذر الاتصال بـ \`${config.potProviderUrl}\``,
-            'error',
-          ).catch(() => {});
+          notify('⚠️ PoT غير متاح', `تعذر الاتصال بـ \`${getActiveProvider()}\``, 'error').catch(() => {});
+          switchToNextProvider(); // ← تبديل تلقائي للمزود التالي
         } else if (consecutiveAuthFails >= AUTH_FAIL_THRESHOLD) {
-          notify(
-            '⚠️ تعذر التحقق',
-            `فشل yt-dlp ${consecutiveAuthFails} مرات متتالية — تحقق من الكوكيز`,
-            'error',
-          ).catch(() => {});
+          notify('⚠️ تعذر التحقق', `فشل yt-dlp ${consecutiveAuthFails} مرات متتالية — تحقق من الكوكيز`, 'error').catch(() => {});
           consecutiveAuthFails = 0;
         }
         resolve(false);
       }
     });
     proc.on('error', () => { clearTimeout(timer); resolve(true); });
+  });
+}
+
+/**
+ * يكتشف ما إذا كان الرابط بثاً مباشراً (Live Stream) باستخدام yt-dlp.
+ * يُرجع true للبث المباشر، false للفيديوهات العادية.
+ * @param {string} url
+ * @returns {Promise<boolean>}
+ */
+export function isLiveStream(url) {
+  return new Promise((resolve) => {
+    const args = [
+      '--print', 'is_live',
+      '--no-warnings', '--no-playlist', '--skip-download',
+      '--extractor-args', `youtubepot-bgutilhttp:base_url=${getActiveProvider()}`,
+      ...getCookieArgs(),
+      url,
+    ];
+    const proc  = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    const timer = setTimeout(() => { proc.kill(); resolve(false); }, 10_000);
+    let output  = '';
+    proc.stdout.on('data', (d) => { output += d.toString(); });
+    proc.on('close', () => {
+      clearTimeout(timer);
+      resolve(output.trim().toLowerCase() === 'true');
+    });
+    proc.on('error', () => { clearTimeout(timer); resolve(false); });
   });
 }
 
@@ -117,7 +173,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       '--no-progress',
       '-o', '-',
       '--no-part',
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
+      '--extractor-args', `youtubepot-bgutilhttp:base_url=${getActiveProvider()}`,
       ...getCookieArgs(),
     ];
 

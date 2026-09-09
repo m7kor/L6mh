@@ -76,6 +76,7 @@ function initTables() {
       minutes_present INTEGER DEFAULT 0,
       sessions_count INTEGER DEFAULT 0,
       opted_out INTEGER DEFAULT 0,
+      points INTEGER DEFAULT 0,
       first_seen_at TEXT,
       last_seen_at TEXT,
       PRIMARY KEY (user_id, guild_id)
@@ -88,6 +89,25 @@ function initTables() {
       earned_at TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, guild_id, badge_id)
     );
+
+    CREATE TABLE IF NOT EXISTS points_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      reason TEXT,
+      delta INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS video_details (
+      video_id TEXT PRIMARY KEY,
+      title TEXT,
+      duration_s INTEGER,
+      thumbnail TEXT,
+      view_count INTEGER,
+      published_at TEXT,
+      fetched_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Migration: add opted_out column if missing (for existing DBs)
@@ -96,6 +116,11 @@ function initTables() {
     if (!cols.some(c => c.name === 'opted_out')) {
       db.exec("ALTER TABLE member_stats ADD COLUMN opted_out INTEGER DEFAULT 0");
       logger.info('Added opted_out column to member_stats');
+    }
+    // Migration: add points column if missing
+    if (!cols.some(c => c.name === 'points')) {
+      db.exec("ALTER TABLE member_stats ADD COLUMN points INTEGER DEFAULT 0");
+      logger.info('Added points column to member_stats');
     }
   } catch {}
 

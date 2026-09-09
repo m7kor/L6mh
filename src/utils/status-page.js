@@ -12,7 +12,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { createLogger } from './logger.js';
 import { loadPlays, getPlayHistory } from './stats.js';
 import { getVideos } from '../services/youtube.js';
-import { getConsecutiveAuthFails } from '../services/streaming.js';
+import { getConsecutiveAuthFails, getActiveProvider } from '../services/streaming.js';
 import { getCookieInfo } from '../services/cookies.js';
 import { getDb } from './database.js';
 import { getLeaderboard } from '../services/community.js';
@@ -290,6 +290,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
             const r = await fetch(process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416', { signal: AbortSignal.timeout(3000) });
             health.pot.ok = r.ok;
             health.pot.status = r.status;
+            health.pot.activeProvider = getActiveProvider();
           } catch {
             health.pot.ok = false;
             health.pot.status = 'unreachable';

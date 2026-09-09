@@ -8,6 +8,9 @@
     "strict": false,
     "esModuleInterop": true,
     "allowJs": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noImplicitReturns": false,
     "baseUrl": ".",
     "paths": {}
   },
