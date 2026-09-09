@@ -285,20 +285,14 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
               resolve();
             });
           });
-          // PoT provider
-          const { default: fetch } = await import('node-fetch').catch(() => ({ default: null }));
-          if (fetch) {
-            try {
-              const r = await fetch(process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416', { timeout: 3000, signal: AbortSignal.timeout(3000) });
-              health.pot.ok = r.ok;
-              health.pot.status = r.status;
-            } catch {
-              health.pot.ok = false;
-              health.pot.status = 'unreachable';
-            }
-          } else {
+          // PoT provider (uses Node 18+ built-in fetch)
+          try {
+            const r = await fetch(process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416', { signal: AbortSignal.timeout(3000) });
+            health.pot.ok = r.ok;
+            health.pot.status = r.status;
+          } catch {
             health.pot.ok = false;
-            health.pot.status = 'node-fetch unavailable';
+            health.pot.status = 'unreachable';
           }
           health.pot.consecutiveFails = getConsecutiveAuthFails();
           // Cookie

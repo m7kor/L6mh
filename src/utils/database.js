@@ -75,6 +75,7 @@ function initTables() {
       guild_id TEXT NOT NULL,
       minutes_present INTEGER DEFAULT 0,
       sessions_count INTEGER DEFAULT 0,
+      opted_out INTEGER DEFAULT 0,
       first_seen_at TEXT,
       last_seen_at TEXT,
       PRIMARY KEY (user_id, guild_id)
@@ -87,5 +88,20 @@ function initTables() {
       earned_at TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, guild_id, badge_id)
     );
-    `);
+  `);
+
+  // Migration: add opted_out column if missing (for existing DBs)
+  try {
+    const cols = db.prepare("PRAGMA table_info(member_stats)").all();
+    if (!cols.some(c => c.name === 'opted_out')) {
+      db.exec("ALTER TABLE member_stats ADD COLUMN opted_out INTEGER DEFAULT 0");
+      logger.info('Added opted_out column to member_stats');
+    }
+  } catch {}
+
+  // Migration: fix any rows with minutes_present = -1 (old broken opt-out)
+  try {
+    const fixed = db.prepare("UPDATE member_stats SET minutes_present = 0, opted_out = 1 WHERE minutes_present = -1").run();
+    if (fixed.changes > 0) logger.info(`Fixed ${fixed.changes} rows with negative minutes_present`);
+  } catch {}
 }

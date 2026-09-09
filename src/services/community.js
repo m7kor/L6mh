@@ -97,14 +97,14 @@ function awardBadge(userId, guildId, badgeId) {
 }
 
 /**
- * Get leaderboard for a guild (top N by minutes).
+ * Get leaderboard for a guild (top N by minutes, excluding opted-out users).
  */
 export function getLeaderboard(guildId, limit = 10) {
   const db = getDb();
   return db.prepare(`
     SELECT user_id, minutes_present, sessions_count, first_seen_at, last_seen_at
     FROM member_stats
-    WHERE guild_id = ?
+    WHERE guild_id = ? AND opted_out = 0 AND minutes_present > 0
     ORDER BY minutes_present DESC
     LIMIT ?
   `).all(guildId, limit);
@@ -129,7 +129,7 @@ export function getUserStats(userId, guildId) {
   const row = db.prepare(`
     SELECT * FROM member_stats WHERE user_id = ? AND guild_id = ?
   `).get(userId, guildId);
-  return row || { user_id: userId, guild_id: guildId, minutes_present: 0, sessions_count: 0 };
+  return row || { user_id: userId, guild_id: guildId, minutes_present: 0, sessions_count: 0, opted_out: 0 };
 }
 
 /**
@@ -137,19 +137,31 @@ export function getUserStats(userId, guildId) {
  */
 export function isOptedOut(userId, guildId) {
   const db = getDb();
-  const row = db.prepare('SELECT 1 FROM member_stats WHERE user_id = ? AND guild_id = ? AND minutes_present < 0').get(userId, guildId);
-  return !!row;
+  const row = db.prepare('SELECT opted_out FROM member_stats WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
+  return row ? row.opted_out === 1 : false;
 }
 
 /**
- * Opt out a user from public leaderboard (set minutes to negative sentinel).
+ * Opt out a user from public leaderboard (preserves minutes_present).
  */
 export function optOut(userId, guildId) {
   const db = getDb();
   db.prepare(`
-    INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, first_seen_at, last_seen_at)
-    VALUES (?, ?, -1, 0, datetime('now'), datetime('now'))
-    ON CONFLICT(user_id, guild_id) DO UPDATE SET minutes_present = -1
+    INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, opted_out, first_seen_at, last_seen_at)
+    VALUES (?, ?, 0, 0, 1, datetime('now'), datetime('now'))
+    ON CONFLICT(user_id, guild_id) DO UPDATE SET opted_out = 1
+  `).run(userId, guildId);
+}
+
+/**
+ * Opt back in (restore visibility on leaderboard).
+ */
+export function optIn(userId, guildId) {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, opted_out, first_seen_at, last_seen_at)
+    VALUES (?, ?, 0, 0, 0, datetime('now'), datetime('now'))
+    ON CONFLICT(user_id, guild_id) DO UPDATE SET opted_out = 0
   `).run(userId, guildId);
 }
 
