@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { formatTime } from './format.js';
 import { loadPlays } from './stats.js';
 import { getCookieArgs, describeCookieSource } from '../services/cookies.js';
+import { isOnCooldown, setCooldown, getRemainingCooldown } from './cooldown.js';
+import { requireDjRole } from './permissions.js';
 
 // ============================================
 // formatTime
@@ -107,5 +109,52 @@ describe('videoId validation', () => {
   it('rejects invalid characters', () => {
     assert.ok(!VIDEO_ID_RE.test('dQw4w9WgXc$'));
     assert.ok(!VIDEO_ID_RE.test('dQw4w9WgXc '));
+  });
+});
+
+// ============================================
+// cooldown
+// ============================================
+describe('cooldown', () => {
+  it('is not on cooldown initially', () => {
+    assert.equal(isOnCooldown('user1', 'cmd1'), false);
+  });
+
+  it('is on cooldown after setCooldown', () => {
+    setCooldown('user2', 'cmd2');
+    assert.equal(isOnCooldown('user2', 'cmd2'), true);
+  });
+
+  it('different users are independent', () => {
+    setCooldown('userA', 'cmd3');
+    assert.equal(isOnCooldown('userA', 'cmd3'), true);
+    assert.equal(isOnCooldown('userB', 'cmd3'), false);
+  });
+
+  it('different commands are independent', () => {
+    setCooldown('userC', 'cmdX');
+    assert.equal(isOnCooldown('userC', 'cmdX'), true);
+    assert.equal(isOnCooldown('userC', 'cmdY'), false);
+  });
+
+  it('getRemainingCooldown returns seconds > 0 when on cooldown', () => {
+    setCooldown('userD', 'cmdR');
+    const remaining = getRemainingCooldown('userD', 'cmdR');
+    assert.ok(remaining > 0);
+    assert.ok(remaining <= 8);
+  });
+
+  it('getRemainingCooldown returns 0 when not on cooldown', () => {
+    assert.equal(getRemainingCooldown('userE', 'cmdZ'), 0);
+  });
+});
+
+// ============================================
+// permissions
+// ============================================
+describe('requireDjRole', () => {
+  it('returns true when DJ_ROLE_ID is not set', async () => {
+    const result = await requireDjRole({ member: { roles: { cache: { has: () => false } } }, reply: () => {} });
+    assert.equal(result, true);
   });
 });
