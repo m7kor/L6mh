@@ -1,28 +1,16 @@
 /**
  * Session management — GuildSession class, state persistence, progress tracking.
- * All file I/O is async (non-blocking) to avoid hiccups on slow storage.
- * Uses atomic writes (write tmp + rename) to prevent corruption on crash.
+ * State is persisted per-guild in SQLite (session_state table) — no race conditions.
+ * better-sqlite3 is synchronous, so atomicity is guaranteed at the DB level.
  */
 
-import { writeFile, readFile, copyFile, access, rename } from 'node:fs/promises';
-import { join } from 'node:path';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { getVideos } from './youtube.js';
+import { getDb } from '../utils/database.js';
 
 const logger = createLogger('audio');
-const STATE_FILE = join(process.cwd(), 'playback-state.json');
 const PROGRESS_AUTOSAVE_MS = 15_000;
-
-// ---------------------------------------------------------------------------
-// Atomic write helper — prevents corrupt state on crash/power-loss
-// ---------------------------------------------------------------------------
-
-async function atomicWriteJson(path, data) {
-  const tmp = `${path}.tmp-${process.pid}-${Date.now()}`;
-  await writeFile(tmp, JSON.stringify(data, null, 2));
-  await rename(tmp, path);
-}
 
 export class GuildSession {
   constructor(guildId) {
@@ -73,38 +61,25 @@ export function getSession(guildId) {
 }
 
 // ---------------------------------------------------------------------------
-// State persistence (async, debounced backups)
+// State persistence — SQLite (per-guild, no race condition)
 // ---------------------------------------------------------------------------
 
-let lastBackupAt = 0;
-const BACKUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-async function fileExists(path) {
-  try { await access(path); return true; } catch { return false; }
-}
-
 export async function loadAllState() {
-  if (!(await fileExists(STATE_FILE))) {
-    if (await fileExists(STATE_FILE + '.bak')) {
-      try { return JSON.parse(await readFile(STATE_FILE + '.bak', 'utf-8')); } catch {}
-    }
-    return {};
+  const db = getDb();
+  const rows = db.prepare('SELECT guild_id, state FROM session_state').all();
+  const result = {};
+  for (const row of rows) {
+    try {
+      result[row.guild_id] = JSON.parse(row.state);
+    } catch {}
   }
-  try {
-    return JSON.parse(await readFile(STATE_FILE, 'utf-8'));
-  } catch (err) {
-    logger.error('Failed to load state file, trying backup:', err.message);
-    if (await fileExists(STATE_FILE + '.bak')) {
-      try { return JSON.parse(await readFile(STATE_FILE + '.bak', 'utf-8')); } catch {}
-    }
-    return {};
-  }
+  return result;
 }
 
 export async function saveState(session) {
   try {
-    const all = await loadAllState();
-    all[session.guildId] = {
+    const db = getDb();
+    const state = {
       current: session.current,
       mode: session.mode,
       continuous: session.continuous,
@@ -116,14 +91,10 @@ export async function saveState(session) {
       cycleStartedAt: session.cycleStartedAt,
       savedAt: new Date().toISOString(),
     };
-    const now = Date.now();
-    if (now - lastBackupAt > BACKUP_INTERVAL_MS) {
-      if (await fileExists(STATE_FILE)) {
-        try { await copyFile(STATE_FILE, STATE_FILE + '.bak'); } catch {}
-      }
-      lastBackupAt = now;
-    }
-    await atomicWriteJson(STATE_FILE, all);
+    db.prepare(`
+      INSERT OR REPLACE INTO session_state (guild_id, state, updated_at)
+      VALUES (?, ?, datetime('now'))
+    `).run(session.guildId, JSON.stringify(state));
   } catch (err) {
     logger.error('Failed to save state:', err.message);
   }

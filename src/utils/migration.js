@@ -1,5 +1,5 @@
 /**
- * One-shot migration: play-counts.json → SQLite.
+ * One-shot migration: JSON files → SQLite.
  * Runs automatically on startup if DB is empty but JSON files exist.
  */
 
@@ -12,6 +12,7 @@ const logger = createLogger('migration');
 
 const PLAYS_FILE = join(process.cwd(), 'play-counts.json');
 const HISTORY_FILE = join(process.cwd(), 'play-history.json');
+const STATE_FILE = join(process.cwd(), 'playback-state.json');
 
 async function fileExists(path) {
   try { await access(path); return true; } catch { return false; }
@@ -90,6 +91,26 @@ export async function migrateJsonToSqlite() {
     }
   }
 
+  // Migrate playback-state.json → session_state table
+  if (await fileExists(STATE_FILE)) {
+    try {
+      const stateData = JSON.parse(await readFile(STATE_FILE, 'utf-8'));
+      const insertState = db.prepare(`
+        INSERT OR REPLACE INTO session_state (guild_id, state, updated_at)
+        VALUES (?, ?, datetime('now'))
+      `);
+      const insertStates = db.transaction((entries) => {
+        for (const [guildId, state] of entries) {
+          insertState.run(guildId, JSON.stringify(state));
+        }
+      });
+      insertStates(Object.entries(stateData));
+      logger.info(`Migrated ${Object.keys(stateData).length} session states.`);
+    } catch (err) {
+      logger.warn('Session state migration failed (non-fatal):', err.message);
+    }
+  }
+
   // Rename old files to .bak
   try {
     await rename(PLAYS_FILE, PLAYS_FILE + '.bak');
@@ -98,6 +119,10 @@ export async function migrateJsonToSqlite() {
   try {
     await rename(HISTORY_FILE, HISTORY_FILE + '.bak');
     logger.info('Renamed play-history.json → play-history.json.bak');
+  } catch {}
+  try {
+    await rename(STATE_FILE, STATE_FILE + '.bak');
+    logger.info('Renamed playback-state.json → playback-state.json.bak');
   } catch {}
 
   return true;

@@ -408,3 +408,64 @@ describe('stats (SQLite)', () => {
     assert.ok(Object.keys(plays).length > 0);
   });
 });
+
+// ============================================
+// session state (SQLite-backed)
+// ============================================
+import { saveState, loadAllState, getSession } from '../services/session.js';
+
+describe('session state (SQLite)', () => {
+  it('saveState and loadAllState round-trip', async () => {
+    const session = getSession('test_guild_999');
+    session.current = { videoId: 'test_vid', title: 'Test Video' };
+    session.mode = 'random';
+    session.volume = 80;
+    session.queue = ['a', 'b', 'c'];
+    session.playedIds = new Set(['x', 'y']);
+    session.failedIds = new Set(['z']);
+    session.cycleCount = 3;
+    session.cycleStartedAt = '2026-01-01T00:00:00Z';
+
+    await saveState(session);
+    const all = await loadAllState();
+    const saved = all['test_guild_999'];
+
+    assert.ok(saved);
+    assert.equal(saved.mode, 'random');
+    assert.equal(saved.volume, 80);
+    assert.deepEqual(saved.queue, ['a', 'b', 'c']);
+    assert.deepEqual(saved.playedIds, ['x', 'y']);
+    assert.deepEqual(saved.failedIds, ['z']);
+    assert.equal(saved.cycleCount, 3);
+    assert.equal(saved.current.videoId, 'test_vid');
+  });
+
+  it('saveState overwrites previous state', async () => {
+    const session = getSession('test_guild_999');
+    session.queue = ['only_one'];
+    session.playedIds = new Set();
+    session.failedIds = new Set();
+    await saveState(session);
+
+    const all = await loadAllState();
+    assert.deepEqual(all['test_guild_999'].queue, ['only_one']);
+  });
+
+  it('different guilds are independent', async () => {
+    const s1 = getSession('test_guild_aaa');
+    s1.queue = ['aaa_1'];
+    s1.playedIds = new Set();
+    s1.failedIds = new Set();
+    await saveState(s1);
+
+    const s2 = getSession('test_guild_bbb');
+    s2.queue = ['bbb_1', 'bbb_2'];
+    s2.playedIds = new Set();
+    s2.failedIds = new Set();
+    await saveState(s2);
+
+    const all = await loadAllState();
+    assert.deepEqual(all['test_guild_aaa'].queue, ['aaa_1']);
+    assert.deepEqual(all['test_guild_bbb'].queue, ['bbb_1', 'bbb_2']);
+  });
+});
