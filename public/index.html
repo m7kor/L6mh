@@ -1,662 +1,442 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WaheedTech | Studio</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --bg: #06060b;
-            --surface: #0e0e16;
-            --surface-2: #16161f;
-            --surface-3: #1e1e2a;
-            --border: rgba(255,255,255,0.04);
-            --border-hover: rgba(255,255,255,0.1);
-            --cyan: #00e5ff;
-            --cyan-glow: rgba(0,229,255,0.15);
-            --purple: #a855f7;
-            --purple-glow: rgba(168,85,247,0.15);
-            --green: #22c55e;
-            --green-glow: rgba(34,197,94,0.15);
-            --red: #ef4444;
-            --yellow: #eab308;
-            --text: #f0f0f5;
-            --text-2: #8888a0;
-            --text-3: #3a3a4a;
-            --radius: 18px;
-            --radius-sm: 12px;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', 'Outfit', sans-serif; }
-        body { background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-        body::before { content: ''; position: fixed; top: -40%; left: -20%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(0,229,255,0.03) 0%, transparent 70%); pointer-events: none; z-index: 0; }
-        body::after { content: ''; position: fixed; bottom: -40%; right: -20%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(168,85,247,0.03) 0%, transparent 70%); pointer-events: none; z-index: 0; }
-        .shell { max-width: 1200px; margin: 0 auto; padding: 32px 28px; position: relative; z-index: 1; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>راديو وحيد عمر — لوحة الإدارة</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    /* ── Login ── */
+    .login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: grid; place-items: center; }
+    .login-overlay.hidden { display: none; }
+    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 48px 40px; width: 380px; max-width: 90vw; text-align: center; position: relative; }
+    .login-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); padding: 1px; background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(168,85,247,0.15)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+    .login-logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, var(--cyan), var(--purple)); display: grid; place-items: center; font-weight: 900; font-size: 28px; color: #000; margin: 0 auto 20px; box-shadow: 0 8px 30px rgba(0,229,255,0.2); }
+    .login-title { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; font-family: var(--font-en); }
+    .login-input { width: 100%; padding: 14px 18px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; font-family: var(--font-en); letter-spacing: 1px; }
+    .login-input:focus { border-color: var(--cyan); }
+    .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--cyan), var(--purple)); border: none; border-radius: var(--radius-sm); color: #000; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 14px; transition: opacity .2s, transform .2s; }
+    .login-btn:hover { opacity: .9; transform: translateY(-1px); }
+    .login-error { color: var(--red); font-size: 13px; margin-top: 12px; min-height: 20px; font-weight: 600; }
 
-        /* ── Login Screen ── */
-        .login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: grid; place-items: center; }
-        .login-overlay.hidden { display: none; }
-        .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 48px 40px; width: 380px; max-width: 90vw; text-align: center; position: relative; }
-        .login-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); padding: 1px; background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(168,85,247,0.15)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
-        .login-logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, var(--cyan), var(--purple)); display: grid; place-items: center; font-weight: 900; font-size: 28px; color: #000; margin: 0 auto 20px; box-shadow: 0 8px 30px rgba(0,229,255,0.2); }
-        .login-title { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
-        .login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; font-family: 'Outfit'; }
-        .login-input { width: 100%; padding: 14px 18px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; font-family: 'Outfit'; letter-spacing: 1px; }
-        .login-input:focus { border-color: var(--cyan); }
-        .login-input::placeholder { color: var(--text-3); letter-spacing: 0; }
-        .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--cyan), var(--purple)); border: none; border-radius: var(--radius-sm); color: #000; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 14px; transition: opacity .2s, transform .2s; }
-        .login-btn:hover { opacity: .9; transform: translateY(-1px); }
-        .login-btn:active { transform: translateY(0); }
-        .login-error { color: var(--red); font-size: 13px; margin-top: 12px; min-height: 20px; font-weight: 600; }
+    /* ── Layout ── */
+    .shell { max-width: 1200px; margin: 0 auto; padding: 32px 28px; position: relative; z-index: 1; }
 
-        /* ── Toast ── */
-        .toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
-        .toast { padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #fff; pointer-events: auto; animation: toastIn .3s ease, toastOut .3s ease 2.7s forwards; backdrop-filter: blur(10px); }
-        .toast.success { background: rgba(34,197,94,0.9); }
-        .toast.error { background: rgba(239,68,68,0.9); }
-        .toast.info { background: rgba(0,229,255,0.9); color: #000; }
-        @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+    /* ── Header ── */
+    .hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .hdr-brand { display: flex; align-items: center; gap: 14px; }
+    .hdr-logo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--cyan), var(--purple)); display: grid; place-items: center; font-weight: 900; font-size: 18px; color: #000; box-shadow: 0 4px 20px rgba(0,229,255,0.2); }
+    .hdr-name h1 { font-size: 18px; font-weight: 900; line-height: 1.2; }
+    .hdr-name p { font-size: 12px; color: var(--text-2); font-family: var(--font-en); font-weight: 600; }
+    .hdr-actions { display: flex; align-items: center; gap: 10px; }
+    .hdr-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 24px; }
+    .hdr-pill.on { color: var(--green); background: rgba(34,197,94,0.1); }
+    .hdr-pill.off { color: var(--red); background: rgba(239,68,68,0.1); }
+    .hdr-pill.warn { color: var(--yellow); background: rgba(234,179,8,0.1); }
+    .hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    .hdr-logout { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: .2s; font-family: var(--font-en); }
+    .hdr-logout:hover { border-color: var(--red); color: var(--red); }
 
-        /* ── Header ── */
-        .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-        .hdr-brand { display: flex; align-items: center; gap: 16px; }
-        .hdr-logo { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--cyan), var(--purple)); display: grid; place-items: center; font-weight: 900; font-size: 22px; color: #000; box-shadow: 0 4px 20px rgba(0,229,255,0.2); }
-        .hdr-name h1 { font-size: 20px; font-weight: 900; line-height: 1.2; letter-spacing: -0.3px; }
-        .hdr-name p { font-size: 12px; color: var(--text-2); font-family: 'Outfit'; font-weight: 500; margin-top: 2px; }
-        .hdr-actions { display: flex; align-items: center; gap: 10px; }
-        .hdr-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 24px; letter-spacing: 0.2px; }
-        .hdr-pill.on { color: var(--green); background: var(--green-glow); box-shadow: 0 0 20px rgba(34,197,94,0.1); }
-        .hdr-pill.off { color: var(--red); background: rgba(239,68,68,0.1); }
-        .hdr-pill.warn { color: var(--yellow); background: rgba(234,179,8,0.1); }
-        .hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
-        .hdr-logout { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: .2s; font-family: 'Outfit'; }
-        .hdr-logout:hover { border-color: var(--red); color: var(--red); }
-        .srv-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
-        .srv-tab { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; font-family: 'Outfit'; display: flex; align-items: center; gap: 6px; }
-        .srv-tab:hover { border-color: var(--cyan); color: var(--cyan); }
-        .srv-tab.active { background: rgba(0,229,255,0.12); border-color: var(--cyan); color: var(--cyan); }
-        .srv-tab .srv-dot { width: 6px; height: 6px; border-radius: 50%; }
-        .srv-tab .srv-dot.on { background: var(--green); }
-        .srv-tab .srv-dot.off { background: var(--red); }
+    /* ── Now Playing Card ── */
+    .np { display: grid; grid-template-columns: 280px 1fr; gap: 28px; margin-bottom: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; animation: slideUp .4s ease; }
+    .np-thumb { position: relative; overflow: hidden; background: var(--surface-2); }
+    .np-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .np-vis { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 3px; height: 28px; align-items: flex-end; }
+    .np-vis span { width: 3px; background: var(--cyan); border-radius: 2px; animation: eq .8s infinite ease-in-out; }
+    .np-vis span:nth-child(1) { animation-delay: 0s; height: 60%; }
+    .np-vis span:nth-child(2) { animation-delay: .12s; height: 40%; }
+    .np-vis span:nth-child(3) { animation-delay: .24s; height: 100%; }
+    .np-vis span:nth-child(4) { animation-delay: .08s; height: 55%; }
+    .np-vis span:nth-child(5) { animation-delay: .18s; height: 70%; }
+    .np-vis span.off { animation-play-state: paused; height: 3px !important; background: var(--text-3); }
+    @keyframes eq { 0%,100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
+    .np-body { padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+    .np-tag { font-size: 12px; font-weight: 700; color: var(--cyan); font-family: var(--font-en); letter-spacing: 0.5px; text-transform: uppercase; }
+    .np-title { font-size: 20px; font-weight: 900; line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .np-bar { display: flex; align-items: center; gap: 12px; font-family: var(--font-en); font-size: 12px; font-weight: 600; color: var(--text-2); }
+    .np-track { flex: 1; height: 5px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+    .np-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); width: 0%; transition: width 1s linear; border-radius: 3px; }
 
-        /* ── Now Playing ── */
-        .np { display: grid; grid-template-columns: 220px 1fr; gap: 0; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--border); margin-bottom: 24px; min-height: 170px; position: relative; }
-        .np::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); padding: 1px; background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(168,85,247,0.1)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
-        .np-thumb { position: relative; overflow: hidden; background: linear-gradient(135deg, #0a1628, #1a0a28); }
-        .np-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.9; }
-        .np-thumb a { display: block; width: 100%; height: 100%; }
-        .np-thumb a:hover img { opacity: 1; }
-        .np-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(168,85,247,0.12)); pointer-events: none; }
-        .np-vis { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 3px; height: 32px; align-items: flex-end; z-index: 2; }
-        .np-vis span { width: 3px; background: var(--green); border-radius: 2px; animation: eq .8s infinite ease-in-out; box-shadow: 0 0 6px rgba(34,197,94,0.4); }
-        .np-vis span:nth-child(1) { animation-delay: 0s; height: 60%; }
-        .np-vis span:nth-child(2) { animation-delay: .12s; height: 40%; }
-        .np-vis span:nth-child(3) { animation-delay: .24s; height: 100%; }
-        .np-vis span:nth-child(4) { animation-delay: .08s; height: 55%; }
-        .np-vis span:nth-child(5) { animation-delay: .18s; height: 70%; }
-        .np-vis span:nth-child(6) { animation-delay: .3s; height: 45%; }
-        .np-vis span:nth-child(7) { animation-delay: .05s; height: 85%; }
-        .np-vis span.off { animation-play-state: paused; height: 3px !important; background: var(--text-3); box-shadow: none; }
-        @keyframes eq { 0%,100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
-        .np-body { padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-        .np-tag { font-size: 12px; font-weight: 700; color: var(--cyan); font-family: 'Outfit'; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
-        .np-title { font-size: 20px; font-weight: 900; line-height: 1.5; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; letter-spacing: -0.2px; }
-        .np-bar-row { display: flex; align-items: center; gap: 12px; font-family: 'Outfit'; font-size: 12px; font-weight: 700; color: var(--text-2); }
-        .np-track { flex: 1; height: 5px; background: var(--surface-3); border-radius: 3px; overflow: hidden; position: relative; }
-        .np-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); width: 0%; transition: width 1s linear; border-radius: 3px; box-shadow: 0 0 12px rgba(0,229,255,0.3); }
+    /* ── Stats Row ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 16px; text-align: center; transition: all .3s; }
+    .stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .stat-icon { font-size: 20px; margin-bottom: 8px; }
+    .stat-num { font-family: var(--font-en); font-size: 24px; font-weight: 900; color: var(--cyan); font-variant-numeric: tabular-nums; }
+    .stat-lbl { font-size: 12px; color: var(--text-2); margin-top: 4px; font-weight: 600; }
 
-        /* ── Stats Row ── */
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-        .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all .3s ease; position: relative; overflow: hidden; }
-        .stat::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 60%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent); }
-        .stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-        .stat-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 18px; margin-bottom: 14px; }
-        .stat-num { font-family: 'Outfit'; font-size: 28px; font-weight: 900; line-height: 1.2; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
-        .stat-lbl { font-size: 12px; color: var(--text-2); margin-top: 6px; font-weight: 600; }
+    /* ── Actions ── */
+    .actions { display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap; }
+    .act-btn { padding: 10px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 8px; font-family: var(--font-ar); }
+    .act-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-glow); }
+    .act-btn:disabled { opacity: .4; cursor: default; }
 
-        /* ── Quick Actions ── */
-        .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-        .act-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 15px; font-weight: 800; color: var(--text); cursor: pointer; transition: all .25s ease; position: relative; overflow: hidden; }
-        .act-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,229,255,0.05), rgba(168,85,247,0.05)); opacity: 0; transition: opacity .25s; }
-        .act-btn:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.1); }
-        .act-btn:hover::before { opacity: 1; }
-        .act-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-        .act-btn i { font-size: 16px; position: relative; z-index: 1; }
-        .act-btn span { position: relative; z-index: 1; }
+    /* ── Servers ── */
+    .srv-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .srv-tab { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; font-family: var(--font-en); display: flex; align-items: center; gap: 6px; }
+    .srv-tab:hover { border-color: var(--cyan); color: var(--cyan); }
+    .srv-tab.active { background: var(--cyan-glow); border-color: var(--cyan); color: var(--cyan); }
+    .srv-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .srv-dot.on { background: var(--green); }
+    .srv-dot.off { background: var(--red); }
 
-        /* ── Video List ── */
-        .vid-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-        .vid-hdr { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .vid-hdr h2 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
-        .vid-hdr h2 i { color: var(--green); font-size: 14px; }
-        .vid-count { font-family: 'Outfit'; font-size: 13px; font-weight: 700; color: var(--text-2); background: var(--surface-2); padding: 5px 14px; border-radius: 10px; }
-        .vid-search { width: 100%; padding: 14px 20px; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-size: 14px; outline: none; font-weight: 500; }
-        .vid-search::placeholder { color: var(--text-3); }
-        .vid-filters { padding: 8px 20px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-        .vid-filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; font-family: 'Outfit'; }
-        .vid-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
-        .vid-filter-btn[aria-pressed="true"] { background: rgba(0,229,255,0.12); border-color: var(--cyan); color: var(--cyan); }
-        .vid-list { max-height: 500px; overflow-y: auto; }
-        .vid-list::-webkit-scrollbar { width: 5px; }
-        .vid-list::-webkit-scrollbar-track { background: transparent; }
-        .vid-list::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
-        .vid-row { display: flex; align-items: center; gap: 14px; padding: 12px 20px; cursor: pointer; transition: all .2s ease; border-bottom: 1px solid var(--border); }
-        .vid-row:last-child { border-bottom: none; }
-        .vid-row:hover { background: rgba(0,229,255,0.03); }
-        .vid-row:active { background: rgba(0,229,255,0.06); }
-        .vid-num { font-family: 'Outfit'; font-size: 12px; font-weight: 700; color: var(--text-3); width: 28px; text-align: center; flex-shrink: 0; }
-        .vid-img { width: 84px; height: 47px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
-        .vid-text { flex: 1; min-width: 0; }
-        .vid-text h4 { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
-        .vid-text .vid-date { font-size: 11px; color: var(--text-3); font-family: 'Outfit'; font-weight: 500; margin-top: 2px; }
-        .vid-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
-        .vid-badge.watched { background: rgba(34,197,94,0.15); color: var(--green); }
-        .vid-badge.queue { background: rgba(0,229,255,0.12); color: var(--cyan); margin-left: 4px; }
-        .vid-play-icon { width: 34px; height: 34px; border-radius: 50%; background: rgba(34,197,94,0.1); display: grid; place-items: center; color: var(--green); font-size: 12px; flex-shrink: 0; transition: all .25s ease; }
-        .vid-row:hover .vid-play-icon { background: var(--green); color: #000; box-shadow: 0 0 16px rgba(34,197,94,0.3); transform: scale(1.1); }
-        .empty { color: var(--text-3); text-align: center; padding: 48px; font-size: 14px; font-weight: 600; }
-        .vid-page { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 0; }
-        .vid-page button { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 16px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
-        .vid-page button:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
-        .vid-page button:disabled { opacity: 0.3; cursor: default; }
-        .vid-page .pg-info { color: var(--text-3); font-size: 12px; font-weight: 600; min-width: 80px; text-align: center; }
-        .err-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
-        .err-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-        .err-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-        .err-hdr h2 i { color: var(--red); }
-        .err-clear { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all .15s; }
-        .err-clear:hover { color: var(--red); background: rgba(239,68,68,0.1); }
-        .err-list { max-height: 200px; overflow-y: auto; }
-        .err-item { padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 12px; display: flex; gap: 12px; align-items: flex-start; }
-        .err-item:last-child { border-bottom: none; }
-        .err-time { color: var(--text-3); font-family: 'Outfit'; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
-        .err-msg { color: var(--red); font-weight: 600; word-break: break-word; }
-        .vid-skel { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
-        .vid-skel .sk-num { width: 28px; height: 14px; }
-        .vid-skel .sk-img { width: 90px; height: 51px; flex-shrink: 0; }
-        .vid-skel .sk-text { flex: 1; }
-        .vid-skel .sk-title { height: 14px; width: 70%; margin-bottom: 6px; }
-        .vid-skel .sk-date { height: 10px; width: 30%; }
+    /* ── Error Log ── */
+    .err-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+    .err-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .err-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .err-hdr h2 i { color: var(--red); }
+    .err-clear { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all .15s; }
+    .err-clear:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+    .err-list { max-height: 200px; overflow-y: auto; }
+    .err-item { padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 12px; display: flex; gap: 12px; }
+    .err-item:last-child { border-bottom: none; }
+    .err-time { color: var(--text-3); font-family: var(--font-en); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .err-msg { color: var(--red); font-weight: 600; word-break: break-word; }
 
-        /* ── Skeleton ── */
-        .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    /* ── Video List ── */
+    .vid-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
+    .vid-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .vid-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .vid-count { font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 700; }
+    .vid-search { width: 100%; padding: 14px 20px; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-size: 14px; outline: none; font-weight: 500; }
+    .vid-search::placeholder { color: var(--text-3); }
+    .vid-filters { padding: 8px 20px 0; display: flex; gap: 8px; }
+    .vid-filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; font-family: var(--font-en); }
+    .vid-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .vid-filter-btn[aria-pressed="true"] { background: var(--cyan-glow); border-color: var(--cyan); color: var(--cyan); }
+    .vid-list { max-height: 500px; overflow-y: auto; }
+    .vid-row { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
+    .vid-row:last-child { border-bottom: none; }
+    .vid-row:hover { background: rgba(0,229,255,0.03); }
+    .vid-num { font-family: var(--font-en); font-size: 12px; font-weight: 700; color: var(--text-3); width: 28px; text-align: center; flex-shrink: 0; }
+    .vid-img { width: 72px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
+    .vid-text { flex: 1; min-width: 0; }
+    .vid-text h4 { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vid-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
+    .vid-badge.watched { background: rgba(34,197,94,0.15); color: var(--green); }
+    .vid-badge.queue { background: var(--cyan-glow); color: var(--cyan); margin-left: 4px; }
+    .vid-play-icon { width: 32px; height: 32px; border-radius: 50%; background: rgba(34,197,94,0.1); display: grid; place-items: center; color: var(--green); font-size: 11px; flex-shrink: 0; transition: all .2s; }
+    .vid-row:hover .vid-play-icon { background: var(--green); color: #000; transform: scale(1.1); }
+    .empty { color: var(--text-3); text-align: center; padding: 48px; font-size: 14px; font-weight: 600; }
+    .vid-page { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; }
+    .vid-page button { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 16px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+    .vid-page button:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
+    .vid-page button:disabled { opacity: .3; cursor: default; }
+    .vid-page .pg-info { color: var(--text-3); font-size: 12px; font-weight: 600; }
 
-        @media (max-width: 900px) {
-            .np { grid-template-columns: 1fr; }
-            .np-thumb { display: none; }
-            .stats, .actions { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 480px) {
-            .shell { padding: 16px 12px; }
-            .stat-num { font-size: 22px; }
-            .vid-img { width: 60px; height: 34px; }
-        }
-    </style>
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .np { grid-template-columns: 1fr; }
+      .np-thumb { max-width: 400px; margin: 0 auto; aspect-ratio: 16/9; }
+    }
+    @media (max-width: 768px) {
+      .shell { padding: 20px 16px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .stat-num { font-size: 20px; }
+    }
+    @media (max-width: 480px) {
+      .shell { padding: 16px 12px; }
+      .hdr { flex-direction: column; gap: 12px; align-items: flex-start; }
+    }
+  </style>
 </head>
 <body>
 
-<!-- Login Screen -->
+<!-- Login -->
 <div class="login-overlay" id="loginOverlay">
-    <div class="login-card">
-        <div class="login-logo">W</div>
-        <div class="login-title">استوديو وحيد تك</div>
-        <div class="login-sub">Bot Control Panel</div>
-        <input type="password" class="login-input" id="loginInput" placeholder="أدخل رمز الدخول..." autocomplete="off">
-        <button class="login-btn" id="loginBtn" onclick="doLogin()">دخول</button>
-        <div class="login-error" id="loginError"></div>
-    </div>
+  <div class="login-card">
+    <div class="login-logo">W</div>
+    <div class="login-title">راديو وحيد عمر</div>
+    <div class="login-sub">Admin Panel</div>
+    <input type="password" class="login-input" id="loginInput" placeholder="أدخل رمز الدخول..." autocomplete="off">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">دخول</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
 </div>
 
-<!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- Dashboard -->
 <div class="shell" id="dashboard" style="display:none">
 
-    <!-- Header -->
-    <header class="hdr">
-        <div class="hdr-brand">
-            <div class="hdr-logo">W</div>
-            <div class="hdr-name">
-                <h1>استوديو وحيد تك</h1>
-                <p>Bot Control Panel</p>
-            </div>
-        </div>
-        <div class="hdr-actions">
-            <div class="hdr-pill on" id="connPill"><div class="hdr-dot"></div><span id="connText">متصل</span></div>
-            <button class="hdr-logout" onclick="doLogout()" aria-label="تسجيل خروج">خروج</button>
-        </div>
-    </header>
-
-    <!-- Server Tabs -->
-    <div class="srv-tabs" id="srvTabs"></div>
-
-    <!-- Now Playing -->
-    <div class="np">
-        <div class="np-thumb">
-            <a id="npLink" href="#" target="_blank" rel="noopener">
-                <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='170'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230a1628'/%3E%3Cstop offset='100%25' stop-color='%231a0a28'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='220' height='170'/%3E%3Ctext x='110' y='90' text-anchor='middle' fill='%23333' font-size='40'%3E♪%3C/text%3E%3C/svg%3E" alt="">
-            </a>
-            <div class="np-vis" id="npVis" aria-hidden="true">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-            </div>
-        </div>
-        <div class="np-body">
-            <div class="np-tag" id="npTag">جاري التحميل...</div>
-            <div class="np-title" id="npTitle" aria-live="polite">—</div>
-            <div class="np-bar-row">
-                <span id="npElapsed">0:00</span>
-                <div class="np-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><div class="np-fill" id="npFill"></div></div>
-                <span id="npDur">0:00</span>
-            </div>
-        </div>
+  <!-- Header -->
+  <header class="hdr">
+    <div class="hdr-brand">
+      <div class="hdr-logo">W</div>
+      <div class="hdr-name">
+        <h1>راديو وحيد عمر</h1>
+        <p>Admin Panel</p>
+      </div>
     </div>
-
-    <!-- Stats -->
-    <div class="stats">
-        <div class="stat">
-            <div class="stat-icon" style="color:var(--cyan);background:var(--cyan-glow)"><i class="fas fa-clock"></i></div>
-            <div class="stat-num" id="sUp">0h 0m</div>
-            <div class="stat-lbl">مدة التشغيل</div>
-        </div>
-        <div class="stat">
-            <div class="stat-icon" style="color:var(--green);background:var(--green-glow)"><i class="fas fa-check-double"></i></div>
-            <div class="stat-num" id="sPlayed">0 / 0</div>
-            <div class="stat-lbl">مشغل / متبقي</div>
-        </div>
-        <div class="stat">
-            <div class="stat-icon" style="color:var(--purple);background:rgba(168,85,247,0.1)"><i class="fas fa-rotate"></i></div>
-            <div class="stat-num" id="sCycle">#1</div>
-            <div class="stat-lbl">الدورة</div>
-        </div>
-        <div class="stat">
-            <div class="stat-icon" style="color:var(--yellow);background:rgba(234,179,8,0.1)"><i class="fas fa-server"></i></div>
-            <div class="stat-num" id="sServer" style="font-size:16px">—</div>
-            <div class="stat-lbl">السيرفر</div>
-        </div>
+    <div class="hdr-actions">
+      <div class="hdr-pill on" id="connPill"><div class="hdr-dot"></div><span id="connText">متصل</span></div>
+      <a href="/live" target="_blank" class="hdr-pill" style="color:var(--cyan);background:var(--cyan-glow);text-decoration:none;font-size:12px"><i class="fas fa-external-link-alt"></i> الصفحة العامة</a>
+      <button class="hdr-logout" onclick="doLogout()">خروج</button>
     </div>
+  </header>
 
-    <!-- Quick Actions -->
-    <div class="actions">
-        <button class="act-btn" id="btnRandom" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> <span>عشوائي</span></button>
-        <button class="act-btn" id="btnResume" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> <span>كمل</span></button>
-        <button class="act-btn" id="btnLatest" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> <span>آخر مقطع</span></button>
-    </div>
+  <!-- Server Tabs -->
+  <div class="srv-tabs" id="srvTabs"></div>
 
-    <!-- Error Log -->
-    <div class="err-section" id="errSection" style="display:none">
-        <div class="err-hdr">
-            <h2><i class="fas fa-triangle-exclamation"></i> سجل الأخطاء</h2>
-            <button class="err-clear" onclick="clearErrors()" aria-label="مسح الأخطاء"><i class="fas fa-xmark"></i></button>
-        </div>
-        <div class="err-list" id="errList"></div>
+  <!-- Now Playing -->
+  <div class="np">
+    <div class="np-thumb">
+      <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='158'%3E%3Crect fill='%230D1117' width='280' height='158'/%3E%3Ctext x='140' y='85' text-anchor='middle' fill='%2330363D' font-size='36'%3E♪%3C/text%3E%3C/svg%3E" alt="">
+      <div class="np-vis" id="npVis"><span></span><span></span><span></span><span></span><span></span></div>
     </div>
+    <div class="np-body">
+      <div class="np-tag" id="npTag">جاري التحميل...</div>
+      <div class="np-title" id="npTitle" aria-live="polite">—</div>
+      <div class="np-bar">
+        <span id="npElapsed">0:00</span>
+        <div class="np-track"><div class="np-fill" id="npFill"></div></div>
+        <span id="npDur">0:00</span>
+      </div>
+    </div>
+  </div>
 
-    <!-- Video List -->
-    <div class="vid-section">
-        <div class="vid-hdr">
-            <h2><i class="fas fa-film"></i> مقاطع القناة</h2>
-            <span class="vid-count" id="vCount">0 مقطع</span>
-        </div>
-        <input type="text" class="vid-search" id="vSearch" placeholder="بحث في المقاطع..." aria-label="بحث في المقاطع">
-        <div class="vid-filters">
-            <button class="vid-filter-btn" id="btnUnplayed" onclick="toggleUnplayed()" aria-pressed="false">لم تُشغَّل بعد</button>
-        </div>
-        <div class="vid-list" id="vList">
-            <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
-            <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
-            <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
-            <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
-            <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
-        </div>
-        <div class="vid-page" id="vPager"></div>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="stat-icon">⏱️</div><div class="stat-num" id="sUp">0h 0m</div><div class="stat-lbl">مدة التشغيل</div></div>
+    <div class="stat"><div class="stat-icon">🎵</div><div class="stat-num" id="sPlayed">0 / 0</div><div class="stat-lbl">شُغّل / لم يشُغَّل</div></div>
+    <div class="stat"><div class="stat-icon">🔄</div><div class="stat-num" id="sCycle">#1</div><div class="stat-lbl">الدورة</div></div>
+    <div class="stat"><div class="stat-icon">📺</div><div class="stat-num" id="sServer" style="font-size:14px">—</div><div class="stat-lbl">السيرفر</div></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="act-btn" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> عشوائي</button>
+    <button class="act-btn" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> كمل</button>
+    <button class="act-btn" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> آخر مقطع</button>
+  </div>
+
+  <!-- Error Log -->
+  <div class="err-section" id="errSection" style="display:none">
+    <div class="err-hdr">
+      <h2><i class="fas fa-triangle-exclamation"></i> سجل الأخطاء</h2>
+      <button class="err-clear" onclick="clearErrors()"><i class="fas fa-xmark"></i></button>
     </div>
+    <div class="err-list" id="errList"></div>
+  </div>
+
+  <!-- Video List -->
+  <div class="vid-section">
+    <div class="vid-hdr">
+      <h2><i class="fas fa-film"></i> مقاطع القناة</h2>
+      <span class="vid-count" id="vCount">0 مقطع</span>
+    </div>
+    <input type="text" class="vid-search" id="vSearch" placeholder="بحث في المقاطع...">
+    <div class="vid-filters">
+      <button class="vid-filter-btn" id="btnUnplayed" onclick="toggleUnplayed()" aria-pressed="false">لم تُشغَّل بعد</button>
+    </div>
+    <div class="vid-list" id="vList">
+      <div class="skeleton" style="height:48px;margin:8px 20px"></div>
+      <div class="skeleton" style="height:48px;margin:8px 20px"></div>
+      <div class="skeleton" style="height:48px;margin:8px 20px"></div>
+    </div>
+    <div class="vid-page" id="vPager"></div>
+  </div>
 
 </div>
 
 <script>
-// ── Toast ──
 const showToast = (msg, type = 'info') => {
-    const c = document.getElementById('toastContainer');
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
-    c.appendChild(t);
-    setTimeout(() => t.remove(), 3200);
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
 };
 
-// ── Auth ──
 const getToken = () => localStorage.getItem('dashboard_token') || '';
 const authFetch = async (url, opts = {}) => {
-    const token = getToken();
-    if (!token) return { ok: false, status: 401, json: () => Promise.resolve({}) };
-    const headers = { ...opts.headers, 'Authorization': `Bearer ${token}` };
-    return fetch(url, { ...opts, headers });
+  const token = getToken();
+  if (!token) return { ok: false, status: 401, json: () => Promise.resolve({}) };
+  return fetch(url, { ...opts, headers: { ...opts.headers, 'Authorization': `Bearer ${token}` } });
 };
 
-// ── Login ──
 const doLogin = async () => {
-    const input = document.getElementById('loginInput');
-    const err = document.getElementById('loginError');
-    const btn = document.getElementById('loginBtn');
-    const token = input.value.trim();
-    if (!token) { err.textContent = 'أدخل الرمز أولاً'; return; }
-    btn.disabled = true; btn.textContent = 'جاري التحقق...'; err.textContent = '';
-    try {
-        const r = await fetch('/api/status', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (r.ok) {
-            localStorage.setItem('dashboard_token', token);
-            document.getElementById('loginOverlay').classList.add('hidden');
-            document.getElementById('dashboard').style.display = '';
-            initDashboard();
-        } else {
-            err.textContent = 'رمز غير صحيح';
-            input.value = '';
-            input.focus();
-        }
-    } catch { err.textContent = 'تعذر الاتصال بالخادم'; }
-    btn.disabled = false; btn.textContent = 'دخول';
+  const input = document.getElementById('loginInput');
+  const err = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  const token = input.value.trim();
+  if (!token) { err.textContent = 'أدخل الرمز أولاً'; return; }
+  btn.disabled = true; btn.textContent = 'جاري التحقق...'; err.textContent = '';
+  try {
+    const r = await fetch('/api/status', { headers: { 'Authorization': `Bearer ${token}` } });
+    if (r.ok) {
+      localStorage.setItem('dashboard_token', token);
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('dashboard').style.display = '';
+      initDashboard();
+    } else { err.textContent = 'رمز غير صحيح'; input.value = ''; input.focus(); }
+  } catch { err.textContent = 'تعذر الاتصال'; }
+  btn.disabled = false; btn.textContent = 'دخول';
 };
 document.getElementById('loginInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+const doLogout = () => { localStorage.removeItem('dashboard_token'); location.reload(); };
+const clearErrors = () => { document.getElementById('errList').innerHTML = ''; document.getElementById('errSection').style.display = 'none'; };
 
-const doLogout = () => {
-    localStorage.removeItem('dashboard_token');
-    location.reload();
-};
-
-const clearErrors = () => {
-    document.getElementById('errList').innerHTML = '';
-    document.getElementById('errSection').style.display = 'none';
-};
-
-// ── Commands ──
 const cmd = async (c, btn) => {
-    if (!c) return;
-    if (btn) { btn.disabled = true; }
-    try {
-        const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: c }) });
-        const d = await r.json();
-        if (r.ok && d.ok) { showToast('تم ✓', 'success'); }
-        else { showToast(d.error || 'حدث خطأ', 'error'); }
-    } catch { showToast('تعذر الاتصال', 'error'); }
-    if (btn) { setTimeout(() => btn.disabled = false, 1000); }
-    refresh();
+  if (!c) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: c }) });
+    const d = await r.json();
+    showToast(r.ok && d.ok ? 'تم ✓' : (d.error || 'حدث خطأ'), r.ok && d.ok ? 'success' : 'error');
+  } catch { showToast('تعذر الاتصال', 'error'); }
+  if (btn) setTimeout(() => btn.disabled = false, 1000);
+  refresh();
 };
 
-// ── YouTube Thumbnail ──
+const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60); return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`; };
+
 let curVid = null;
-const npEmbImg = document.getElementById('npEmbImg');
-const npLink = document.getElementById('npLink');
 const npImg = document.getElementById('npImg');
-const setEmb = id => {
-    if (!id) { npImg.src = npImg.dataset.default || npImg.src; npLink.href = '#'; curVid = null; return; }
-    if (curVid === id) return;
-    curVid = id;
-    npImg.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`;
-    npLink.href = `https://youtube.com/watch?v=${encodeURIComponent(id)}`;
-};
-const clearEmb = () => { curVid = null; };
+const setEmb = id => { if (!id) { npImg.src = npImg.dataset.default || npImg.src; curVid = null; return; } if (curVid === id) return; curVid = id; npImg.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`; };
 
-// ── Status ──
 let statusInterval = null;
 let selectedGuild = null;
 const refresh = async () => {
-    try {
-        const r = await authFetch('/api/status');
-        if (r.status === 401) { doLogout(); return; }
-        if (!r.ok) return;
-        const d = await r.json();
-        const allSessions = d.sessions || [];
+  try {
+    const r = await authFetch('/api/status');
+    if (r.status === 401) { doLogout(); return; }
+    if (!r.ok) return;
+    const d = await r.json();
+    const allSessions = d.sessions || [];
 
-        // Render server tabs
-        const srvTabs = document.getElementById('srvTabs');
-        if (allSessions.length > 1) {
-            srvTabs.innerHTML = '';
-            allSessions.forEach(ses => {
-                const btn = document.createElement('button');
-                btn.className = 'srv-tab' + (selectedGuild === ses.guildId ? ' active' : '');
-                const dot = document.createElement('span');
-                dot.className = 'srv-dot ' + (ses.title ? 'on' : 'off');
-                btn.appendChild(dot);
-                btn.appendChild(document.createTextNode(ses.guildName || ses.guildId));
-                btn.onclick = () => { selectedGuild = ses.guildId; refresh(); };
-                srvTabs.appendChild(btn);
-            });
-        } else {
-            srvTabs.innerHTML = '';
-        }
+    // Server tabs
+    const srvTabs = document.getElementById('srvTabs');
+    if (allSessions.length > 1) {
+      srvTabs.innerHTML = '';
+      allSessions.forEach(ses => {
+        const btn = document.createElement('button');
+        btn.className = 'srv-tab' + (selectedGuild === ses.guildId ? ' active' : '');
+        const dot = document.createElement('span');
+        dot.className = 'srv-dot ' + (ses.title ? 'on' : 'off');
+        btn.append(dot, document.createTextNode(ses.guildName || ses.guildId));
+        btn.onclick = () => { selectedGuild = ses.guildId; refresh(); };
+        srvTabs.appendChild(btn);
+      });
+    } else { srvTabs.innerHTML = ''; }
 
-        // Find selected session
-        const s = selectedGuild ? allSessions.find(ses => ses.guildId === selectedGuild) : allSessions[0];
-        const pill = document.getElementById('connPill');
-        const txt = document.getElementById('connText');
+    const s = selectedGuild ? allSessions.find(ses => ses.guildId === selectedGuild) : allSessions[0];
+    const pill = document.getElementById('connPill');
+    const txt = document.getElementById('connText');
 
-        document.getElementById('sUp').innerText = `${Math.floor(d.uptime / 3600)}h ${Math.floor((d.uptime % 3600) / 60)}m`;
+    document.getElementById('sUp').innerText = `${Math.floor(d.uptime/3600)}h ${Math.floor((d.uptime%3600)/60)}m`;
 
-        if (s && s.title) {
-            pill.className = 'hdr-pill on';
-            txt.textContent = s.guildName || 'متصل';
-            document.getElementById('npTitle').innerText = s.title;
-            const mode = s.mode === 'random' ? 'عشوائي مستمر' : s.mode === 'latest' ? 'أحدث مقطع' : s.mode === 'resume' ? 'استكمال' : 'تشغيل';
-            document.getElementById('npTag').innerText = `📻 ${mode} • الصوت: ${s.volume}%`;
-            const el = s.elapsedSeconds || 0, dur = s.durationSeconds || 0;
-            document.getElementById('npElapsed').innerText = fmt(el);
-            document.getElementById('npDur').innerText = dur ? fmt(dur) : 'لايف';
-            document.getElementById('npFill').style.width = dur ? `${Math.min(100, el / dur * 100)}%` : '100%';
-            if (s.videoId) setEmb(s.videoId); else clearEmb();
-            document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
-        } else {
-            pill.className = 'hdr-pill warn';
-            txt.textContent = 'لا يوجد بث';
-            document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
-            document.getElementById('npTag').innerText = '—';
-            document.getElementById('npElapsed').innerText = '0:00';
-            document.getElementById('npDur').innerText = '0:00';
-            document.getElementById('npFill').style.width = '0%';
-            clearEmb();
-            document.querySelectorAll('.np-vis span').forEach(b => b.classList.add('off'));
-        }
-
-        document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';
-        const played = s?.playedCount || 0;
-        const total = allVid.length || 0;
-        document.getElementById('sPlayed').innerText = `${played} / ${total - played}`;
-        document.getElementById('sCycle').innerText = `#${s?.cycleCount || 1}`;
-
-        // Render errors
-        const errList = document.getElementById('errList');
-        const errSection = document.getElementById('errSection');
-        const errors = d.errors || [];
-        if (errors.length) {
-            errSection.style.display = '';
-            errList.innerHTML = '';
-            errors.forEach(e => {
-                const row = document.createElement('div');
-                row.className = 'err-item';
-                const time = document.createElement('span');
-                time.className = 'err-time';
-                time.textContent = new Date(e.time).toLocaleTimeString('ar-SA');
-                const msg = document.createElement('span');
-                msg.className = 'err-msg';
-                msg.textContent = e.message;
-                row.append(time, msg);
-                errList.appendChild(row);
-            });
-        } else {
-            errSection.style.display = 'none';
-        }
-    } catch {
-        document.getElementById('connPill').className = 'hdr-pill off';
-        document.getElementById('connText').textContent = 'تعذر الاتصال';
+    if (s && s.title) {
+      pill.className = 'hdr-pill on'; txt.textContent = s.guildName || 'متصل';
+      document.getElementById('npTitle').innerText = s.title;
+      const mode = s.mode === 'random' ? 'عشوائي مستمر' : s.mode === 'latest' ? 'آخر مقطع' : 'استكمال';
+      document.getElementById('npTag').innerText = `📻 ${mode}`;
+      const el = s.elapsedSeconds || 0, dur = s.durationSeconds || 0;
+      document.getElementById('npElapsed').innerText = fmt(el);
+      document.getElementById('npDur').innerText = dur ? fmt(dur) : 'لايف';
+      document.getElementById('npFill').style.width = dur ? `${Math.min(100, el/dur*100)}%` : '100%';
+      if (s.videoId) setEmb(s.videoId); else { curVid = null; }
+      document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
+    } else {
+      pill.className = 'hdr-pill warn'; txt.textContent = 'لا يوجد بث';
+      document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
+      document.getElementById('npTag').innerText = '—';
+      document.getElementById('npElapsed').innerText = '0:00';
+      document.getElementById('npDur').innerText = '0:00';
+      document.getElementById('npFill').style.width = '0%';
+      curVid = null;
+      document.querySelectorAll('.np-vis span').forEach(b => b.classList.add('off'));
     }
+
+    document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';
+    const played = s?.playedCount || 0;
+    document.getElementById('sPlayed').innerText = `${played} / ${(allVid.length || 0) - played}`;
+    document.getElementById('sCycle').innerText = `#${s?.cycleCount || 1}`;
+
+    // Errors
+    const errList = document.getElementById('errList');
+    const errSection = document.getElementById('errSection');
+    const errors = d.errors || [];
+    if (errors.length) {
+      errSection.style.display = '';
+      errList.innerHTML = '';
+      errors.forEach(e => {
+        const row = document.createElement('div'); row.className = 'err-item';
+        const time = document.createElement('span'); time.className = 'err-time'; time.textContent = new Date(e.time).toLocaleTimeString('ar-SA');
+        const msg = document.createElement('span'); msg.className = 'err-msg'; msg.textContent = e.message;
+        row.append(time, msg); errList.appendChild(row);
+      });
+    } else { errSection.style.display = 'none'; }
+  } catch {
+    document.getElementById('connPill').className = 'hdr-pill off';
+    document.getElementById('connText').textContent = 'تعذر الاتصال';
+  }
 };
 
-// ── Visibility-aware polling ──
-let pollActive = true;
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { pollActive = false; if (statusInterval) clearInterval(statusInterval); }
-    else { pollActive = true; statusInterval = setInterval(refresh, 2000); refresh(); }
-});
-
-// ── Videos (debounced search + pagination) ──
-let allVid = [];
-let filteredVid = [];
-let vidPage = 1;
+let allVid = [], filteredVid = [], vidPage = 1;
 const VID_PER_PAGE = 50;
-const vList = document.getElementById('vList');
-const vSearch = document.getElementById('vSearch');
-const vCount = document.getElementById('vCount');
-const vPager = document.getElementById('vPager');
-let searchTimer = null;
+const vList = document.getElementById('vList'), vSearch = document.getElementById('vSearch'), vCount = document.getElementById('vCount'), vPager = document.getElementById('vPager');
 let showUnplayedOnly = false;
-
-const toggleUnplayed = () => {
-    showUnplayedOnly = !showUnplayedOnly;
-    const btn = document.getElementById('btnUnplayed');
-    btn.setAttribute('aria-pressed', showUnplayedOnly);
-    vidPage = 1;
-    render(vSearch.value);
-};
+const toggleUnplayed = () => { showUnplayedOnly = !showUnplayedOnly; document.getElementById('btnUnplayed').setAttribute('aria-pressed', showUnplayedOnly); vidPage = 1; render(vSearch.value); };
 
 const render = q => {
-    const lower = (q || '').toLowerCase();
-    let list = lower ? allVid.filter(v => (v.title || '').toLowerCase().includes(lower)) : [...allVid];
-    if (showUnplayedOnly) list = list.filter(v => !v.playCount);
-    filteredVid = list;
-    const totalPages = Math.max(1, Math.ceil(filteredVid.length / VID_PER_PAGE));
-    if (vidPage > totalPages) vidPage = totalPages;
-    const start = (vidPage - 1) * VID_PER_PAGE;
-    const page = filteredVid.slice(start, start + VID_PER_PAGE);
-    const total = allVid.length;
-    const shown = filteredVid.length;
-    vCount.textContent = shown === total ? `${total} مقطع` : `${shown} / ${total} مقطع`;
-    vList.innerHTML = '';
-    if (!page.length) {
-        const d = document.createElement('div');
-        d.className = 'empty';
-        d.textContent = lower ? 'لا توجد نتائج' : 'لا توجد مقاطع';
-        vList.appendChild(d);
-        vPager.innerHTML = '';
-        return;
-    }
-    page.forEach((v, i) => {
-        const row = document.createElement('div');
-        row.className = 'vid-row';
-        row.tabIndex = 0;
-        row.setAttribute('role', 'button');
-        row.setAttribute('aria-label', `تشغيل ${v.title || ''}`);
-        row.onclick = () => cmd(`play ${v.videoId}`);
-        row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cmd(`play ${v.videoId}`); } };
-
-        const num = document.createElement('span');
-        num.className = 'vid-num';
-        num.textContent = start + i + 1;
-
-        const img = document.createElement('img');
-        img.className = 'vid-img';
-        img.src = v.thumbnail || `https://i.ytimg.com/vi/${encodeURIComponent(v.videoId)}/mqdefault.jpg`;
-        img.loading = 'lazy';
-        img.alt = '';
-
-        const text = document.createElement('div');
-        text.className = 'vid-text';
-        const h4 = document.createElement('h4');
-        h4.textContent = v.title || '—';
-        text.appendChild(h4);
-        if (v.publishedAt) {
-            const date = document.createElement('div');
-            date.className = 'vid-date';
-            date.textContent = new Date(v.publishedAt).toLocaleDateString('ar-SA');
-            text.appendChild(date);
-        }
-        if (v.playCount > 0) {
-            const badge = document.createElement('div');
-            badge.className = 'vid-badge watched';
-            badge.textContent = 'تمت المشاهدة';
-            badge.title = `تم التشغيل ${v.playCount} مرة`;
-            text.appendChild(badge);
-        }
-        if (v.queuePos > 0) {
-            const qbadge = document.createElement('div');
-            qbadge.className = 'vid-badge queue';
-            qbadge.textContent = `#${v.queuePos}`;
-            qbadge.title = `رقم ${v.queuePos} في القائمة`;
-            text.appendChild(qbadge);
-        }
-
-        const play = document.createElement('div');
-        play.className = 'vid-play-icon';
-        play.setAttribute('aria-hidden', 'true');
-        const icon = document.createElement('i');
-        icon.className = 'fas fa-play';
-        play.appendChild(icon);
-
-        row.append(num, img, text, play);
-        vList.appendChild(row);
-    });
-
-    if (totalPages > 1) {
-        vPager.innerHTML = '';
-        const prev = document.createElement('button');
-        prev.textContent = 'السابق';
-        prev.disabled = vidPage <= 1;
-        prev.onclick = () => { vidPage--; render(vSearch.value); };
-        const info = document.createElement('span');
-        info.className = 'pg-info';
-        info.textContent = `${vidPage} / ${totalPages}`;
-        const next = document.createElement('button');
-        next.textContent = 'التالي';
-        next.disabled = vidPage >= totalPages;
-        next.onclick = () => { vidPage++; render(vSearch.value); };
-        vPager.append(prev, info, next);
-    } else {
-        vPager.innerHTML = '';
-    }
+  const lower = (q || '').toLowerCase();
+  let list = lower ? allVid.filter(v => (v.title||'').toLowerCase().includes(lower)) : [...allVid];
+  if (showUnplayedOnly) list = list.filter(v => !v.playCount);
+  filteredVid = list;
+  const totalPages = Math.max(1, Math.ceil(filteredVid.length / VID_PER_PAGE));
+  if (vidPage > totalPages) vidPage = totalPages;
+  const start = (vidPage - 1) * VID_PER_PAGE;
+  const page = filteredVid.slice(start, start + VID_PER_PAGE);
+  vCount.textContent = filteredVid.length === allVid.length ? `${allVid.length} مقطع` : `${filteredVid.length} / ${allVid.length} مقطع`;
+  vList.innerHTML = '';
+  if (!page.length) { vList.innerHTML = `<div class="empty">${lower ? 'لا توجد نتائج' : 'لا توجد مقاطع'}</div>`; vPager.innerHTML = ''; return; }
+  page.forEach((v, i) => {
+    const row = document.createElement('div'); row.className = 'vid-row'; row.tabIndex = 0;
+    row.onclick = () => cmd(`play ${v.videoId}`);
+    row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cmd(`play ${v.videoId}`); } };
+    const num = document.createElement('span'); num.className = 'vid-num'; num.textContent = start + i + 1;
+    const img = document.createElement('img'); img.className = 'vid-img'; img.src = v.thumbnail || `https://i.ytimg.com/vi/${encodeURIComponent(v.videoId)}/mqdefault.jpg`; img.loading = 'lazy';
+    const text = document.createElement('div'); text.className = 'vid-text';
+    const h4 = document.createElement('h4'); h4.textContent = v.title || '—'; text.appendChild(h4);
+    if (v.playCount > 0) { const b = document.createElement('div'); b.className = 'vid-badge watched'; b.textContent = 'تمت المشاهدة'; text.appendChild(b); }
+    if (v.queuePos > 0) { const b = document.createElement('div'); b.className = 'vid-badge queue'; b.textContent = `#${v.queuePos}`; text.appendChild(b); }
+    const play = document.createElement('div'); play.className = 'vid-play-icon'; play.innerHTML = '<i class="fas fa-play"></i>';
+    row.append(num, img, text, play); vList.appendChild(row);
+  });
+  if (totalPages > 1) {
+    vPager.innerHTML = '';
+    const prev = document.createElement('button'); prev.textContent = 'السابق'; prev.disabled = vidPage <= 1; prev.onclick = () => { vidPage--; render(vSearch.value); };
+    const info = document.createElement('span'); info.className = 'pg-info'; info.textContent = `${vidPage} / ${totalPages}`;
+    const next = document.createElement('button'); next.textContent = 'التالي'; next.disabled = vidPage >= totalPages; next.onclick = () => { vidPage++; render(vSearch.value); };
+    vPager.append(prev, info, next);
+  } else { vPager.innerHTML = ''; }
 };
 
-vSearch.addEventListener('input', e => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => { vidPage = 1; render(e.target.value); }, 150);
+let searchTimer = null;
+vSearch.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { vidPage = 1; render(vSearch.value); }, 150); });
+
+const initDashboard = async () => {
+  try {
+    const r = await authFetch('/api/videos');
+    if (r.ok) { const d = await r.json(); allVid = d.videos || []; render(); }
+  } catch {}
+  refresh();
+  statusInterval = setInterval(refresh, 2000);
+};
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (statusInterval) clearInterval(statusInterval); }
+  else { statusInterval = setInterval(refresh, 2000); refresh(); }
 });
 
-// ── Init ──
-const initDashboard = () => {
-    refresh();
-    statusInterval = setInterval(refresh, 2000);
-    fetchVid();
-    setInterval(fetchVid, 60000);
-};
-
-const fetchVid = async () => {
-    try {
-        const r = await authFetch('/api/videos');
-        if (r.ok) { const d = await r.json(); allVid = d.videos || []; render(); }
-    } catch {}
-};
-
-// ── Auto-login check ──
-const fmt = s => {
-    if (!s || isNaN(s)) return '0:00';
-    s = Math.max(0, Math.floor(s));
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
-    const mm = h ? String(m).padStart(2, '0') : m;
-    return h ? `${h}:${mm}:${String(ss).padStart(2, '0')}` : `${mm}:${String(ss).padStart(2, '0')}`;
-};
-
-if (getToken()) {
-    authFetch('/api/status').then(r => {
-        if (r.ok) {
-            document.getElementById('loginOverlay').classList.add('hidden');
-            document.getElementById('dashboard').style.display = '';
-            initDashboard();
-        } else {
-            localStorage.removeItem('dashboard_token');
-        }
-    }).catch(() => {});
+// SSE
+if (typeof EventSource !== 'undefined') {
+  const sse = new EventSource('/api/sse');
+  sse.onmessage = () => refresh();
 }
 </script>
 </body>

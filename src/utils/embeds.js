@@ -1,79 +1,62 @@
 /**
- * "Now Playing" embed builder — Clean & Flat Layout (No Fields).
+ * "Now Playing" embed builder — Waheed Omar Radio identity.
+ * Cyan/Orange theme with Iraqi personality.
  */
 
 import { EmbedBuilder } from 'discord.js';
 import { formatTime } from './format.js';
 
-const ROYAL_GOLD = 0xD4AF37; // Classic Gold
-const PAUSED_COLOR = 0x2B2D31; // Invisible/Dark
+const RADIO_CYAN = 0x00E5FF;
+const RADIO_ORANGE = 0xFF6B35;
+const PAUSED_COLOR = 0x2B2D31;
 
 const MODE_LABEL = {
-  random: 'عشوائي مستمر',
-  latest: 'أحدث الإصدارات',
-  url: 'طلب حصري',
-  resume: 'استكمال',
+  random: '🎲 عشوائي مستمر',
+  latest: '🆕 آخر إصدار',
+  url: '🎯 طلب خاص',
+  resume: '🔄 استكمال',
 };
 
-function formatViewCount(viewCount) {
-  if (viewCount == null) return null;
-  if (viewCount >= 1_000_000) return `${(viewCount / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-  if (viewCount >= 1_000) return `${(viewCount / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
-  return String(viewCount);
-}
+const PERSONALITY = [
+  'الآن معكم على الهوا 🎙️',
+  'البث مباشر ahora 📡',
+  'نشتغل بشدة 💪',
+  'waheed Radio live 🔴',
+  'الحياة والكمبيوتر continues 🖥️',
+];
 
-function progressBar(elapsedSeconds, durationSeconds) {
-  if (!durationSeconds || durationSeconds <= 0) {
-    return '🔴 **بث مباشر**';
-  }
-  const ratio = Math.max(0, Math.min(1, elapsedSeconds / durationSeconds));
-  const BAR_LENGTH = 18;
-  const filled = Math.round(ratio * BAR_LENGTH);
-  
-  // Clean flat slider (no markdown code blocks)
-  let bar = '';
-  if (filled === 0) {
-    bar = '🔘' + '▬'.repeat(BAR_LENGTH - 1);
-  } else if (filled >= BAR_LENGTH) {
-    bar = '▬'.repeat(BAR_LENGTH - 1) + '🔘';
-  } else {
-    bar = '▬'.repeat(filled) + '🔘' + '▬'.repeat(BAR_LENGTH - filled - 1);
-  }
-  
-  // Use LRM (Left-to-Right Mark) implicitly by placing English chars carefully 
-  return `**${formatTime(elapsedSeconds)}** ${bar} **${formatTime(durationSeconds)}**`;
+function progressBar(elapsed, duration) {
+  if (!duration || duration <= 0) return '🔴 **بث مباشر**';
+  const ratio = Math.max(0, Math.min(1, elapsed / duration));
+  const BAR = 20;
+  const filled = Math.round(ratio * BAR);
+  const bar = '█'.repeat(filled) + '░'.repeat(BAR - filled);
+  return `\`${formatTime(elapsed)}\` ${bar} \`${formatTime(duration)}\``;
 }
 
 export function buildNowPlayingMessage(video, state) {
-  const modeLabel = MODE_LABEL[state.mode] || 'تشغيل';
-  const color = state.paused ? PAUSED_COLOR : ROYAL_GOLD;
+  const modeLabel = MODE_LABEL[state.mode] || '▶️ تشغيل';
+  const color = state.paused ? PAUSED_COLOR : RADIO_CYAN;
+  const personality = PERSONALITY[Math.floor(Math.random() * PERSONALITY.length)];
 
   const progress = progressBar(state.elapsedSeconds ?? 0, video.durationSeconds);
-  
-  // Build a single, clean line for stats
-  let stats = `🔊 **الصوت:** ${state.volume}%   •   🎛️ **الوضع:** ${modeLabel}`;
-  const views = formatViewCount(video.viewCount);
-  if (views) {
-    stats += `   •   👁️ **المشاهدات:** ${views}`;
-  }
-
-  const description = `${progress}\n\n${stats}`;
 
   const embed = new EmbedBuilder()
     .setColor(color)
     .setAuthor({
-      name: '🎙️ استوديو وحيد تك',
+      name: '🎙️ راديو وحيد عمر',
+      iconURL: 'https://i.ytimg.com/vi/' + (video.videoId || '') + '/mqdefault.jpg',
     })
-    .setTitle(video.title)
+    .setTitle(video.title || '—')
     .setURL(video.url)
-    .setDescription(description)
+    .setDescription(`${progress}\n\n${modeLabel}`)
     .setFooter({
-      text: state.paused ? '⏸️ متوقف مؤقتاً' : 'WaheedTech Radio 24/7',
+      text: state.paused ? '⏸️ متوقف مؤقتاً' : `${personality}`,
     })
     .setTimestamp();
 
   if (video.thumbnail) {
-    embed.setImage(video.thumbnail);
+    embed.setThumbnail(video.thumbnail);
   }
 
   return { embeds: [embed], components: [] };
