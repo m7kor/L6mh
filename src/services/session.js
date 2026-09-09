@@ -218,7 +218,7 @@ function shuffle(arr) {
 export function buildNewQueue(catalog, failedIds = [], previousCyclePlayed = []) {
   const exclude = new Set(failedIds);
   const pool = catalog.filter(v => !exclude.has(v.videoId));
-  let q = shuffle(pool);
+  let q = shuffle(pool).map(v => v.videoId);
 
   if (previousCyclePlayed.length > 0 && q.length > 0) {
     const prevTail = new Set(previousCyclePlayed.slice(-CYCLE_OVERLAP_K));
