@@ -23,19 +23,41 @@
             --red: #ef4444;
             --yellow: #eab308;
             --text: #f0f0f5;
-            --text-2: #5a5a6e;
+            --text-2: #8888a0;
             --text-3: #3a3a4a;
             --radius: 18px;
             --radius-sm: 12px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Tajawal', 'Outfit', sans-serif; }
         body { background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-
-        /* ── Background Glow ── */
         body::before { content: ''; position: fixed; top: -40%; left: -20%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(0,229,255,0.03) 0%, transparent 70%); pointer-events: none; z-index: 0; }
         body::after { content: ''; position: fixed; bottom: -40%; right: -20%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(168,85,247,0.03) 0%, transparent 70%); pointer-events: none; z-index: 0; }
-
         .shell { max-width: 1200px; margin: 0 auto; padding: 32px 28px; position: relative; z-index: 1; }
+
+        /* ── Login Screen ── */
+        .login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: grid; place-items: center; }
+        .login-overlay.hidden { display: none; }
+        .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 48px 40px; width: 380px; max-width: 90vw; text-align: center; position: relative; }
+        .login-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); padding: 1px; background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(168,85,247,0.15)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+        .login-logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, var(--cyan), var(--purple)); display: grid; place-items: center; font-weight: 900; font-size: 28px; color: #000; margin: 0 auto 20px; box-shadow: 0 8px 30px rgba(0,229,255,0.2); }
+        .login-title { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
+        .login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; font-family: 'Outfit'; }
+        .login-input { width: 100%; padding: 14px 18px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; transition: border-color .2s; font-family: 'Outfit'; letter-spacing: 1px; }
+        .login-input:focus { border-color: var(--cyan); }
+        .login-input::placeholder { color: var(--text-3); letter-spacing: 0; }
+        .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--cyan), var(--purple)); border: none; border-radius: var(--radius-sm); color: #000; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 14px; transition: opacity .2s, transform .2s; }
+        .login-btn:hover { opacity: .9; transform: translateY(-1px); }
+        .login-btn:active { transform: translateY(0); }
+        .login-error { color: var(--red); font-size: 13px; margin-top: 12px; min-height: 20px; font-weight: 600; }
+
+        /* ── Toast ── */
+        .toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { padding: 12px 24px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #fff; pointer-events: auto; animation: toastIn .3s ease, toastOut .3s ease 2.7s forwards; backdrop-filter: blur(10px); }
+        .toast.success { background: rgba(34,197,94,0.9); }
+        .toast.error { background: rgba(239,68,68,0.9); }
+        .toast.info { background: rgba(0,229,255,0.9); color: #000; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
 
         /* ── Header ── */
         .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
@@ -47,15 +69,19 @@
         .hdr-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 24px; letter-spacing: 0.2px; }
         .hdr-pill.on { color: var(--green); background: var(--green-glow); box-shadow: 0 0 20px rgba(34,197,94,0.1); }
         .hdr-pill.off { color: var(--red); background: rgba(239,68,68,0.1); }
+        .hdr-pill.warn { color: var(--yellow); background: rgba(234,179,8,0.1); }
         .hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; } 50% { opacity: .5; box-shadow: 0 0 0 4px transparent; } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+        .hdr-logout { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: .2s; font-family: 'Outfit'; }
+        .hdr-logout:hover { border-color: var(--red); color: var(--red); }
 
         /* ── Now Playing ── */
-        .np { display: grid; grid-template-columns: 220px 1fr 300px; gap: 0; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--border); margin-bottom: 24px; min-height: 170px; position: relative; }
+        .np { display: grid; grid-template-columns: 220px 1fr; gap: 0; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--border); margin-bottom: 24px; min-height: 170px; position: relative; }
         .np::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); padding: 1px; background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(168,85,247,0.1)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
-
         .np-thumb { position: relative; overflow: hidden; background: linear-gradient(135deg, #0a1628, #1a0a28); }
         .np-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.9; }
+        .np-thumb a { display: block; width: 100%; height: 100%; }
+        .np-thumb a:hover img { opacity: 1; }
         .np-thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,229,255,0.08), rgba(168,85,247,0.12)); pointer-events: none; }
         .np-vis { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 3px; height: 32px; align-items: flex-end; z-index: 2; }
         .np-vis span { width: 3px; background: var(--green); border-radius: 2px; animation: eq .8s infinite ease-in-out; box-shadow: 0 0 6px rgba(34,197,94,0.4); }
@@ -68,18 +94,12 @@
         .np-vis span:nth-child(7) { animation-delay: .05s; height: 85%; }
         .np-vis span.off { animation-play-state: paused; height: 3px !important; background: var(--text-3); box-shadow: none; }
         @keyframes eq { 0%,100% { transform: scaleY(.25); } 50% { transform: scaleY(1); } }
-
         .np-body { padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
         .np-tag { font-size: 12px; font-weight: 700; color: var(--cyan); font-family: 'Outfit'; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
         .np-title { font-size: 20px; font-weight: 900; line-height: 1.5; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; letter-spacing: -0.2px; }
         .np-bar-row { display: flex; align-items: center; gap: 12px; font-family: 'Outfit'; font-size: 12px; font-weight: 700; color: var(--text-2); }
         .np-track { flex: 1; height: 5px; background: var(--surface-3); border-radius: 3px; overflow: hidden; position: relative; }
         .np-fill { position: absolute; left: 0; top: 0; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); width: 0%; transition: width 1s linear; border-radius: 3px; box-shadow: 0 0 12px rgba(0,229,255,0.3); }
-        .np-skip { width: 38px; height: 38px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; cursor: pointer; color: var(--text-2); font-size: 14px; transition: all .25s ease; flex-shrink: 0; }
-        .np-skip:hover { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 20px rgba(0,229,255,0.3); transform: scale(1.05); }
-
-        .np-embed { background: #000; position: relative; overflow: hidden; }
-        .np-embed img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
         /* ── Stats Row ── */
         .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
@@ -87,7 +107,7 @@
         .stat::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 60%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent); }
         .stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
         .stat-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 18px; margin-bottom: 14px; }
-        .stat-num { font-family: 'Outfit'; font-size: 28px; font-weight: 900; line-height: 1.2; letter-spacing: -0.5px; }
+        .stat-num { font-family: 'Outfit'; font-size: 28px; font-weight: 900; line-height: 1.2; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
         .stat-lbl { font-size: 12px; color: var(--text-2); margin-top: 6px; font-weight: 600; }
 
         /* ── Quick Actions ── */
@@ -96,6 +116,7 @@
         .act-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,229,255,0.05), rgba(168,85,247,0.05)); opacity: 0; transition: opacity .25s; }
         .act-btn:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.1); }
         .act-btn:hover::before { opacity: 1; }
+        .act-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
         .act-btn i { font-size: 16px; position: relative; z-index: 1; }
         .act-btn span { position: relative; z-index: 1; }
 
@@ -111,7 +132,6 @@
         .vid-list::-webkit-scrollbar { width: 5px; }
         .vid-list::-webkit-scrollbar-track { background: transparent; }
         .vid-list::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
-        .vid-list::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
         .vid-row { display: flex; align-items: center; gap: 14px; padding: 12px 20px; cursor: pointer; transition: all .2s ease; border-bottom: 1px solid var(--border); }
         .vid-row:last-child { border-bottom: none; }
         .vid-row:hover { background: rgba(0,229,255,0.03); }
@@ -123,18 +143,43 @@
         .vid-text .vid-date { font-size: 11px; color: var(--text-3); font-family: 'Outfit'; font-weight: 500; margin-top: 2px; }
         .vid-play-icon { width: 34px; height: 34px; border-radius: 50%; background: rgba(34,197,94,0.1); display: grid; place-items: center; color: var(--green); font-size: 12px; flex-shrink: 0; transition: all .25s ease; }
         .vid-row:hover .vid-play-icon { background: var(--green); color: #000; box-shadow: 0 0 16px rgba(34,197,94,0.3); transform: scale(1.1); }
-
         .empty { color: var(--text-3); text-align: center; padding: 48px; font-size: 14px; font-weight: 600; }
+
+        /* ── Skeleton ── */
+        .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
         @media (max-width: 900px) {
             .np { grid-template-columns: 1fr; }
-            .np-thumb, .np-embed { display: none; }
+            .np-thumb { display: none; }
             .stats, .actions { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 480px) {
+            .shell { padding: 16px 12px; }
+            .stat-num { font-size: 22px; }
+            .vid-img { width: 60px; height: 34px; }
         }
     </style>
 </head>
 <body>
-<div class="shell">
+
+<!-- Login Screen -->
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+        <div class="login-logo">W</div>
+        <div class="login-title">استوديو وحيد تك</div>
+        <div class="login-sub">Bot Control Panel</div>
+        <input type="password" class="login-input" id="loginInput" placeholder="أدخل رمز الدخول..." autocomplete="off">
+        <button class="login-btn" id="loginBtn" onclick="doLogin()">دخول</button>
+        <div class="login-error" id="loginError"></div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Dashboard -->
+<div class="shell" id="dashboard" style="display:none">
 
     <!-- Header -->
     <header class="hdr">
@@ -147,30 +192,28 @@
         </div>
         <div class="hdr-actions">
             <div class="hdr-pill on" id="connPill"><div class="hdr-dot"></div><span id="connText">متصل</span></div>
+            <button class="hdr-logout" onclick="doLogout()" aria-label="تسجيل خروج">خروج</button>
         </div>
     </header>
 
     <!-- Now Playing -->
     <div class="np">
         <div class="np-thumb">
-            <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='170'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230a1628'/%3E%3Cstop offset='100%25' stop-color='%231a0a28'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='220' height='170'/%3E%3Ctext x='110' y='90' text-anchor='middle' fill='%23333' font-size='40'%3E♪%3C/text%3E%3C/svg%3E" alt="">
-            <div class="np-vis" id="npVis">
+            <a id="npLink" href="#" target="_blank" rel="noopener">
+                <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='170'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230a1628'/%3E%3Cstop offset='100%25' stop-color='%231a0a28'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='220' height='170'/%3E%3Ctext x='110' y='90' text-anchor='middle' fill='%23333' font-size='40'%3E♪%3C/text%3E%3C/svg%3E" alt="">
+            </a>
+            <div class="np-vis" id="npVis" aria-hidden="true">
                 <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
             </div>
         </div>
         <div class="np-body">
             <div class="np-tag" id="npTag">جاري التحميل...</div>
-            <div class="np-title" id="npTitle">—</div>
+            <div class="np-title" id="npTitle" aria-live="polite">—</div>
             <div class="np-bar-row">
                 <span id="npElapsed">0:00</span>
-                <div class="np-track"><div class="np-fill" id="npFill"></div></div>
+                <div class="np-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><div class="np-fill" id="npFill"></div></div>
                 <span id="npDur">0:00</span>
-                <div class="np-skip" onclick="cmd('skip')" title="تخطي"><i class="fas fa-forward-step"></i></div>
             </div>
-        </div>
-        <div class="np-embed">
-            <div id="npEmb"></div>
-            <img id="npEmbImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='170'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23000'/%3E%3Cstop offset='100%25' stop-color='%23111'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='300' height='170'/%3E%3Ctext x='150' y='95' text-anchor='middle' fill='%23222' font-size='36'%3E▶%3C/text%3E%3C/svg%3E" alt="">
         </div>
     </div>
 
@@ -195,9 +238,9 @@
 
     <!-- Quick Actions -->
     <div class="actions">
-        <button class="act-btn" onclick="cmd('random')"><i class="fas fa-shuffle"></i> <span>عشوائي</span></button>
-        <button class="act-btn" onclick="cmd('resume')"><i class="fas fa-rotate-left"></i> <span>كمل</span></button>
-        <button class="act-btn" onclick="cmd('latest')"><i class="fas fa-clock-rotate-left"></i> <span>آخر مقطع</span></button>
+        <button class="act-btn" id="btnRandom" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> <span>عشوائي</span></button>
+        <button class="act-btn" id="btnResume" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> <span>كمل</span></button>
+        <button class="act-btn" id="btnLatest" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> <span>آخر مقطع</span></button>
     </div>
 
     <!-- Video List -->
@@ -206,80 +249,120 @@
             <h2><i class="fas fa-film"></i> مقاطع القناة</h2>
             <span class="vid-count" id="vCount">0 مقطع</span>
         </div>
-        <input type="text" class="vid-search" id="vSearch" placeholder="بحث في المقاطع...">
+        <input type="text" class="vid-search" id="vSearch" placeholder="بحث في المقاطع..." aria-label="بحث في المقاطع">
         <div class="vid-list" id="vList"><div class="empty">جاري التحميل...</div></div>
     </div>
 
 </div>
 
 <script>
-const fmt = s => {
-    if (!s || isNaN(s)) return '0:00';
-    s = Math.max(0, Math.floor(s));
-    const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss=s%60;
-    const mm = h ? String(m).padStart(2,'0') : m;
-    return h ? `${h}:${mm}:${String(ss).padStart(2,'0')}` : `${mm}:${String(ss).padStart(2,'0')}`;
+// ── Toast ──
+const showToast = (msg, type = 'info') => {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
 };
 
 // ── Auth ──
 const getToken = () => localStorage.getItem('dashboard_token') || '';
-const authFetch = (url, opts = {}) => {
+const authFetch = async (url, opts = {}) => {
     const token = getToken();
-    if (!token) { if (url.startsWith('/api/')) return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }); }
+    if (!token) return { ok: false, status: 401, json: () => Promise.resolve({}) };
     const headers = { ...opts.headers, 'Authorization': `Bearer ${token}` };
     return fetch(url, { ...opts, headers });
 };
 
-// ── Commands ──
-const cmd = async c => { if(!c) return; try { await authFetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:c})}); } catch{} refresh(); };
-
-// ── YouTube Thumbnail (safe — no innerHTML with user data) ──
-let curVid = null;
-const npEmb = document.getElementById('npEmb');
-const npEmbImg = document.getElementById('npEmbImg');
-const setEmb = id => {
-    if (!id) { npEmb.innerHTML=''; npEmbImg.style.display='block'; curVid=null; return; }
-    if (curVid===id) return;
-    curVid=id;
-    npEmbImg.style.display='none';
-    npEmb.innerHTML='';
-    const img = document.createElement('img');
-    img.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`;
-    img.alt = 'Now Playing';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-    npEmb.appendChild(img);
+// ── Login ──
+const doLogin = async () => {
+    const input = document.getElementById('loginInput');
+    const err = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
+    const token = input.value.trim();
+    if (!token) { err.textContent = 'أدخل الرمز أولاً'; return; }
+    btn.disabled = true; btn.textContent = 'جاري التحقق...'; err.textContent = '';
+    try {
+        const r = await fetch('/api/status', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (r.ok) {
+            localStorage.setItem('dashboard_token', token);
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('dashboard').style.display = '';
+            initDashboard();
+        } else {
+            err.textContent = 'رمز غير صحيح';
+            input.value = '';
+            input.focus();
+        }
+    } catch { err.textContent = 'تعذر الاتصال بالخادم'; }
+    btn.disabled = false; btn.textContent = 'دخول';
 };
-const clearEmb = () => { npEmb.innerHTML=''; npEmbImg.style.display='block'; curVid=null; };
+document.getElementById('loginInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+const doLogout = () => {
+    localStorage.removeItem('dashboard_token');
+    location.reload();
+};
+
+// ── Commands ──
+const cmd = async (c, btn) => {
+    if (!c) return;
+    if (btn) { btn.disabled = true; }
+    try {
+        const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: c }) });
+        const d = await r.json();
+        if (r.ok && d.ok) { showToast('تم ✓', 'success'); }
+        else { showToast(d.error || 'حدث خطأ', 'error'); }
+    } catch { showToast('تعذر الاتصال', 'error'); }
+    if (btn) { setTimeout(() => btn.disabled = false, 1000); }
+    refresh();
+};
+
+// ── YouTube Thumbnail ──
+let curVid = null;
+const npEmbImg = document.getElementById('npEmbImg');
+const npLink = document.getElementById('npLink');
+const npImg = document.getElementById('npImg');
+const setEmb = id => {
+    if (!id) { npImg.src = npImg.dataset.default || npImg.src; npLink.href = '#'; curVid = null; return; }
+    if (curVid === id) return;
+    curVid = id;
+    npImg.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`;
+    npLink.href = `https://youtube.com/watch?v=${encodeURIComponent(id)}`;
+};
+const clearEmb = () => { curVid = null; };
 
 // ── Status ──
+let statusInterval = null;
 const refresh = async () => {
     try {
         const r = await authFetch('/api/status');
+        if (r.status === 401) { doLogout(); return; }
         if (!r.ok) return;
         const d = await r.json();
-        const s = (d.sessions||[])[0];
+        const s = (d.sessions || [])[0];
         const pill = document.getElementById('connPill');
         const txt = document.getElementById('connText');
 
-        // Uptime
-        document.getElementById('sUp').innerText = `${Math.floor(d.uptime/3600)}h ${Math.floor((d.uptime%3600)/60)}m`;
+        document.getElementById('sUp').innerText = `${Math.floor(d.uptime / 3600)}h ${Math.floor((d.uptime % 3600) / 60)}m`;
 
         if (s && s.title) {
             pill.className = 'hdr-pill on';
             txt.textContent = s.guildName || 'متصل';
             document.getElementById('npTitle').innerText = s.title;
-            const mode = s.mode==='random'?'عشوائي مستمر':s.mode==='latest'?'أحدث مقطع':s.mode==='resume'?'استكمال':'تشغيل';
+            const mode = s.mode === 'random' ? 'عشوائي مستمر' : s.mode === 'latest' ? 'أحدث مقطع' : s.mode === 'resume' ? 'استكمال' : 'تشغيل';
             document.getElementById('npTag').innerText = `📻 ${mode} • الصوت: ${s.volume}%`;
-            const el = s.elapsedSeconds||0, dur = s.durationSeconds||0;
+            const el = s.elapsedSeconds || 0, dur = s.durationSeconds || 0;
             document.getElementById('npElapsed').innerText = fmt(el);
             document.getElementById('npDur').innerText = dur ? fmt(dur) : 'لايف';
-            document.getElementById('npFill').style.width = dur ? `${Math.min(100,el/dur*100)}%` : '100%';
+            document.getElementById('npFill').style.width = dur ? `${Math.min(100, el / dur * 100)}%` : '100%';
             if (s.videoId) setEmb(s.videoId); else clearEmb();
             document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
         } else {
-            pill.className = 'hdr-pill off';
-            txt.textContent = 'غير متصل';
-            document.getElementById('npTitle').innerText = 'لا يوجد بث';
+            pill.className = 'hdr-pill warn';
+            txt.textContent = 'لا يوجد بث';
+            document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
             document.getElementById('npTag').innerText = '—';
             document.getElementById('npElapsed').innerText = '0:00';
             document.getElementById('npDur').innerText = '0:00';
@@ -288,44 +371,50 @@ const refresh = async () => {
             document.querySelectorAll('.np-vis span').forEach(b => b.classList.add('off'));
         }
 
-        // Server
-        document.getElementById('sServer').innerText = s ? `${s.guildName||'—'} • #${s.channelName||'?'}` : '—';
-
-        // Played
+        document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';
         const played = s?.playedCount || 0;
         const total = allVid.length || 0;
         document.getElementById('sPlayed').innerText = `${played} / ${total - played}`;
-
     } catch {
         document.getElementById('connPill').className = 'hdr-pill off';
-        document.getElementById('connText').textContent = 'فقد الاتصال';
+        document.getElementById('connText').textContent = 'تعذر الاتصال';
     }
 };
-setInterval(refresh, 2000);
-refresh();
 
-// ── Videos ──
+// ── Visibility-aware polling ──
+let pollActive = true;
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { pollActive = false; if (statusInterval) clearInterval(statusInterval); }
+    else { pollActive = true; statusInterval = setInterval(refresh, 2000); refresh(); }
+});
+
+// ── Videos (debounced search) ──
 let allVid = [];
 const vList = document.getElementById('vList');
 const vSearch = document.getElementById('vSearch');
 const vCount = document.getElementById('vCount');
+let searchTimer = null;
 
 const render = q => {
-    const lower = (q||'').toLowerCase();
-    const list = lower ? allVid.filter(v => (v.title||'').toLowerCase().includes(lower)) : allVid;
+    const lower = (q || '').toLowerCase();
+    const list = lower ? allVid.filter(v => (v.title || '').toLowerCase().includes(lower)) : allVid;
     vCount.textContent = `${allVid.length} مقطع`;
     vList.innerHTML = '';
     if (!list.length) {
         const d = document.createElement('div');
         d.className = 'empty';
-        d.textContent = 'لا توجد نتائج';
+        d.textContent = lower ? 'لا توجد نتائج' : 'لا توجد مقاطع';
         vList.appendChild(d);
         return;
     }
     list.forEach((v, i) => {
         const row = document.createElement('div');
         row.className = 'vid-row';
+        row.tabIndex = 0;
+        row.setAttribute('role', 'button');
+        row.setAttribute('aria-label', `تشغيل ${v.title || ''}`);
         row.onclick = () => cmd(`play ${v.videoId}`);
+        row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cmd(`play ${v.videoId}`); } };
 
         const num = document.createElement('span');
         num.className = 'vid-num';
@@ -351,6 +440,7 @@ const render = q => {
 
         const play = document.createElement('div');
         play.className = 'vid-play-icon';
+        play.setAttribute('aria-hidden', 'true');
         const icon = document.createElement('i');
         icon.className = 'fas fa-play';
         play.appendChild(icon);
@@ -360,16 +450,46 @@ const render = q => {
     });
 };
 
-vSearch.addEventListener('input', e => render(e.target.value));
+vSearch.addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => render(e.target.value), 150);
+});
+
+// ── Init ──
+const initDashboard = () => {
+    refresh();
+    statusInterval = setInterval(refresh, 2000);
+    fetchVid();
+    setInterval(fetchVid, 60000);
+};
 
 const fetchVid = async () => {
     try {
         const r = await authFetch('/api/videos');
-        if (r.ok) { const d = await r.json(); allVid = d.videos||[]; render(); }
+        if (r.ok) { const d = await r.json(); allVid = d.videos || []; render(); }
     } catch {}
 };
-fetchVid();
-setInterval(fetchVid, 60000);
+
+// ── Auto-login check ──
+const fmt = s => {
+    if (!s || isNaN(s)) return '0:00';
+    s = Math.max(0, Math.floor(s));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    const mm = h ? String(m).padStart(2, '0') : m;
+    return h ? `${h}:${mm}:${String(ss).padStart(2, '0')}` : `${mm}:${String(ss).padStart(2, '0')}`;
+};
+
+if (getToken()) {
+    authFetch('/api/status').then(r => {
+        if (r.ok) {
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('dashboard').style.display = '';
+            initDashboard();
+        } else {
+            localStorage.removeItem('dashboard_token');
+        }
+    }).catch(() => {});
+}
 </script>
 </body>
 </html>

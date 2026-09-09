@@ -19,7 +19,6 @@ import { checkWeeklyRecap } from './utils/weekly-recap.js';
 import {
   stopAllSessions,
   stopPlayback,
-  skipTrack,
   playRandom,
   playLatest,
   playVideo,
@@ -27,9 +26,6 @@ import {
   playerEvents,
   getSessionInfo,
   getAllSessions,
-  setVolume,
-  pausePlayback,
-  resumePlayback,
   getQueue,
 } from './services/player.js';
 
@@ -95,7 +91,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, skip, volume <0-200>, random, resume, latest, pause, play <videoId>';
+    if (lower === 'help') return 'Commands: status, np, random, resume, latest, play <videoId>';
     
     const all = getAllSessions();
     
@@ -104,29 +100,6 @@ client.once(Events.ClientReady, async (c) => {
     }
     if (lower === 'np' || lower === 'nowplaying') {
       return all.map(s => s.guildName + ': ' + (s.title || 'No track')).join('\n');
-    }
-    if (lower.startsWith('volume ')) {
-      const vol = parseInt(lower.split(' ')[1]);
-      if (isNaN(vol) || vol < 0 || vol > 200) return 'Usage: volume <0-200>';
-      for (const s of all) {
-        await setVolume(s.guildId, vol);
-      }
-      return `Volume set to ${vol}% on all servers.`;
-    }
-    if (lower === 'skip') {
-      const count = all.length;
-      all.forEach(s => skipTrack(s.guildId));
-      return count > 0 ? `Skipped track on ${count} server(s).` : 'No active sessions to skip.';
-    }
-    if (lower === 'pause') {
-      let done = 0;
-      all.forEach(s => { if (pausePlayback(s.guildId)) done++; });
-      return done > 0 ? `Paused on ${done} server(s).` : 'No active sessions to pause.';
-    }
-    if (lower === 'unpause' || lower === 'resume-playback') {
-      let done = 0;
-      all.forEach(s => { if (resumePlayback(s.guildId)) done++; });
-      return done > 0 ? `Resumed on ${done} server(s).` : 'No active sessions to resume.';
     }
     if (lower.startsWith('play ')) {
       const videoId = cmd.split(' ').slice(1).join(' ').trim();
