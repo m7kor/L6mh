@@ -53,7 +53,6 @@ export function pickJingle(sounds) {
 // ---------------------------------------------------------------------------
 
 export function playSoundEffect(guild, channel, filePath) {
-  const { joinVoiceChannel, entersState } = await import('@discordjs/voice');
   // ملاحظة: نستورد joinVoiceChannel من engine لتجنب دائرية الاستيراد
   // سيُمرَّر من engine.js عبر parameter
   // لذلك هذه الدالة تستقبل connection مباشرة بدلاً من إعادة إنشائه

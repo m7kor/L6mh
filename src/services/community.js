@@ -245,5 +245,3 @@ export function optIn(userId, guildId) {
     ON CONFLICT(user_id, guild_id) DO UPDATE SET opted_out = 0
   `).run(userId, guildId);
 }
-
-export { BADGES };
