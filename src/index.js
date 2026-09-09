@@ -29,6 +29,7 @@ import {
   getQueue,
 } from './services/player.js';
 import { sessions } from './services/session.js';
+import { closeDb } from './utils/database.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
@@ -385,8 +386,8 @@ function gracefulShutdown(signal) {
     tasks.push(stopPlayback(guildId, { manual: false }));
   }
   Promise.all(tasks)
-    .then(() => client.destroy())
-    .catch(() => { try { client.destroy(); } catch {} })
+    .then(() => { closeDb(); return client.destroy(); })
+    .catch(() => { closeDb(); try { client.destroy(); } catch {} })
     .finally(() => process.exit(0));
 }
 

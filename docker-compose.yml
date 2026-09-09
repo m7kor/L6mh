@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: discord-yt-bot
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3333:3333"
+    volumes:
+      - ./data:/app/data
+      - ./sounds:/app/sounds
+      - ./logs:/app/logs
+      - ./cookies.txt:/app/cookies.txt:ro
+    environment:
+      - NODE_ENV=production
+      - POT_PROVIDER_URL=http://pot-provider:4416
+    depends_on:
+      - pot-provider
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  pot-provider:
+    image: ghcr.io/brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: pot-provider
+    restart: unless-stopped
+    ports:
+      - "4416:4416"
+    volumes:
+      - pot-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4416/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pot-data:

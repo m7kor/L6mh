@@ -74,6 +74,13 @@
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
         .hdr-logout { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: .2s; font-family: 'Outfit'; }
         .hdr-logout:hover { border-color: var(--red); color: var(--red); }
+        .srv-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+        .srv-tab { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; font-family: 'Outfit'; display: flex; align-items: center; gap: 6px; }
+        .srv-tab:hover { border-color: var(--cyan); color: var(--cyan); }
+        .srv-tab.active { background: rgba(0,229,255,0.12); border-color: var(--cyan); color: var(--cyan); }
+        .srv-tab .srv-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .srv-tab .srv-dot.on { background: var(--green); }
+        .srv-tab .srv-dot.off { background: var(--red); }
 
         /* ── Now Playing ── */
         .np { display: grid; grid-template-columns: 220px 1fr; gap: 0; border-radius: var(--radius); overflow: hidden; background: var(--surface); border: 1px solid var(--border); margin-bottom: 24px; min-height: 170px; position: relative; }
@@ -155,6 +162,17 @@
         .vid-page button:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
         .vid-page button:disabled { opacity: 0.3; cursor: default; }
         .vid-page .pg-info { color: var(--text-3); font-size: 12px; font-weight: 600; min-width: 80px; text-align: center; }
+        .err-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+        .err-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        .err-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+        .err-hdr h2 i { color: var(--red); }
+        .err-clear { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all .15s; }
+        .err-clear:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+        .err-list { max-height: 200px; overflow-y: auto; }
+        .err-item { padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 12px; display: flex; gap: 12px; align-items: flex-start; }
+        .err-item:last-child { border-bottom: none; }
+        .err-time { color: var(--text-3); font-family: 'Outfit'; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+        .err-msg { color: var(--red); font-weight: 600; word-break: break-word; }
         .vid-skel { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
         .vid-skel .sk-num { width: 28px; height: 14px; }
         .vid-skel .sk-img { width: 90px; height: 51px; flex-shrink: 0; }
@@ -213,6 +231,9 @@
         </div>
     </header>
 
+    <!-- Server Tabs -->
+    <div class="srv-tabs" id="srvTabs"></div>
+
     <!-- Now Playing -->
     <div class="np">
         <div class="np-thumb">
@@ -263,6 +284,15 @@
         <button class="act-btn" id="btnRandom" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> <span>عشوائي</span></button>
         <button class="act-btn" id="btnResume" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> <span>كمل</span></button>
         <button class="act-btn" id="btnLatest" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> <span>آخر مقطع</span></button>
+    </div>
+
+    <!-- Error Log -->
+    <div class="err-section" id="errSection" style="display:none">
+        <div class="err-hdr">
+            <h2><i class="fas fa-triangle-exclamation"></i> سجل الأخطاء</h2>
+            <button class="err-clear" onclick="clearErrors()" aria-label="مسح الأخطاء"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div class="err-list" id="errList"></div>
     </div>
 
     <!-- Video List -->
@@ -337,6 +367,11 @@ const doLogout = () => {
     location.reload();
 };
 
+const clearErrors = () => {
+    document.getElementById('errList').innerHTML = '';
+    document.getElementById('errSection').style.display = 'none';
+};
+
 // ── Commands ──
 const cmd = async (c, btn) => {
     if (!c) return;
@@ -367,13 +402,35 @@ const clearEmb = () => { curVid = null; };
 
 // ── Status ──
 let statusInterval = null;
+let selectedGuild = null;
 const refresh = async () => {
     try {
         const r = await authFetch('/api/status');
         if (r.status === 401) { doLogout(); return; }
         if (!r.ok) return;
         const d = await r.json();
-        const s = (d.sessions || [])[0];
+        const allSessions = d.sessions || [];
+
+        // Render server tabs
+        const srvTabs = document.getElementById('srvTabs');
+        if (allSessions.length > 1) {
+            srvTabs.innerHTML = '';
+            allSessions.forEach(ses => {
+                const btn = document.createElement('button');
+                btn.className = 'srv-tab' + (selectedGuild === ses.guildId ? ' active' : '');
+                const dot = document.createElement('span');
+                dot.className = 'srv-dot ' + (ses.title ? 'on' : 'off');
+                btn.appendChild(dot);
+                btn.appendChild(document.createTextNode(ses.guildName || ses.guildId));
+                btn.onclick = () => { selectedGuild = ses.guildId; refresh(); };
+                srvTabs.appendChild(btn);
+            });
+        } else {
+            srvTabs.innerHTML = '';
+        }
+
+        // Find selected session
+        const s = selectedGuild ? allSessions.find(ses => ses.guildId === selectedGuild) : allSessions[0];
         const pill = document.getElementById('connPill');
         const txt = document.getElementById('connText');
 
@@ -408,6 +465,29 @@ const refresh = async () => {
         const total = allVid.length || 0;
         document.getElementById('sPlayed').innerText = `${played} / ${total - played}`;
         document.getElementById('sCycle').innerText = `#${s?.cycleCount || 1}`;
+
+        // Render errors
+        const errList = document.getElementById('errList');
+        const errSection = document.getElementById('errSection');
+        const errors = d.errors || [];
+        if (errors.length) {
+            errSection.style.display = '';
+            errList.innerHTML = '';
+            errors.forEach(e => {
+                const row = document.createElement('div');
+                row.className = 'err-item';
+                const time = document.createElement('span');
+                time.className = 'err-time';
+                time.textContent = new Date(e.time).toLocaleTimeString('ar-SA');
+                const msg = document.createElement('span');
+                msg.className = 'err-msg';
+                msg.textContent = e.message;
+                row.append(time, msg);
+                errList.appendChild(row);
+            });
+        } else {
+            errSection.style.display = 'none';
+        }
     } catch {
         document.getElementById('connPill').className = 'hdr-pill off';
         document.getElementById('connText').textContent = 'تعذر الاتصال';
