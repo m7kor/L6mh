@@ -32,6 +32,7 @@ import { createLogger } from '../utils/logger.js';
 import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { recordPlay } from '../utils/stats.js';
 import { notify } from '../utils/webhook.js';
+import { logDashboardError } from '../utils/status-page.js';
 
 const logger = createLogger('audio');
 
@@ -788,11 +789,9 @@ async function onTrackFinished(guild, channel) {
 
     if (attempt >= MAX_ATTEMPTS) {
       logger.error(`[${guild.id}] Stopped after ${MAX_ATTEMPTS} failed attempts to play next track.`);
-      notify(
-        '🔴 Playback Stopped',
-        `Guild \`${guild.id}\` failed to play a track after ${MAX_ATTEMPTS} attempts. Bot is still running but idle.`,
-        'error',
-      ).catch(() => {});
+      const msg = `Guild ${guild.id} stopped after ${MAX_ATTEMPTS} failed attempts to play next track.`;
+      notify('🔴 Playback Stopped', `Guild \`${guild.id}\` failed to play a track after ${MAX_ATTEMPTS} attempts. Bot is still running but idle.`, 'error').catch(() => {});
+      logDashboardError(msg);
       stopPlayback(guild.id, { manual: false });
     }
   } finally {
@@ -818,11 +817,13 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
       const { videoId } = popFromQueue(session, catalog);
       video = catalog.find(v => v.videoId === videoId);
     }
+    await playRandomSound(guild, freshChannel);
     await connectAndPlay(guild, freshChannel, video, { countPlay: false });
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {
     const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
     logger.error(`[${guild.id}] Rejoin failed:`, err.message);
+    logDashboardError(`[${guild.id}] Rejoin failed (attempt ${attempt}): ${err.message}`);
     if (attempt === 5) {
       notify(
         '🟡 Voice Rejoin Struggling',

@@ -14,6 +14,7 @@ const logger = createLogger('audio');
 
 let consecutiveAuthFails = 0;
 const AUTH_FAIL_THRESHOLD = 3;
+const STDERR_TAIL_BYTES = 2048;
 
 export function killProcesses(session) {
   if (session.ffmpegProcess) {
@@ -26,6 +27,15 @@ export function killProcesses(session) {
   }
 }
 
+/** Check if stderr mentions the PoT provider being unreachable. */
+function isPotProviderError(stderr) {
+  if (!stderr) return false;
+  const lower = stderr.toLowerCase();
+  return (lower.includes('econnrefused') || lower.includes('connection refused')
+    || lower.includes('etimedout') || lower.includes('connection timed out'))
+    && lower.includes('bgutil');
+}
+
 export async function preValidateVideo(url) {
   return new Promise((resolve) => {
     const args = [
@@ -35,6 +45,11 @@ export async function preValidateVideo(url) {
       url,
     ];
     const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stderrTail = '';
+    proc.stderr.on('data', (chunk) => {
+      stderrTail += chunk.toString();
+      if (stderrTail.length > STDERR_TAIL_BYTES) stderrTail = stderrTail.slice(-STDERR_TAIL_BYTES);
+    });
     const timer = setTimeout(() => { proc.kill(); resolve(true); }, 5_000);
     proc.on('close', (code) => {
       clearTimeout(timer);
@@ -43,8 +58,18 @@ export async function preValidateVideo(url) {
         resolve(true);
       } else {
         consecutiveAuthFails++;
-        if (consecutiveAuthFails >= AUTH_FAIL_THRESHOLD) {
-          notify('Cookie expired?', `${consecutiveAuthFails} consecutive yt-dlp pre-validation failures. Cookies may need refreshing.`, 'error');
+        if (isPotProviderError(stderrTail)) {
+          notify(
+            '⚠️ PoT provider unreachable',
+            `yt-dlp cannot reach the PoT provider at \`${config.potProviderUrl}\`. Is the helper service running?\n\`\`\`${stderrTail.slice(-500)}\`\`\``,
+            'error',
+          ).catch(() => {});
+        } else if (consecutiveAuthFails >= AUTH_FAIL_THRESHOLD) {
+          notify(
+            'Cookie expired?',
+            `${consecutiveAuthFails} consecutive yt-dlp pre-validation failures.\n\`\`\`${stderrTail.slice(-500)}\`\`\``,
+            'error',
+          ).catch(() => {});
           consecutiveAuthFails = 0;
         }
         resolve(false);
@@ -124,7 +149,11 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     });
     session.resolveProcess = ytDlpProcess;
 
-    ytDlpProcess.stderr.on('data', () => {});
+    let ytDlpStderr = '';
+    ytDlpProcess.stderr.on('data', (chunk) => {
+      ytDlpStderr += chunk.toString();
+      if (ytDlpStderr.length > STDERR_TAIL_BYTES) ytDlpStderr = ytDlpStderr.slice(-STDERR_TAIL_BYTES);
+    });
 
     ytDlpProcess.on('error', (err) => {
       safeReject(new Error(`Failed to start yt-dlp: ${err.message}`));
@@ -151,13 +180,23 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       session.resolveProcess = null;
       if (code !== 0 && code !== null) {
         try { ffmpegProcess.kill(); } catch {}
-        safeReject(new Error(`yt-dlp exited with code ${code}`));
+        const snippet = ytDlpStderr.slice(-500).trim();
+        const detail = snippet ? `\n${snippet}` : '';
+        if (isPotProviderError(ytDlpStderr)) {
+          safeReject(new Error(`yt-dlp failed — PoT provider unreachable at ${config.potProviderUrl}${detail}`));
+        } else {
+          safeReject(new Error(`yt-dlp exited with code ${code}${detail}`));
+        }
         return;
       }
       try { ffmpegProcess.stdin.end(); } catch {}
     });
 
-    ffmpegProcess.stderr.on('data', () => {});
+    let ffmpegStderr = '';
+    ffmpegProcess.stderr.on('data', (chunk) => {
+      ffmpegStderr += chunk.toString();
+      if (ffmpegStderr.length > STDERR_TAIL_BYTES) ffmpegStderr = ffmpegStderr.slice(-STDERR_TAIL_BYTES);
+    });
 
     ffmpegProcess.on('error', (err) => {
       safeReject(new Error(`Failed to start ffmpeg: ${err.message}`));
@@ -177,7 +216,9 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     ffmpegProcess.on('close', (code) => {
       session.ffmpegProcess = null;
       if (!dataReceived && !resolved) {
-        safeReject(new Error(`ffmpeg exited with code ${code} before producing audio`));
+        const snippet = ffmpegStderr.slice(-500).trim();
+        const detail = snippet ? `\n${snippet}` : '';
+        safeReject(new Error(`ffmpeg exited with code ${code} before producing audio${detail}`));
       }
     });
 
