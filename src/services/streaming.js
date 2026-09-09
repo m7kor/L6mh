@@ -16,6 +16,8 @@ let consecutiveAuthFails = 0;
 const AUTH_FAIL_THRESHOLD = 3;
 const STDERR_TAIL_BYTES = 2048;
 
+export function getConsecutiveAuthFails() { return consecutiveAuthFails; }
+
 export function killProcesses(session) {
   if (session.ffmpegProcess) {
     try { session.ffmpegProcess.kill('SIGKILL'); } catch {}

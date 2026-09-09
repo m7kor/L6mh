@@ -16,6 +16,7 @@ import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
 import { startHeartbeat } from './utils/heartbeat.js';
 import { startStatusPage, broadcastTrackChange } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
+import { onVoiceJoin, onVoiceLeave } from './services/community.js';
 import {
   stopAllSessions,
   stopPlayback,
@@ -239,6 +240,9 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     // --- User joined a channel ---
     const joinedChannel = newState.channel;
     if (joinedChannel && oldState.channelId !== newState.channelId) {
+      // Track community presence
+      onVoiceJoin(newState.member?.user?.id, guild.id);
+
       const debounceKey = `join-${guild.id}`;
       const existing = voiceActionTimeouts.get(debounceKey);
       if (existing) clearTimeout(existing);
@@ -309,6 +313,11 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     }
 
     // --- User left a channel (oldState has channel, newState doesn't) ---
+    // Track community presence
+    if (oldState.channel && oldState.member?.user?.id) {
+      onVoiceLeave(oldState.member.user.id, guild.id);
+    }
+
     // If bot's channel is now empty of humans, wait — someone might come back
     if (oldState.channel && !newState.channel) {
       const botChannel = guild.members.me?.voice?.channel;

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>راديو وحيد عمر — Kiosk</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <style>
+    body { background: #000; color: #fff; font-family: var(--font-ar); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .kiosk { text-align: center; max-width: 900px; width: 90vw; }
+    .kiosk-title { font-size: 14px; color: var(--cyan); font-family: var(--font-en); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+    .kiosk-now { font-size: 32px; font-weight: 900; line-height: 1.5; margin-bottom: 24px; min-height: 48px; }
+    .kiosk-stats { display: flex; justify-content: center; gap: 48px; margin-top: 24px; }
+    .kiosk-stat { text-align: center; }
+    .kiosk-stat-num { font-family: var(--font-en); font-size: 48px; font-weight: 900; color: var(--cyan); }
+    .kiosk-stat-lbl { font-size: 12px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .kiosk-time { font-family: var(--font-en); font-size: 13px; color: #555; margin-top: 32px; }
+    .kiosk-live { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; margin-left: 8px; animation: pulse 2s infinite; vertical-align: middle; }
+    .kiosk-off { background: #555; animation: none; }
+  </style>
+</head>
+<body>
+  <div class="kiosk">
+    <div class="kiosk-title"><span class="kiosk-live" id="liveDot"></span> راديو وحيد عمر — مباشر</div>
+    <div class="kiosk-now" id="nowTitle">جاري التحميل...</div>
+    <div class="kiosk-stats">
+      <div class="kiosk-stat">
+        <div class="kiosk-stat-num" id="statPlays">0</div>
+        <div class="kiosk-stat-lbl">مرة شُغّل</div>
+      </div>
+      <div class="kiosk-stat">
+        <div class="kiosk-stat-num" id="statUptime">0</div>
+        <div class="kiosk-stat-lbl">ساعة تشغيل</div>
+      </div>
+      <div class="kiosk-stat">
+        <div class="kiosk-stat-num" id="statVideos">0</div>
+        <div class="kiosk-stat-lbl">مقطع</div>
+      </div>
+    </div>
+    <div class="kiosk-time" id="kioskTime"></div>
+  </div>
+  <script>
+    const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60); return h > 0 ? h+'h '+m+'m' : m+'m'; };
+    const refresh = async () => {
+      try {
+        const r = await fetch('/api/public');
+        if (!r.ok) return;
+        const d = await r.json();
+        const np = d.nowPlaying;
+        document.getElementById('nowTitle').textContent = np ? np.title : 'لا يوجد بث حالياً';
+        document.getElementById('liveDot').className = 'kiosk-live' + (np && !np.paused ? '' : ' kiosk-off');
+        document.getElementById('statPlays').textContent = d.totalPlays || 0;
+        document.getElementById('statUptime').textContent = d.uptimeHours || 0;
+        document.getElementById('statVideos').textContent = d.totalVideos || 0;
+        document.getElementById('kioskTime').textContent = new Date().toLocaleString('ar-SA');
+      } catch {}
+    };
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>

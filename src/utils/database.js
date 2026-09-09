@@ -58,6 +58,24 @@ function initTables() {
       state TEXT NOT NULL,
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS member_stats (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      minutes_present INTEGER DEFAULT 0,
+      sessions_count INTEGER DEFAULT 0,
+      first_seen_at TEXT,
+      last_seen_at TEXT,
+      PRIMARY KEY (user_id, guild_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS badges (
+      user_id TEXT NOT NULL,
+      guild_id TEXT NOT NULL,
+      badge_id TEXT NOT NULL,
+      earned_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, guild_id, badge_id)
+    );
   `);
 }
 

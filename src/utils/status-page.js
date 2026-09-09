@@ -5,13 +5,17 @@
  */
 
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { createLogger } from './logger.js';
 import { loadPlays, getPlayHistory } from './stats.js';
 import { getVideos } from '../services/youtube.js';
+import { getConsecutiveAuthFails } from '../services/streaming.js';
+import { getCookieInfo } from '../services/cookies.js';
+import { getDb } from './database.js';
+import { getLeaderboard } from '../services/community.js';
 
 const logger = createLogger('dashboard');
 
@@ -154,6 +158,13 @@ async function getPublicData() {
       playCount: data.playCount || data.count || 0,
     })),
     history: await getPlayHistory(15),
+    leaderboard: getLeaderboard(sessions[0]?.guildId || '', 10)
+      .filter(e => e.minutes_present > 0)
+      .map(e => ({
+        userId: e.user_id,
+        hours: Math.floor(e.minutes_present / 60),
+        mins: e.minutes_present % 60,
+      })),
   };
 }
 
@@ -258,6 +269,54 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to fetch status' }));
+        }
+        return;
+      }
+
+      // ── Detailed Health (admin only) ──
+      if (req.url === '/api/health') {
+        try {
+          const health = { ytdlp: {}, pot: {}, cookie: {}, db: {} };
+          // yt-dlp version
+          await new Promise(resolve => {
+            execFile('yt-dlp', ['--version'], { timeout: 5000 }, (err, stdout) => {
+              health.ytdlp.version = err ? 'unavailable' : stdout.trim();
+              health.ytdlp.ok = !err;
+              resolve();
+            });
+          });
+          // PoT provider
+          const { default: fetch } = await import('node-fetch').catch(() => ({ default: null }));
+          if (fetch) {
+            try {
+              const r = await fetch(process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416', { timeout: 3000, signal: AbortSignal.timeout(3000) });
+              health.pot.ok = r.ok;
+              health.pot.status = r.status;
+            } catch {
+              health.pot.ok = false;
+              health.pot.status = 'unreachable';
+            }
+          } else {
+            health.pot.ok = false;
+            health.pot.status = 'node-fetch unavailable';
+          }
+          health.pot.consecutiveFails = getConsecutiveAuthFails();
+          // Cookie
+          health.cookie = getCookieInfo();
+          // DB size
+          try {
+            const db = getDb();
+            const row = db.prepare("SELECT page_count * page_size as bytes FROM pragma_page_count(), pragma_page_size()").get();
+            health.db.bytes = row ? row.bytes : 0;
+            health.db.ok = true;
+          } catch {
+            health.db.ok = false;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(health));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Health check failed' }));
         }
         return;
       }
@@ -371,6 +430,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       try {
         let filePath = req.url === '/' ? '/index.html' : req.url;
         if (filePath === '/live') filePath = '/live.html';
+        if (filePath === '/admin/kiosk') filePath = '/kiosk.html';
         filePath = filePath.replace(/\.\./g, '');
         const fullPath = join(process.cwd(), 'public', filePath);
         
