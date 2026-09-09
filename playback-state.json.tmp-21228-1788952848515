@@ -1,0 +1,47 @@
+{
+  "lastVideo": {
+    "title": "نقاش حياة وكمبيوتر ونصلح جهاز 22/08/2026 (بث الليل)",
+    "url": "https://www.youtube.com/watch?v=tP5kwUkFpD4"
+  },
+  "channelId": "UCCXeB-jWXbrAwcR0Yjl0Ygw",
+  "playbackMode": "resume",
+  "continuous": false,
+  "savedAt": "2026-08-27T19:32:34.839Z",
+  "1097041210608205844": {
+    "current": {
+      "title": "بث بوكيت تايلند 13/06/2026 (بث العصر)",
+      "videoId": "zdgQvWAJHwU",
+      "url": "https://www.youtube.com/watch?v=zdgQvWAJHwU",
+      "thumbnail": "https://i.ytimg.com/vi/zdgQvWAJHwU/maxresdefault.jpg",
+      "publishedAt": "2026-06-14T10:15:21Z",
+      "progressSeconds": 2503,
+      "durationSeconds": 11312,
+      "viewCount": 273
+    },
+    "mode": "resume",
+    "continuous": false,
+    "volume": 100,
+    "queue": [],
+    "playedIds": [],
+    "failedIds": [],
+    "cycleCount": 0,
+    "cycleStartedAt": null,
+    "savedAt": "2026-09-09T11:20:48.515Z"
+  },
+  "1374444507726348398": {
+    "current": {
+      "title": "نقاشات وأسئلة عن الكمبيوتر والحياة 19/06/2024",
+      "videoId": "bCegN57b-OU",
+      "url": "https://www.youtube.com/watch?v=bCegN57b-OU",
+      "thumbnail": "https://i.ytimg.com/vi/bCegN57b-OU/maxresdefault.jpg",
+      "publishedAt": "2024-06-20T09:15:01Z",
+      "progressSeconds": 1413,
+      "durationSeconds": 11361,
+      "viewCount": 444
+    },
+    "mode": "resume",
+    "continuous": true,
+    "volume": 100,
+    "savedAt": "2026-09-08T11:01:28.979Z"
+  }
+}

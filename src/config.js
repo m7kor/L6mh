@@ -1,19 +1,23 @@
 /**
  * Central configuration loader.
- * Validates required environment variables once, at startup,
- * so the rest of the app can trust `config` is complete.
+ * Lazy initialization: validates required environment variables on first
+ * property access, not on import. This lets test files import modules
+ * that depend on config without triggering process.exit().
  */
 
 import 'dotenv/config';
 
 const REQUIRED_VARS = ['DISCORD_TOKEN', 'CLIENT_ID', 'YOUTUBE_API_KEY', 'CHANNEL_ID'];
 
+let _config = null;
+
 function loadConfig() {
   const missing = REQUIRED_VARS.filter((key) => !process.env[key]);
   if (missing.length > 0) {
-    console.error(`[config] Missing required environment variable(s): ${missing.join(', ')}`);
-    console.error('[config] Copy .env.example to .env and fill in the values.');
-    process.exit(1);
+    throw new Error(
+      `[config] Missing required environment variable(s): ${missing.join(', ')}. `
+      + 'Copy .env.example to .env and fill in the values.'
+    );
   }
 
   return {
@@ -32,4 +36,14 @@ function clampNumber(value, fallback, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-export const config = loadConfig();
+/**
+ * Lazy config proxy — validates on first property access.
+ * In production, first access happens at boot (index.js → config.discordToken).
+ * In tests, if no property is ever accessed, no validation occurs.
+ */
+export const config = new Proxy({}, {
+  get(_, prop) {
+    if (!_config) _config = loadConfig();
+    return _config[prop];
+  },
+});

@@ -8,6 +8,7 @@ import { writeFile, readFile, copyFile, access, rename } from 'node:fs/promises'
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
+import { getVideos } from './youtube.js';
 
 const logger = createLogger('audio');
 const STATE_FILE = join(process.cwd(), 'playback-state.json');
@@ -139,6 +140,16 @@ export async function restoreLastVideo(guildId) {
   if (Array.isArray(saved.queue)) session.queue = saved.queue;
   if (typeof saved.cycleCount === 'number') session.cycleCount = saved.cycleCount;
   if (saved.cycleStartedAt) session.cycleStartedAt = saved.cycleStartedAt;
+
+  if (session.queue.length === 0 && session.playedIds.size > 0) {
+    try {
+      const catalog = await getVideos();
+      await migrateSessionToQueue(session, catalog);
+    } catch (err) {
+      logger.warn('Failed to migrate session queue on restore:', err.message);
+    }
+  }
+
   return session.current;
 }
 
@@ -253,7 +264,7 @@ export async function migrateSessionToQueue(session, catalog) {
   if (session.queue.length > 0) return false;
   if (session.playedIds.size === 0 && catalog.length > 0) {
     session.queue = buildNewQueue(catalog, [...session.failedIds]);
-    session.cycleCount = 1;
+    if (!session.cycleCount || session.cycleCount < 1) session.cycleCount = 1;
     session.cycleStartedAt = new Date().toISOString();
     await saveState(session);
     return true;
@@ -261,7 +272,7 @@ export async function migrateSessionToQueue(session, catalog) {
   const exclude = new Set([...session.playedIds, ...session.failedIds]);
   const remaining = catalog.filter(v => !exclude.has(v.videoId));
   session.queue = shuffle(remaining);
-  session.cycleCount = 1;
+  if (!session.cycleCount || session.cycleCount < 1) session.cycleCount = 1;
   session.cycleStartedAt = new Date().toISOString();
   await saveState(session);
   return true;
