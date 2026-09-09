@@ -30,6 +30,7 @@ function checkAuth(req, res) {
 let getSessionInfoFn = null;
 let getAllSessionsFn = null;
 let executeCommandFn = null;
+let getQueueFn = null;
 
 let cachedHtml = null;
 
@@ -108,7 +109,7 @@ async function getApiData() {
   };
 }
 
-export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnArg) {
+export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, executeCommandFnArg, getQueueFnArg) {
   if (!PORT) return;
 
   if (!DASHBOARD_TOKEN) {
@@ -119,6 +120,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   getSessionInfoFn = getSessionInfoFnArg;
   getAllSessionsFn = getAllSessionsFnArg || null;
   executeCommandFn = executeCommandFnArg || null;
+  getQueueFn = getQueueFnArg || null;
 
   try {
     const server = createServer(async (req, res) => {
@@ -224,10 +226,22 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         try {
           const videos = await getVideos();
           const plays = await loadPlays();
+          // Get queue position from first active session
+          let queuePosMap = {};
+          if (getQueueFn && getAllSessionsFn) {
+            const sessions = getAllSessionsFn();
+            for (const ses of sessions) {
+              if (ses.guildId) {
+                const queue = getQueueFn(ses.guildId);
+                queue.forEach((vid, idx) => { queuePosMap[vid] = idx + 1; });
+              }
+            }
+          }
           const videosWithPlays = videos.map(v => ({
             ...v,
             playCount: plays[v.videoId]?.playCount || plays[v.videoId]?.count || 0,
             lastPlayedAt: plays[v.videoId]?.lastPlayedAt || null,
+            queuePos: queuePosMap[v.videoId] || 0,
           }));
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ videos: videosWithPlays }));

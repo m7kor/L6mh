@@ -30,6 +30,7 @@ import {
 } from './services/player.js';
 import { sessions } from './services/session.js';
 import { closeDb } from './utils/database.js';
+import { migrateJsonToSqlite } from './utils/migration.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
@@ -87,7 +88,11 @@ client.once(Events.ClientReady, async (c) => {
   logger.info(`Channel ID: ${config.channelId}`);
   logger.info(`Commands loaded: /${[...client.commands.keys()].join(', /')}`);
 
-  notify('🟢 Bot Started', `Logged in as **${c.user.tag}**.`, 'ok');
+  // Migrate old JSON data to SQLite if needed
+  await migrateJsonToSqlite();
+
+  const guildCount = c.guilds.cache.size;
+  notify('🟢 Bot Started', `Logged in as **${c.user.tag}**\nServers: ${guildCount}\nCommands: /${[...client.commands.keys()].join(', /')}`, 'ok');
   startHeartbeat();
 
   // Dashboard command handler
@@ -158,7 +163,7 @@ client.once(Events.ClientReady, async (c) => {
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
-  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
+  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand, getQueue);
 
   // Weekly recap — check daily
   setInterval(checkWeeklyRecap, 60 * 60 * 1000);

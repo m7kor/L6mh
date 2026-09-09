@@ -318,3 +318,83 @@ describe('killProcesses', () => {
     killProcesses({ ffmpegProcess: null, resolveProcess: null }); // should not throw
   });
 });
+
+// ============================================
+// database (SQLite)
+// ============================================
+import { getDb, closeDb } from './database.js';
+
+describe('database', () => {
+  it('getDb returns a database connection', () => {
+    const db = getDb();
+    assert.ok(db);
+    assert.ok(db.prepare);
+  });
+
+  it('creates tables on first call', () => {
+    const db = getDb();
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+    const names = tables.map(t => t.name);
+    assert.ok(names.includes('play_counts'));
+    assert.ok(names.includes('play_history'));
+    assert.ok(names.includes('session_state'));
+  });
+
+  it('returns same instance on multiple calls', () => {
+    const db1 = getDb();
+    const db2 = getDb();
+    assert.equal(db1, db2);
+  });
+});
+
+// ============================================
+// stats (SQLite-backed)
+// ============================================
+import { recordPlay, getPlayHistory } from './stats.js';
+
+describe('stats (SQLite)', () => {
+  it('recordPlay inserts a new video', async () => {
+    await recordPlay({ videoId: 'test_video_1', title: 'Test Video', guildId: '123' });
+    const plays = await loadPlays();
+    assert.ok(plays['test_video_1']);
+    assert.equal(plays['test_video_1'].playCount, 1);
+    assert.equal(plays['test_video_1'].title, 'Test Video');
+  });
+
+  it('recordPlay increments play count', async () => {
+    await recordPlay({ videoId: 'test_video_1', title: 'Test Video' });
+    await recordPlay({ videoId: 'test_video_1', title: 'Test Video' });
+    const plays = await loadPlays();
+    assert.equal(plays['test_video_1'].playCount, 3);
+  });
+
+  it('recordPlay tracks completion', async () => {
+    await recordPlay({ videoId: 'test_video_2', title: 'Test 2' }, { completed: true });
+    const plays = await loadPlays();
+    assert.equal(plays['test_video_2'].lastCompleted, true);
+  });
+
+  it('recordPlay tracks failures', async () => {
+    await recordPlay({ videoId: 'test_video_3', title: 'Test 3' }, { failed: true });
+    const plays = await loadPlays();
+    assert.equal(plays['test_video_3'].failCount, 1);
+  });
+
+  it('recordPlay ignores null video', async () => {
+    await recordPlay(null);
+    await recordPlay({});
+    // should not throw
+  });
+
+  it('getPlayHistory returns recent entries', async () => {
+    const history = await getPlayHistory(5);
+    assert.ok(Array.isArray(history));
+    assert.ok(history.length > 0);
+  });
+
+  it('loadPlays returns all videos', async () => {
+    const plays = await loadPlays();
+    assert.ok(typeof plays === 'object');
+    assert.ok(Object.keys(plays).length > 0);
+  });
+});
