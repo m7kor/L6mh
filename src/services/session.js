@@ -95,6 +95,8 @@ export async function saveState(session) {
       mode: session.mode,
       continuous: session.continuous,
       volume: session.volume,
+      playedIds: [...session.playedIds],
+      failedIds: [...session.failedIds],
       savedAt: new Date().toISOString(),
     };
     const now = Date.now();
@@ -116,6 +118,8 @@ export async function restoreLastVideo(guildId) {
   const session = getSession(guildId);
   session.current = saved.current || null;
   session.volume = saved.volume ?? config.defaultVolume;
+  if (Array.isArray(saved.playedIds)) session.playedIds = new Set(saved.playedIds);
+  if (Array.isArray(saved.failedIds)) session.failedIds = new Set(saved.failedIds);
   return session.current;
 }
 
