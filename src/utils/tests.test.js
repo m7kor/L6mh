@@ -252,3 +252,69 @@ describe('syncQueueWithCatalog', () => {
     assert.equal(result, true);
   });
 });
+
+// ============================================
+// streaming (isPotProviderError, killProcesses)
+// ============================================
+import { isPotProviderError } from '../services/streaming.js';
+import { killProcesses } from '../services/streaming.js';
+
+describe('isPotProviderError', () => {
+  it('returns false for null/empty', () => {
+    assert.equal(isPotProviderError(null), false);
+    assert.equal(isPotProviderError(''), false);
+    assert.equal(isPotProviderError(undefined), false);
+  });
+
+  it('returns true for ECONNREFUSED + bgutil', () => {
+    assert.equal(isPotProviderError('ECONNREFUSED 127.0.0.1:4416 bgutilhttp'), true);
+  });
+
+  it('returns true for connection refused + bgutil', () => {
+    assert.equal(isPotProviderError('Connection refused bgutil'), true);
+  });
+
+  it('returns true for ETIMEDOUT + bgutil', () => {
+    assert.equal(isPotProviderError('ETIMEDOUT bgutil connection timed out'), true);
+  });
+
+  it('returns false for ECONNREFUSED without bgutil', () => {
+    assert.equal(isPotProviderError('ECONNREFUSED 127.0.0.1:4416'), false);
+  });
+
+  it('returns false for bgutil without network error', () => {
+    assert.equal(isPotProviderError('bgutil returned error 403'), false);
+  });
+
+  it('is case-insensitive', () => {
+    assert.equal(isPotProviderError('econnrefused BGUTIL'), true);
+  });
+});
+
+describe('killProcesses', () => {
+  it('kills and nulls ffmpegProcess', () => {
+    let killed = false;
+    const session = { ffmpegProcess: { kill: () => { killed = true; } }, resolveProcess: null };
+    killProcesses(session);
+    assert.equal(killed, true);
+    assert.equal(session.ffmpegProcess, null);
+  });
+
+  it('kills and nulls resolveProcess', () => {
+    let killed = false;
+    const session = { ffmpegProcess: null, resolveProcess: { kill: () => { killed = true; } } };
+    killProcesses(session);
+    assert.equal(killed, true);
+    assert.equal(session.resolveProcess, null);
+  });
+
+  it('handles kill errors gracefully', () => {
+    const session = { ffmpegProcess: { kill: () => { throw new Error('already dead'); } }, resolveProcess: null };
+    killProcesses(session); // should not throw
+    assert.equal(session.ffmpegProcess, null);
+  });
+
+  it('handles null processes gracefully', () => {
+    killProcesses({ ffmpegProcess: null, resolveProcess: null }); // should not throw
+  });
+});

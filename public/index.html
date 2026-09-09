@@ -128,6 +128,10 @@
         .vid-count { font-family: 'Outfit'; font-size: 13px; font-weight: 700; color: var(--text-2); background: var(--surface-2); padding: 5px 14px; border-radius: 10px; }
         .vid-search { width: 100%; padding: 14px 20px; background: transparent; border: none; border-bottom: 1px solid var(--border); color: var(--text); font-size: 14px; outline: none; font-weight: 500; }
         .vid-search::placeholder { color: var(--text-3); }
+        .vid-filters { padding: 8px 20px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+        .vid-filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; font-family: 'Outfit'; }
+        .vid-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+        .vid-filter-btn[aria-pressed="true"] { background: rgba(0,229,255,0.12); border-color: var(--cyan); color: var(--cyan); }
         .vid-list { max-height: 500px; overflow-y: auto; }
         .vid-list::-webkit-scrollbar { width: 5px; }
         .vid-list::-webkit-scrollbar-track { background: transparent; }
@@ -268,6 +272,9 @@
             <span class="vid-count" id="vCount">0 مقطع</span>
         </div>
         <input type="text" class="vid-search" id="vSearch" placeholder="بحث في المقاطع..." aria-label="بحث في المقاطع">
+        <div class="vid-filters">
+            <button class="vid-filter-btn" id="btnUnplayed" onclick="toggleUnplayed()" aria-pressed="false">لم تُشغَّل بعد</button>
+        </div>
         <div class="vid-list" id="vList">
             <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
             <div class="vid-skel"><div class="sk-num skeleton"></div><div class="sk-img skeleton"></div><div class="sk-text"><div class="sk-title skeleton"></div><div class="sk-date skeleton"></div></div></div>
@@ -424,10 +431,21 @@ const vSearch = document.getElementById('vSearch');
 const vCount = document.getElementById('vCount');
 const vPager = document.getElementById('vPager');
 let searchTimer = null;
+let showUnplayedOnly = false;
+
+const toggleUnplayed = () => {
+    showUnplayedOnly = !showUnplayedOnly;
+    const btn = document.getElementById('btnUnplayed');
+    btn.setAttribute('aria-pressed', showUnplayedOnly);
+    vidPage = 1;
+    render(vSearch.value);
+};
 
 const render = q => {
     const lower = (q || '').toLowerCase();
-    filteredVid = lower ? allVid.filter(v => (v.title || '').toLowerCase().includes(lower)) : [...allVid];
+    let list = lower ? allVid.filter(v => (v.title || '').toLowerCase().includes(lower)) : [...allVid];
+    if (showUnplayedOnly) list = list.filter(v => !v.playCount);
+    filteredVid = list;
     const totalPages = Math.max(1, Math.ceil(filteredVid.length / VID_PER_PAGE));
     if (vidPage > totalPages) vidPage = totalPages;
     const start = (vidPage - 1) * VID_PER_PAGE;

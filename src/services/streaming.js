@@ -28,7 +28,7 @@ export function killProcesses(session) {
 }
 
 /** Check if stderr mentions the PoT provider being unreachable. */
-function isPotProviderError(stderr) {
+export function isPotProviderError(stderr) {
   if (!stderr) return false;
   const lower = stderr.toLowerCase();
   return (lower.includes('econnrefused') || lower.includes('connection refused')
@@ -60,14 +60,14 @@ export async function preValidateVideo(url) {
         consecutiveAuthFails++;
         if (isPotProviderError(stderrTail)) {
           notify(
-            '⚠️ PoT provider unreachable',
-            `yt-dlp cannot reach the PoT provider at \`${config.potProviderUrl}\`. Is the helper service running?\n\`\`\`${stderrTail.slice(-500)}\`\`\``,
+            '⚠️ PoT غير متاح',
+            `تعذر الاتصال بـ \`${config.potProviderUrl}\``,
             'error',
           ).catch(() => {});
         } else if (consecutiveAuthFails >= AUTH_FAIL_THRESHOLD) {
           notify(
-            'Cookie expired?',
-            `${consecutiveAuthFails} consecutive yt-dlp pre-validation failures.\n\`\`\`${stderrTail.slice(-500)}\`\`\``,
+            '⚠️ تعذر التحقق',
+            `فشل yt-dlp ${consecutiveAuthFails} مرات متتالية — تحقق من الكوكيز`,
             'error',
           ).catch(() => {});
           consecutiveAuthFails = 0;

@@ -28,6 +28,7 @@ import {
   getAllSessions,
   getQueue,
 } from './services/player.js';
+import { sessions } from './services/session.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
@@ -376,6 +377,21 @@ process.on('uncaughtException', (err) => {
   stopAllSessions();
   setTimeout(() => process.exit(1), 500);
 });
+
+function gracefulShutdown(signal) {
+  logger.info(`Received ${signal} — saving state and shutting down...`);
+  const tasks = [];
+  for (const [guildId] of sessions) {
+    tasks.push(stopPlayback(guildId, { manual: false }));
+  }
+  Promise.all(tasks)
+    .then(() => client.destroy())
+    .catch(() => { try { client.destroy(); } catch {} })
+    .finally(() => process.exit(0));
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 client.login(config.discordToken).catch(async (err) => {
   logger.error('Login failed:', err.message);

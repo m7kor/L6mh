@@ -7,6 +7,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { execFile } from 'node:child_process';
 import { createLogger } from './logger.js';
 import { loadPlays, getPlayHistory } from './stats.js';
 import { getVideos } from '../services/youtube.js';
@@ -42,7 +43,10 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 120;
 
 function isRateLimited(ip, url) {
-  if (url === '/api/status') return false; // dashboard polls every 2s
+  // Exempt read-only polling endpoints
+  if (url === '/api/status' || url === '/api/videos') return false;
+  // Stricter limit for write endpoints
+  const max = url === '/api/command' ? 30 : RATE_LIMIT_MAX;
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
   if (!entry || now - entry.start > RATE_LIMIT_WINDOW_MS) {
@@ -50,7 +54,7 @@ function isRateLimited(ip, url) {
     return false;
   }
   entry.count++;
-  return entry.count > RATE_LIMIT_MAX;
+  return entry.count > max;
 }
 
 // Periodic cleanup of rate limit map (every 5 min)
@@ -133,8 +137,17 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
       // Health endpoint — no auth, no data leakage
       if (req.url === '/health') {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true }));
+        const checks = { ok: true, uptime: Math.floor(process.uptime()) };
+        // Check yt-dlp availability
+        await new Promise(resolve => {
+          execFile('yt-dlp', ['--version'], { timeout: 5000 }, (err, stdout) => {
+            checks.ytdlp = err ? 'unavailable' : stdout.trim();
+            resolve();
+          });
+        });
+        const code = checks.ok ? 200 : 503;
+        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(checks));
         return;
       }
 

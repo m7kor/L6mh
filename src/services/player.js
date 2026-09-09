@@ -336,6 +336,9 @@ export async function playRandom(guild, channel) {
   syncQueueWithCatalog(session, catalog);
 
   const { videoId, newCycle } = popFromQueue(session, catalog);
+  if (newCycle) {
+    notify('🟢 دورة جديدة', `اكتملت الدورة #${session.cycleCount - 1} — تم تشغيل كل الـ${catalog.length} مقطع.`, 'info').catch(() => {});
+  }
   const video = catalog.find(v => v.videoId === videoId);
   if (!video) {
     logger.error(`[${guild.id}] Video ${videoId} not found in catalog.`);
@@ -762,6 +765,9 @@ async function onTrackFinished(guild, channel) {
           const catalog = await getVideos();
           syncQueueWithCatalog(session, catalog);
           const { videoId, newCycle } = popFromQueue(session, catalog);
+          if (newCycle) {
+            notify('🟢 دورة جديدة', `اكتملت الدورة #${session.cycleCount - 1} — تم تشغيل كل الـ${catalog.length} مقطع.`, 'info').catch(() => {});
+          }
           next = catalog.find(v => v.videoId === videoId);
         }
         if (!next) {
@@ -794,7 +800,7 @@ async function onTrackFinished(guild, channel) {
     if (attempt >= MAX_ATTEMPTS) {
       logger.error(`[${guild.id}] Stopped after ${MAX_ATTEMPTS} failed attempts to play next track.`);
       const msg = `Guild ${guild.id} stopped after ${MAX_ATTEMPTS} failed attempts to play next track.`;
-      notify('🔴 Playback Stopped', `Guild \`${guild.id}\` failed to play a track after ${MAX_ATTEMPTS} attempts. Bot is still running but idle.`, 'error').catch(() => {});
+      notify('🔴 توقف', `${guild.name || guild.id} — تعذر التشغيل بعد ${MAX_ATTEMPTS} محاولات.`, 'error').catch(() => {});
       logDashboardError(msg);
       stopPlayback(guild.id, { manual: false });
     }
