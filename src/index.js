@@ -162,6 +162,58 @@ client.once(Events.ClientReady, async (c) => {
       }
       return done > 0 ? `Playing latest on ${done} server(s).` : 'No active servers found.';
     }
+    if (lower === 'skip' || lower === '/تخطي') {
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) { 
+          const { skipTrack } = await import('./services/player/index.js');
+          skipTrack(guild.id); 
+          done++; 
+        }
+      }
+      return done > 0 ? `Skipped on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower.startsWith('priority ')) {
+      const videoId = cmd.split(' ').slice(1).join(' ').trim();
+      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return 'Usage: priority <videoId>';
+      let done = 0;
+      for (const s of all) {
+        const { getSession, saveState } = await import('./services/session.js');
+        const guildSession = getSession(s.guildId);
+        guildSession.queue.unshift(videoId);
+        await saveState(guildSession);
+        done++;
+      }
+      return done > 0 ? `Added ${videoId} as priority next track on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower.startsWith('live ')) {
+      const input = cmd.split(' ').slice(1).join(' ').trim();
+      const idMatch = input.match(/(?:v=|youtu\.be\/|embed\/|\/v\/|^)([A-Za-z0-9_-]{11})/);
+      const videoId = idMatch?.[1];
+      if (!videoId) return 'Usage: live <youtube_url_or_id>';
+      
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) {
+          const { isLiveStream } = await import('./services/streaming.js');
+          const { getVideoDetails } = await import('./services/youtube.js');
+          
+          const url = `https://www.youtube.com/watch?v=${videoId}`;
+          const isLive = await isLiveStream(url).catch(() => false);
+          if (!isLive) return `Error: ${url} is not a detected live stream. Use "play" instead.`;
+          
+          let title = videoId;
+          try { const details = await getVideoDetails(videoId); title = details?.title || videoId; } catch {}
+          
+          const video = { videoId, title, url, thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`, durationSeconds: null, isLive: true };
+          await playVideo(guild, guild.members.me.voice.channel, video);
+          done++;
+        }
+      }
+      return done > 0 ? `Playing live stream on ${done} server(s).` : 'No active servers found.';
+    }
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
