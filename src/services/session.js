@@ -277,3 +277,37 @@ export async function migrateSessionToQueue(session, catalog) {
   await saveState(session);
   return true;
 }
+
+/**
+ * §2.6 Sync the persisted queue with a fresh catalog:
+ * - Insert new videos (in catalog but not in queue or playedIds) at random positions.
+ * - Remove stale videos (in queue but no longer in catalog — deleted/privated).
+ * Returns true if the queue was modified.
+ */
+export function syncQueueWithCatalog(session, catalog) {
+  if (session.queue.length === 0) return false;
+
+  const catalogIds = new Set(catalog.map(v => v.videoId));
+  const playedOrFailed = new Set([...session.playedIds, ...session.failedIds]);
+
+  let changed = false;
+
+  // 1. Remove stale queued videos no longer in catalog
+  const before = session.queue.length;
+  session.queue = session.queue.filter(id => catalogIds.has(id));
+  if (session.queue.length !== before) changed = true;
+
+  // 2. Find new videos: in catalog but not in queue, playedIds, or failedIds
+  const queuedSet = new Set(session.queue);
+  const newVideos = catalog.filter(v => !queuedSet.has(v.videoId) && !playedOrFailed.has(v.videoId));
+
+  // 3. Insert each new video at a random position in the queue
+  for (const v of newVideos) {
+    const pos = Math.floor(Math.random() * (session.queue.length + 1));
+    session.queue.splice(pos, 0, v.videoId);
+    changed = true;
+  }
+
+  if (changed) saveState(session);
+  return changed;
+}

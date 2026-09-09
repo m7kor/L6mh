@@ -21,7 +21,7 @@ import { getLatestVideo, getVideoDetails, getVideos } from './youtube.js';
 import {
   getSession, sessions, saveState, restoreLastVideo, loadAllState,
   getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
-  popFromQueue, migrateSessionToQueue,
+  popFromQueue, migrateSessionToQueue, syncQueueWithCatalog,
 } from './session.js';
 import { createAudioStream, killProcesses, preValidateVideo } from './streaming.js';
 import { getCookieArgs } from './cookies.js';
@@ -300,6 +300,7 @@ export async function playLatest(guild, channel) {
 
   const catalog = await getVideos();
   migrateSessionToQueue(session, catalog);
+  syncQueueWithCatalog(session, catalog);
 
   await connectAndPlay(guild, channel, video);
   return session.current;
@@ -316,6 +317,7 @@ export async function playVideo(guild, channel, video) {
 
   const catalog = await getVideos();
   migrateSessionToQueue(session, catalog);
+  syncQueueWithCatalog(session, catalog);
 
   await connectAndPlay(guild, channel, video);
   return session.current;
@@ -330,6 +332,7 @@ export async function playRandom(guild, channel) {
 
   const catalog = await getVideos();
   migrateSessionToQueue(session, catalog);
+  syncQueueWithCatalog(session, catalog);
 
   const { videoId, newCycle } = popFromQueue(session, catalog);
   const video = catalog.find(v => v.videoId === videoId);
@@ -383,6 +386,7 @@ async function preloadNextTrack(session) {
     const nextId = session.queue[0];
     if (!nextId) return;
     const catalog = await getVideos();
+    syncQueueWithCatalog(session, catalog);
     const next = catalog.find(v => v.videoId === nextId);
     if (!next?.url) return;
     const ytDlpArgs = [
@@ -751,6 +755,7 @@ async function onTrackFinished(guild, channel) {
           session.preloaded = null;
         } else {
           const catalog = await getVideos();
+          syncQueueWithCatalog(session, catalog);
           const { videoId, newCycle } = popFromQueue(session, catalog);
           next = catalog.find(v => v.videoId === videoId);
         }
@@ -809,6 +814,7 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     let video = session.current;
     if (!video) {
       const catalog = await getVideos();
+      syncQueueWithCatalog(session, catalog);
       const { videoId } = popFromQueue(session, catalog);
       video = catalog.find(v => v.videoId === videoId);
     }

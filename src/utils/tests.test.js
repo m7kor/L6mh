@@ -5,7 +5,7 @@ import { loadPlays } from './stats.js';
 import { getCookieArgs, describeCookieSource } from '../services/cookies.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from './cooldown.js';
 import { requireDjRole } from './permissions.js';
-import { buildNewQueue } from '../services/session.js';
+import { buildNewQueue, syncQueueWithCatalog } from '../services/session.js';
 
 // ============================================
 // formatTime
@@ -198,5 +198,57 @@ describe('buildNewQueue', () => {
   it('handles all videos excluded', () => {
     const q = buildNewQueue(catalog, ['a', 'b', 'c', 'd', 'e', 'f']);
     assert.equal(q.length, 0);
+  });
+});
+
+// ============================================
+// syncQueueWithCatalog
+// ============================================
+describe('syncQueueWithCatalog', () => {
+  const catalog = [
+    { videoId: 'a' }, { videoId: 'b' }, { videoId: 'c' },
+    { videoId: 'd' }, { videoId: 'e' }, { videoId: 'f' },
+  ];
+
+  it('inserts new videos at random positions', () => {
+    const session = { queue: ['a', 'b', 'c', 'd', 'e', 'f'], playedIds: new Set(), failedIds: new Set() };
+    const newCatalog = [...catalog, { videoId: 'g' }]; // g is new
+    syncQueueWithCatalog(session, newCatalog);
+    assert.equal(session.queue.length, 7);
+    assert.ok(session.queue.includes('g'));
+  });
+
+  it('removes stale videos not in catalog', () => {
+    const session = { queue: ['a', 'b', 'x'], playedIds: new Set(), failedIds: new Set() };
+    const smallCatalog = [{ videoId: 'a' }, { videoId: 'b' }]; // x is gone
+    syncQueueWithCatalog(session, smallCatalog);
+    assert.equal(session.queue.length, 2);
+    assert.ok(!session.queue.includes('x'));
+  });
+
+  it('does not insert videos already in playedIds', () => {
+    const session = { queue: ['a', 'b', 'c', 'd', 'e', 'f'], playedIds: new Set(['g']), failedIds: new Set() };
+    syncQueueWithCatalog(session, catalog);
+    assert.ok(!session.queue.includes('g'));
+    assert.equal(session.queue.length, 6);
+  });
+
+  it('does not insert videos in failedIds', () => {
+    const session = { queue: ['a', 'b', 'c', 'd', 'e', 'f'], playedIds: new Set(), failedIds: new Set(['g']) };
+    syncQueueWithCatalog(session, catalog);
+    assert.ok(!session.queue.includes('g'));
+    assert.equal(session.queue.length, 6);
+  });
+
+  it('returns false when queue is empty', () => {
+    const session = { queue: [], playedIds: new Set(), failedIds: new Set() };
+    const result = syncQueueWithCatalog(session, catalog);
+    assert.equal(result, false);
+  });
+
+  it('returns true when changes were made', () => {
+    const session = { queue: ['a', 'b', 'c', 'd', 'e', 'f'], playedIds: new Set(), failedIds: new Set() };
+    const result = syncQueueWithCatalog(session, [...catalog, { videoId: 'g' }]);
+    assert.equal(result, true);
   });
 });
