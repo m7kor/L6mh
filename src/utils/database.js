@@ -1,6 +1,7 @@
 /**
  * SQLite database for play counts and session state.
  * Replaces JSON files for crash-safe persistence.
+ * In test mode (NODE_ENV=test), uses in-memory DB to avoid polluting production data.
  */
 
 import Database from 'better-sqlite3';
@@ -11,14 +12,14 @@ import { createLogger } from './logger.js';
 const logger = createLogger('db');
 
 const DATA_DIR = join(process.cwd(), 'data');
-const DB_PATH = join(DATA_DIR, 'bot.db');
+const DB_PATH = process.env.NODE_ENV === 'test' ? ':memory:' : join(DATA_DIR, 'bot.db');
 
 let db;
 
 export function getDb() {
   if (!db) {
     try {
-      mkdirSync(DATA_DIR, { recursive: true });
+      if (DB_PATH !== ':memory:') mkdirSync(DATA_DIR, { recursive: true });
       db = new Database(DB_PATH);
       db.pragma('journal_mode = WAL');
       db.pragma('synchronous = NORMAL');
@@ -30,6 +31,16 @@ export function getDb() {
     }
   }
   return db;
+}
+
+/**
+ * Close the database connection (for clean shutdown).
+ */
+export function closeDb() {
+  if (db) {
+    try { db.close(); } catch {}
+    db = null;
+  }
 }
 
 function initTables() {
@@ -76,13 +87,5 @@ function initTables() {
       earned_at TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, guild_id, badge_id)
     );
-  `);
-}
-
-export function closeDb() {
-  if (db) {
-    db.close();
-    db = null;
-    logger.info('Database closed');
-  }
+    `);
 }
