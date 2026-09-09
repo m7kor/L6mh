@@ -576,7 +576,7 @@ const render = q => {
         if (v.playCount > 0) {
             const badge = document.createElement('div');
             badge.className = 'vid-badge watched';
-            badge.textContent = `${v.playCount}x`;
+            badge.textContent = 'تمت المشاهدة';
             badge.title = `تم التشغيل ${v.playCount} مرة`;
             text.appendChild(badge);
         }
