@@ -22,7 +22,7 @@ const logger = createLogger('ytdlp');
 export async function checkForYtdlpUpdate() {
   let result;
   try {
-    result = await execFileAsync('yt-dlp', ['-U'], { timeout: 30_000 });
+    result = await execFileAsync('yt-dlp', ['-U'], { timeout: 30_000, windowsHide: true });
   } catch (err) {
     // Non-zero exit or missing binary — don't treat this as fatal, just
     // surface it. `status.js` already reports version, so it's visible.

@@ -324,6 +324,21 @@ const doLogin = async () => {
 };
 document.getElementById('loginInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 const doLogout = () => { localStorage.removeItem('dashboard_token'); location.reload(); };
+
+// Auto-login: check for saved token on page load
+(async () => {
+  const saved = localStorage.getItem('dashboard_token');
+  if (saved) {
+    try {
+      const r = await fetch('/api/status', { headers: { 'Authorization': `Bearer ${saved}` } });
+      if (r.ok) {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('dashboard').style.display = '';
+        initDashboard();
+      } else { localStorage.removeItem('dashboard_token'); }
+    } catch { /* stay on login screen */ }
+  }
+})();
 const clearErrors = () => { document.getElementById('errList').innerHTML = ''; document.getElementById('errSection').style.display = 'none'; };
 
 const cmd = async (c, btn) => {

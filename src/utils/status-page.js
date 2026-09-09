@@ -214,7 +214,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         const checks = { ok: true, uptime: Math.floor(process.uptime()) };
         // Check yt-dlp availability
         await new Promise(resolve => {
-          execFile('yt-dlp', ['--version'], { timeout: 5000 }, (err, stdout) => {
+          execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
             checks.ytdlp = err ? 'unavailable' : stdout.trim();
             resolve();
           });
@@ -279,7 +279,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
           const health = { ytdlp: {}, pot: {}, cookie: {}, db: {} };
           // yt-dlp version
           await new Promise(resolve => {
-            execFile('yt-dlp', ['--version'], { timeout: 5000 }, (err, stdout) => {
+            execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
               health.ytdlp.version = err ? 'unavailable' : stdout.trim();
               health.ytdlp.ok = !err;
               resolve();
