@@ -195,7 +195,6 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       '--retry-sleep', '5',
       '--http-chunk-size', '2M',
       '--concurrent-fragments', '4',
-      '--http-retries', '10',
       youtubeUrl,
     );
 
