@@ -226,6 +226,9 @@
     <button class="act-btn" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> عشوائي</button>
     <button class="act-btn" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> كمل</button>
     <button class="act-btn" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> آخر مقطع</button>
+    <button class="act-btn" onclick="cmd('skip',this)" style="color:var(--red)"><i class="fas fa-forward-step"></i> تخطي</button>
+    <button class="act-btn" onclick="const v=prompt('أدخل رابط أو ID المقطع:'); if(v) cmd('priority '+v,this)"><i class="fas fa-star"></i> أولوية</button>
+    <button class="act-btn" onclick="const v=prompt('أدخل رابط البث المباشر:'); if(v) cmd('live '+v,this)"><i class="fas fa-broadcast-tower"></i> بث مباشر</button>
   </div>
 
   <!-- Error Log -->
