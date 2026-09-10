@@ -189,10 +189,11 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     ytDlpArgs.push(...getCookieArgs());
 
     ytDlpArgs.push(
-      '--socket-timeout', '30',
-      '--retries', '5',
-      '--fragment-retries', '10',
-      '--retry-sleep', '2',
+      '--socket-timeout', '120',
+      '--retries', '10',
+      '--fragment-retries', '20',
+      '--retry-sleep', '3',
+      '--http-chunk-size', '1M',
       youtubeUrl,
     );
 

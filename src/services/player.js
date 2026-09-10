@@ -401,6 +401,11 @@ async function preloadNextTrack(session) {
       '-o', '-',
       '--no-part',
       '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
+      '--socket-timeout', '120',
+      '--retries', '10',
+      '--fragment-retries', '20',
+      '--retry-sleep', '3',
+      '--http-chunk-size', '1M',
       ...getCookieArgs(),
       next.url,
     ];
