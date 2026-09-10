@@ -401,11 +401,13 @@ async function preloadNextTrack(session) {
       '-o', '-',
       '--no-part',
       '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
-      '--socket-timeout', '120',
-      '--retries', '10',
-      '--fragment-retries', '20',
-      '--retry-sleep', '3',
-      '--http-chunk-size', '1M',
+      '--socket-timeout', '180',
+      '--retries', '15',
+      '--fragment-retries', '30',
+      '--retry-sleep', '5',
+      '--http-chunk-size', '2M',
+      '--concurrent-fragments', '4',
+      '--http-retries', '10',
       ...getCookieArgs(),
       next.url,
     ];
@@ -627,7 +629,7 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
 
   const resource = createAudioResource(stream, {
     inputType: StreamType.Raw,
-    highWaterMark: 1024 * 64,
+    highWaterMark: 1024 * 256,
   });
   session.resource = resource;
 
@@ -646,14 +648,14 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
     } else if (newState.status === AudioPlayerStatus.AutoPaused || newState.status === AudioPlayerStatus.Buffering) {
       if (!session.stallTimeout) {
         session.stallTimeout = setTimeout(() => {
-          logger.warn(`[${guild.id}] Stream stalled for 10s. Restarting track.`);
+          logger.warn(`[${guild.id}] Stream stalled for 30s. Restarting track.`);
           if (session.player === player) {
             const elapsed = Math.floor(getElapsedSeconds(session));
             session.current = { ...session.current, progressSeconds: elapsed };
             connectAndPlay(guild, channel, session.current, { countPlay: false })
               .catch(() => onTrackFinished(guild, channel));
           }
-        }, 10_000);
+        }, 30_000);
       }
     } else {
       if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }

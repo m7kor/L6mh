@@ -18,7 +18,7 @@ const logger = createLogger('audio');
 
 let consecutiveAuthFails = 0;
 const AUTH_FAIL_THRESHOLD = 3;
-const STDERR_TAIL_BYTES = 2048;
+const STDERR_TAIL_BYTES = 4096;
 
 // ---------------------------------------------------------------------------
 // Dynamic PoT Provider Switching
@@ -189,11 +189,13 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     ytDlpArgs.push(...getCookieArgs());
 
     ytDlpArgs.push(
-      '--socket-timeout', '120',
-      '--retries', '10',
-      '--fragment-retries', '20',
-      '--retry-sleep', '3',
-      '--http-chunk-size', '1M',
+      '--socket-timeout', '180',
+      '--retries', '15',
+      '--fragment-retries', '30',
+      '--retry-sleep', '5',
+      '--http-chunk-size', '2M',
+      '--concurrent-fragments', '4',
+      '--http-retries', '10',
       youtubeUrl,
     );
 
@@ -202,10 +204,10 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       ffmpegArgs.push('-ss', String(startSeconds));
     }
     ffmpegArgs.push(
-      '-probesize', '32768',
+      '-probesize', '131072',
       '-analyzeduration', '0',
       '-i', 'pipe:0',
-      '-bufsize', '512k',
+      '-bufsize', '2M',
       '-af', `volume=${volume / 100},afade=t=in:ss=0:d=0.4,aresample=48000`,
       '-vn',
       '-f', 's16le',
@@ -276,7 +278,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
 
     let dataReceived = false;
 
-    const bufferingStream = new PassThrough({ highWaterMark: 1024 * 128 });
+    const bufferingStream = new PassThrough({ highWaterMark: 1024 * 1024 });
     ffmpegProcess.stdout.pipe(bufferingStream);
 
     bufferingStream.once('data', () => {
