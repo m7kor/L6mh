@@ -97,6 +97,11 @@ client.once(Events.ClientReady, async (c) => {
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**\nServers: ${guildCount}\nCommands: /${[...client.commands.keys()].join(', /')}`, 'ok');
   startHeartbeat();
 
+  // Start the scheduler
+  import('./services/scheduler.js').then(({ startScheduler }) => {
+    startScheduler(c);
+  }).catch(err => logger.error('Failed to start scheduler:', err));
+
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
@@ -402,6 +407,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
     }
     return;
+  }
+
+  if (interaction.isButton()) {
+    // Only allow administrators to use control panel buttons
+    if (!interaction.memberPermissions?.has('Administrator')) {
+      return interaction.reply({ content: '❌ هذه الأزرار مخصصة للإدارة فقط.', ephemeral: true });
+    }
+
+    const { skipTrack, pausePlayback, resumePlayback, getSessionInfo } = await import('./services/player/index.js');
+    const guildId = interaction.guildId;
+    const botChannel = interaction.guild.members.me?.voice?.channel;
+
+    if (!botChannel) {
+      return interaction.reply({ content: '❌ البوت غير متصل بأي روم صوتي.', ephemeral: true });
+    }
+
+    try {
+      if (interaction.customId === 'radio_toggle_pause') {
+        const session = getSessionInfo(guildId);
+        if (session.paused) {
+          resumePlayback(guildId);
+          await interaction.reply({ content: '▶️ تم استكمال التشغيل.', ephemeral: true });
+        } else {
+          pausePlayback(guildId);
+          await interaction.reply({ content: '⏸️ تم إيقاف التشغيل مؤقتاً.', ephemeral: true });
+        }
+      } else if (interaction.customId === 'radio_skip') {
+        skipTrack(guildId);
+        await interaction.reply({ content: '⏭️ تم التخطي بنجاح.', ephemeral: true });
+      } else if (interaction.customId === 'radio_random') {
+        await playRandom(interaction.guild, botChannel);
+        await interaction.reply({ content: '🔀 جاري تشغيل مقطع عشوائي...', ephemeral: true });
+      }
+    } catch (err) {
+      logger.error('Button interaction error:', err);
+      await interaction.reply({ content: '❌ حدث خطأ أثناء تنفيذ الأمر.', ephemeral: true });
+    }
   }
 });
 

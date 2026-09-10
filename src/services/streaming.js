@@ -78,10 +78,13 @@ export async function preValidateVideo(url) {
   return new Promise((resolve) => {
     const args = [
       '--simulate', '--no-warnings', '--no-playlist',
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${getActiveProvider()}`,
-      ...getCookieArgs(),
-      url,
     ];
+    const provider = getActiveProvider();
+    if (provider && provider !== 'none') {
+      args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${provider}`);
+    }
+    args.push(...getCookieArgs(), url);
+    
     const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     let stderrTail = '';
     proc.stderr.on('data', (chunk) => {
@@ -116,15 +119,18 @@ export async function preValidateVideo(url) {
  * @param {string} url
  * @returns {Promise<boolean>}
  */
-export function isLiveStream(url) {
+export async function isLiveStream(url) {
   return new Promise((resolve) => {
     const args = [
       '--print', 'is_live',
       '--no-warnings', '--no-playlist', '--skip-download',
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${getActiveProvider()}`,
-      ...getCookieArgs(),
-      url,
     ];
+    const provider = getActiveProvider();
+    if (provider && provider !== 'none') {
+      args.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${provider}`);
+    }
+    args.push(...getCookieArgs(), url);
+
     const proc  = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     const timer = setTimeout(() => { proc.kill(); resolve(false); }, 10_000);
     let output  = '';
@@ -173,9 +179,14 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       '--no-progress',
       '-o', '-',
       '--no-part',
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${getActiveProvider()}`,
-      ...getCookieArgs(),
     ];
+
+    const provider = getActiveProvider();
+    if (provider && provider !== 'none') {
+      ytDlpArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${provider}`);
+    }
+
+    ytDlpArgs.push(...getCookieArgs());
 
     ytDlpArgs.push(
       '--socket-timeout', '30',

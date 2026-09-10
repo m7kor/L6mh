@@ -99,6 +99,13 @@ function initTables() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS blacklist (
+      user_id TEXT PRIMARY KEY,
+      reason TEXT,
+      added_at TEXT DEFAULT (datetime('now')),
+      added_by TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS video_details (
       video_id TEXT PRIMARY KEY,
       title TEXT,
@@ -121,6 +128,11 @@ function initTables() {
     if (!cols.some(c => c.name === 'points')) {
       db.exec("ALTER TABLE member_stats ADD COLUMN points INTEGER DEFAULT 0");
       logger.info('Added points column to member_stats');
+    }
+    // Migration: add last_daily_at column if missing
+    if (!cols.some(c => c.name === 'last_daily_at')) {
+      db.exec("ALTER TABLE member_stats ADD COLUMN last_daily_at TEXT");
+      logger.info('Added last_daily_at column to member_stats');
     }
   } catch {}
 

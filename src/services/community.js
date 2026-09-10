@@ -66,6 +66,8 @@ function trackPresence(userId, guildId, event) {
 
 function addMinutes(userId, guildId, minutes) {
   try {
+    if (isBlacklisted(userId)) return;
+
     const db = getDb();
     // تحديث الدقائق وإضافة النقاط (1 نقطة كل 15 دقيقة)
     const pointsEarned = Math.floor(minutes / 15);
@@ -242,6 +244,112 @@ export function optIn(userId, guildId) {
   db.prepare(`
     INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, opted_out, first_seen_at, last_seen_at)
     VALUES (?, ?, 0, 0, 0, datetime('now'), datetime('now'))
-    ON CONFLICT(user_id, guild_id) DO UPDATE SET opted_out = 0
   `).run(userId, guildId);
 }
+
+/**
+ * Transfer points from one user to another.
+ */
+export function transferPoints(fromUserId, toUserId, guildId, amount) {
+  try {
+    const db = getDb();
+    const current = getUserPoints(fromUserId, guildId);
+    if (current < amount) return false;
+
+    db.transaction(() => {
+      // Deduct from sender
+      db.prepare('UPDATE member_stats SET points = points - ? WHERE user_id = ? AND guild_id = ?').run(amount, fromUserId, guildId);
+      db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)').run(fromUserId, guildId, `transfer_to_${toUserId}`, -amount);
+      
+      // Add to receiver
+      db.prepare(`
+        INSERT INTO member_stats (user_id, guild_id, points, first_seen_at, last_seen_at)
+        VALUES (?, ?, ?, datetime('now'), datetime('now'))
+        ON CONFLICT(user_id, guild_id) DO UPDATE SET points = COALESCE(points, 0) + ?
+      `).run(toUserId, guildId, amount, amount);
+      db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)').run(toUserId, guildId, `transfer_from_${fromUserId}`, amount);
+    })();
+    return true;
+  } catch (err) {
+    logger.warn('transferPoints error:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Claim daily reward (50 points).
+ * Returns { success: boolean, message: string }
+ */
+export function claimDaily(userId, guildId) {
+  try {
+    const db = getDb();
+    const row = db.prepare('SELECT last_daily_at FROM member_stats WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
+    const now = new Date();
+    
+    if (row && row.last_daily_at) {
+      const lastDaily = new Date(row.last_daily_at);
+      const diffHours = (now - lastDaily) / (1000 * 60 * 60);
+      if (diffHours < 24) {
+        const remaining = Math.ceil(24 - diffHours);
+        return { success: false, message: `لقد حصلت على مكافأتك اليومية بالفعل! يرجى العودة بعد **${remaining} ساعة**.` };
+      }
+    }
+    
+    const reward = 50;
+    db.prepare(`
+      INSERT INTO member_stats (user_id, guild_id, points, last_daily_at, first_seen_at, last_seen_at)
+      VALUES (?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
+      ON CONFLICT(user_id, guild_id) DO UPDATE SET 
+        points = COALESCE(points, 0) + ?,
+        last_daily_at = datetime('now')
+    `).run(userId, guildId, reward, reward);
+    
+    db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)').run(userId, guildId, 'daily_reward', reward);
+    return { success: true, message: `🎉 مبروك! لقد حصلت على مكافأتك اليومية: **${reward} نقطة**.` };
+  } catch (err) {
+    logger.warn('claimDaily error:', err.message);
+    return { success: false, message: 'حدث خطأ أثناء محاولة الحصول على المكافأة.' };
+  }
+}
+
+/**
+ * Check if a user is blacklisted.
+ */
+export function isBlacklisted(userId) {
+  try {
+    const db = getDb();
+    const row = db.prepare('SELECT user_id FROM blacklist WHERE user_id = ?').get(userId);
+    return !!row;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Add user to blacklist.
+ */
+export function addToBlacklist(userId, reason, addedBy) {
+  try {
+    const db = getDb();
+    db.prepare('INSERT OR REPLACE INTO blacklist (user_id, reason, added_by) VALUES (?, ?, ?)').run(userId, reason, addedBy);
+    return true;
+  } catch (err) {
+    logger.warn('addToBlacklist error:', err.message);
+    return false;
+  }
+}
+
+/**
+ * Remove user from blacklist.
+ */
+export function removeFromBlacklist(userId) {
+  try {
+    const db = getDb();
+    const info = db.prepare('DELETE FROM blacklist WHERE user_id = ?').run(userId);
+    return info.changes > 0;
+  } catch (err) {
+    logger.warn('removeFromBlacklist error:', err.message);
+    return false;
+  }
+}
+

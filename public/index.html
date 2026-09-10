@@ -217,7 +217,6 @@
   <div class="stats">
     <div class="stat"><div class="stat-icon">⏱️</div><div class="stat-num" id="sUp">0h 0m</div><div class="stat-lbl">مدة التشغيل</div></div>
     <div class="stat"><div class="stat-icon">🎵</div><div class="stat-num" id="sPlayed">0 / 0</div><div class="stat-lbl">شُغّل / لم يشُغَّل</div></div>
-    <div class="stat"><div class="stat-icon">🔄</div><div class="stat-num" id="sCycle">#1</div><div class="stat-lbl">الدورة</div></div>
     <div class="stat"><div class="stat-icon">📺</div><div class="stat-num" id="sServer" style="font-size:14px">—</div><div class="stat-lbl">السيرفر</div></div>
   </div>
 
@@ -226,9 +225,6 @@
     <button class="act-btn" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> عشوائي</button>
     <button class="act-btn" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> كمل</button>
     <button class="act-btn" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> آخر مقطع</button>
-    <button class="act-btn" onclick="cmd('skip',this)" style="color:var(--red)"><i class="fas fa-forward-step"></i> تخطي</button>
-    <button class="act-btn" onclick="const v=prompt('أدخل رابط أو ID المقطع:'); if(v) cmd('priority '+v,this)"><i class="fas fa-star"></i> أولوية</button>
-    <button class="act-btn" onclick="const v=prompt('أدخل رابط البث المباشر:'); if(v) cmd('live '+v,this)"><i class="fas fa-broadcast-tower"></i> بث مباشر</button>
   </div>
 
   <!-- Error Log -->
@@ -418,7 +414,6 @@ const refresh = async () => {
     document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';
     const played = s?.playedCount || 0;
     document.getElementById('sPlayed').innerText = `${played} / ${(allVid.length || 0) - played}`;
-    document.getElementById('sCycle').innerText = `#${s?.cycleCount || 1}`;
 
     // Errors
     const errList = document.getElementById('errList');
@@ -524,6 +519,7 @@ const initDashboard = async () => {
   statusInterval = setInterval(refresh, 2000);
   healthInterval = setInterval(refreshHealth, 30000);
 };
+
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (statusInterval) clearInterval(statusInterval); if (healthInterval) clearInterval(healthInterval); }

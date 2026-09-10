@@ -309,14 +309,14 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
     ) {
       if (!session.stallTimeout) {
         session.stallTimeout = setTimeout(() => {
-          logger.warn(`[${guild.id}] Stream stalled for 10s. Restarting track.`);
+          logger.warn(`[${guild.id}] Stream stalled for 30s. Restarting track.`);
           if (session.player === player) {
             const elapsed = Math.floor(getElapsedSeconds(session));
             session.current = { ...session.current, progressSeconds: elapsed };
             connectAndPlay(guild, channel, session.current, { countPlay: false })
               .catch(() => onTrackFinished(guild, channel));
           }
-        }, 10_000);
+        }, 30_000);
       }
     } else {
       if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
