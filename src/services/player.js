@@ -816,6 +816,7 @@ async function onTrackFinished(guild, channel) {
 }
 
 async function rejoinAndResume(guild, channel, attempt = 1) {
+  const MAX_REJOIN_ATTEMPTS = 10;
   const session = getSession(guild.id);
   if (!session.continuous || session.manualStop) return;
 
@@ -838,15 +839,24 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {
     const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
-    logger.error(`[${guild.id}] Rejoin failed:`, err.message);
+    logger.error(`[${guild.id}] Rejoin failed (attempt ${attempt}/${MAX_REJOIN_ATTEMPTS}):`, err.message);
     logDashboardError(`[${guild.id}] Rejoin failed (attempt ${attempt}): ${err.message}`);
-    if (attempt === 5) {
+    if (attempt >= 3) {
       notify(
         '🟡 Voice Rejoin Struggling',
-        `Guild \`${guild.id}\` failed to rejoin ${attempt} times.\n\`${err.message.slice(0, 300)}\``,
+        `Guild \`${guild.id}\` failed to rejoin ${attempt}/${MAX_REJOIN_ATTEMPTS} times.\n\`${err.message.slice(0, 300)}\``,
         'warn',
       ).catch(() => {});
     }
-    setTimeout(() => rejoinAndResume(guild, channel, attempt + 1), delay);
+    if (attempt < MAX_REJOIN_ATTEMPTS) {
+      setTimeout(() => rejoinAndResume(guild, channel, attempt + 1), delay);
+    } else {
+      logger.error(`[${guild.id}] Gave up rejoining after ${MAX_REJOIN_ATTEMPTS} attempts.`);
+      notify(
+        '🔴 Voice Rejoin Failed',
+        `Guild \`${guild.id}\` failed to rejoin after ${MAX_REJOIN_ATTEMPTS} attempts. Manual intervention needed.`,
+        'error',
+      ).catch(() => {});
+    }
   }
 }
