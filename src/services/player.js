@@ -406,7 +406,6 @@ async function preloadNextTrack(session) {
       '--fragment-retries', '30',
       '--retry-sleep', '5',
       '--http-chunk-size', '2M',
-      '--concurrent-fragments', '4',
       ...getCookieArgs(),
       next.url,
     ];
