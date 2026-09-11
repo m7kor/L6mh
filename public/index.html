@@ -84,6 +84,21 @@
 
     /* ── Error Log ── */
     .err-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+
+    /* ── Queue ── */
+    .queue-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+    .queue-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .queue-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .queue-hdr h2 i { color: var(--purple); }
+    .queue-count { font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 700; }
+    .queue-list { max-height: 200px; overflow-y: auto; }
+    .queue-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 13px; transition: background .15s; }
+    .queue-item:last-child { border-bottom: none; }
+    .queue-item:hover { background: rgba(168,85,247,0.03); }
+    .queue-num { font-family: var(--font-en); font-size: 12px; font-weight: 700; color: var(--text-3); width: 24px; text-align: center; flex-shrink: 0; }
+    .queue-thumb { width: 48px; height: 27px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
+    .queue-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+    .queue-next { background: var(--purple-glow); border-color: var(--purple); }
     .err-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
     .err-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
     .err-hdr h2 i { color: var(--red); }
@@ -225,6 +240,15 @@
     <button class="act-btn" onclick="cmd('random',this)"><i class="fas fa-shuffle"></i> عشوائي</button>
     <button class="act-btn" onclick="cmd('resume',this)"><i class="fas fa-rotate-left"></i> كمل</button>
     <button class="act-btn" onclick="cmd('latest',this)"><i class="fas fa-clock-rotate-left"></i> آخر مقطع</button>
+  </div>
+
+  <!-- Queue Preview -->
+  <div class="queue-section" id="queueSection" style="display:none">
+    <div class="queue-hdr">
+      <h2><i class="fas fa-list-ol"></i> قائمة التشغيل القادمة</h2>
+      <span class="queue-count" id="qCount">0 مقطع</span>
+    </div>
+    <div class="queue-list" id="qList"></div>
   </div>
 
   <!-- Error Log -->
@@ -429,6 +453,36 @@ const refresh = async () => {
         row.append(time, msg); errList.appendChild(row);
       });
     } else { errSection.style.display = 'none'; }
+
+    // Queue preview
+    const qList = document.getElementById('qList');
+    const qSection = document.getElementById('queueSection');
+    const qCount = document.getElementById('qCount');
+    const queue = s?.queue || [];
+    if (queue.length > 0) {
+      qSection.style.display = '';
+      qCount.textContent = `${queue.length} مقطع`;
+      qList.innerHTML = '';
+      queue.slice(0, 10).forEach((vid, i) => {
+        const row = document.createElement('div');
+        row.className = 'queue-item' + (i === 0 ? ' queue-next' : '');
+        const num = document.createElement('span');
+        num.className = 'queue-num';
+        num.textContent = i === 0 ? '▶' : i + 1;
+        if (i === 0) num.style.color = 'var(--purple)';
+        const thumb = document.createElement('img');
+        thumb.className = 'queue-thumb';
+        thumb.src = vid.thumbnail || `https://i.ytimg.com/vi/${encodeURIComponent(vid.videoId)}/mqdefault.jpg`;
+        thumb.loading = 'lazy';
+        const title = document.createElement('span');
+        title.className = 'queue-title';
+        title.textContent = vid.title || '—';
+        row.append(num, thumb, title);
+        qList.appendChild(row);
+      });
+    } else {
+      qSection.style.display = 'none';
+    }
   } catch {
     document.getElementById('connPill').className = 'hdr-pill off';
     document.getElementById('connText').textContent = 'تعذر الاتصال';

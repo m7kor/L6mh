@@ -193,6 +193,14 @@ export function getAllSessions() {
       playedCount:     session.playedIds.size,
       cycleCount:      session.cycleCount,
       isLive:          session.isLive || false,
+      queue:           session.queue.slice(0, 15).map(vidId => {
+        const video = session.current?.videoId === vidId ? session.current : null;
+        return {
+          videoId: vidId,
+          title: video?.title || vidId,
+          thumbnail: video?.thumbnail || null,
+        };
+      }),
     });
   }
   return result;
