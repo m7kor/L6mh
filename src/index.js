@@ -29,7 +29,7 @@ import {
   getAllSessions,
   getQueue,
 } from './services/player/index.js';
-import { sessions } from './services/session.js';
+import { sessions, saveState } from './services/session.js';
 import { closeDb } from './utils/database.js';
 import { migrateJsonToSqlite } from './utils/migration.js';
 
@@ -231,6 +231,13 @@ client.once(Events.ClientReady, async (c) => {
   setInterval(() => {
     checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp periodic update failed:', err.message));
   }, 1000 * 60 * 60 * 24); // Check daily
+
+  // Periodic state backup — save all sessions every 60s
+  setInterval(() => {
+    for (const [guildId] of sessions) {
+      try { saveState(getSessionInfo(guildId)); } catch {}
+    }
+  }, 60_000);
 
   for (const guild of c.guilds.cache.values()) {
     try {

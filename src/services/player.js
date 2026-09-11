@@ -21,7 +21,7 @@ import { getLatestVideo, getVideoDetails, getVideos } from './youtube.js';
 import {
   getSession, sessions, saveState, restoreLastVideo, loadAllState,
   getElapsedSeconds, freezeProgress, startProgressAutosave, stopProgressAutosave,
-  popFromQueue, migrateSessionToQueue, syncQueueWithCatalog,
+  popFromQueue, migrateSessionToQueue, syncQueueWithCatalog, addFailedId,
 } from './session.js';
 import { createAudioStream, killProcesses, preValidateVideo } from './streaming.js';
 import { getCookieArgs } from './cookies.js';
@@ -148,6 +148,11 @@ export async function stopPlayback(guildId, { manual = true } = {}) {
 
   freezeProgress(session);
   stopProgressAutosave(session);
+
+  if (session.keepAliveTimer) {
+    clearInterval(session.keepAliveTimer);
+    session.keepAliveTimer = null;
+  }
 
   if (manual) {
     stopUiRefresh(session);
@@ -599,6 +604,26 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
     try {
       await entersState(session.connection, VoiceConnectionStatus.Ready, 60_000);
       logger.info(`[${guild.id}] Connected to #${channel.name}`);
+
+      // Voice keepalive — detect silent disconnects
+      if (session.keepAliveTimer) clearInterval(session.keepAliveTimer);
+      session.keepAliveTimer = setInterval(() => {
+        if (session.connection !== thisConnection) {
+          clearInterval(session.keepAliveTimer);
+          session.keepAliveTimer = null;
+          return;
+        }
+        const state = thisConnection.state.status;
+        if (state !== VoiceConnectionStatus.Ready && state !== VoiceConnectionStatus.Signalling) {
+          logger.warn(`[${guild.id}] Keepalive: connection state is ${state}, forcing reconnect.`);
+          try { thisConnection.destroy(); } catch {}
+          session.connection = null;
+          if (session.continuous && !session.manualStop) {
+            setTimeout(() => rejoinAndResume(guild, channel), RECONNECT_DELAY_MS);
+          }
+        }
+      }, 30_000);
+
     } catch (err) {
       try { session.connection.destroy(); } catch {}
       session.connection = null;
@@ -742,7 +767,7 @@ async function onTrackFinished(guild, channel) {
       const playedSeconds = (Date.now() - session.segmentStartedAt) / 1000;
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
-        session.failedIds.add(session.current.videoId);
+        addFailedId(session, session.current.videoId);
         recordPlay(session.current, { failed: true }).catch(() => {});
         await sleep(3000);
       } else if (session.current?.videoId) {
@@ -781,7 +806,7 @@ async function onTrackFinished(guild, channel) {
         const valid = await preValidateVideo(next.url);
         if (!valid) {
           logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
-          session.failedIds.add(next.videoId);
+          addFailedId(session, next.videoId);
           recordPlay(next, { failed: true }).catch(() => {});
           continue;
         }

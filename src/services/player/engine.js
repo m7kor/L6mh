@@ -33,7 +33,7 @@ import {
   getElapsedSeconds, freezeProgress,
   startProgressAutosave, stopProgressAutosave,
   popFromQueue, migrateSessionToQueue, syncQueueWithCatalog,
-  restoreLastVideo,
+  restoreLastVideo, addFailedId,
 } from '../session.js';
 import { playerEvents, stopPlayback } from './controls.js';
 import { playRandomJingle } from './jingles.js';
@@ -420,7 +420,7 @@ async function onTrackFinished(guild, channel) {
       const playedSeconds = (Date.now() - session.segmentStartedAt) / 1000;
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
-        session.failedIds.add(session.current.videoId);
+        addFailedId(session, session.current.videoId);
         recordPlay(session.current, { failed: true }).catch(() => {});
         await sleep(3000);
       } else if (session.current?.videoId) {
@@ -460,7 +460,7 @@ async function onTrackFinished(guild, channel) {
         const valid = await preValidateVideo(next.url);
         if (!valid) {
           logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
-          session.failedIds.add(next.videoId);
+          addFailedId(session, next.videoId);
           recordPlay(next, { failed: true }).catch(() => {});
           continue;
         }

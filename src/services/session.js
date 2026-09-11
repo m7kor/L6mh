@@ -42,6 +42,7 @@ export class GuildSession {
     this.preloaded = null;
     this.volumeChanging = false;
     this.stallTimeout = null;
+    this.keepAliveTimer = null;
     this.cycleCount = 0;
     this.cycleStartedAt = null;
   }
@@ -50,6 +51,15 @@ export class GuildSession {
 export const sessions = new Map();
 
 const RECENT_HISTORY_SIZE = 20;
+const MAX_FAILED_IDS = 200;
+
+export function addFailedId(session, videoId) {
+  session.failedIds.add(videoId);
+  if (session.failedIds.size > MAX_FAILED_IDS) {
+    const oldest = session.failedIds.values().next().value;
+    session.failedIds.delete(oldest);
+  }
+}
 
 export function getSession(guildId) {
   let session = sessions.get(guildId);
