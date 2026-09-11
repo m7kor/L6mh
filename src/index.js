@@ -32,6 +32,7 @@ import {
 import { sessions, saveState } from './services/session.js';
 import { closeDb } from './utils/database.js';
 import { migrateJsonToSqlite } from './utils/migration.js';
+import { formatTime } from './utils/format.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
@@ -73,15 +74,34 @@ for (const file of commandFiles) {
   }
 }
 
-playerEvents.on('trackChange', ({ video, paused }) => {
+playerEvents.on('trackChange', ({ guildId, video, paused }) => {
   if (!client.user) return;
   if (!video) {
-    client.user.setActivity(null);
+    client.user.setPresence({ activities: [], status: 'online' });
+    broadcastTrackChange();
     return;
   }
-  client.user.setActivity(paused ? `⏸️ ${video.title}` : video.title, {
+
+  const session = sessions.get(guildId);
+  const channelName = session?.channel?.name || '—';
+  const elapsed = session?.segmentStartedAt
+    ? Math.floor((Date.now() - session.segmentStartedAt) / 1000)
+    : 0;
+
+  const activity = {
+    name: video.title || '—',
     type: ActivityType.Listening,
-  });
+    state: `🎙️ راديو وحيد عمر • #${channelName}`,
+    details: paused
+      ? '⏸️ متوقف مؤقتاً'
+      : `▶️ ${formatTime(elapsed)}${video.durationSeconds ? ' / ' + formatTime(video.durationSeconds) : ''}`,
+  };
+
+  if (!paused && session?.segmentStartedAt) {
+    activity.timestamps = { start: new Date(session.segmentStartedAt) };
+  }
+
+  client.user.setPresence({ activities: [activity], status: paused ? 'idle' : 'online' });
   broadcastTrackChange();
 });
 
