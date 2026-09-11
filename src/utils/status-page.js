@@ -22,12 +22,12 @@ let getAllSessionsFn = null;
 let executeCommandFn = null;
 let getQueueFn = null;
 
-// In-memory error log (last 50 errors)
+// In-memory error log (last 100 errors, auto-rotated)
 const errorLog = [];
-const MAX_ERROR_LOG = 50;
+const MAX_ERROR_LOG = 100;
 
-export function logDashboardError(message) {
-  errorLog.unshift({ message, time: new Date().toISOString() });
+export function logDashboardError(message, level = 'error') {
+  errorLog.unshift({ message, level, time: new Date().toISOString() });
   if (errorLog.length > MAX_ERROR_LOG) errorLog.length = MAX_ERROR_LOG;
 }
 

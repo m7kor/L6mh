@@ -259,6 +259,20 @@ client.once(Events.ClientReady, async (c) => {
     }
   }, 60_000);
 
+  // Session cleanup — remove idle sessions after 1 hour
+  setInterval(() => {
+    const now = Date.now();
+    for (const [guildId, session] of sessions) {
+      if (!session.connection && !session.current && !session.manualStop) {
+        const lastActivity = session.segmentStartedAt || session.cycleStartedAt;
+        if (lastActivity && (now - new Date(lastActivity).getTime()) > 3600_000) {
+          sessions.delete(guildId);
+          logger.info(`[${guildId}] Cleaned up idle session.`);
+        }
+      }
+    }
+  }, 300_000);
+
   for (const guild of c.guilds.cache.values()) {
     try {
       // Find the voice channel with the most humans across all channels in this guild

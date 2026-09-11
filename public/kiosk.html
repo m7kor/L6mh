@@ -6,10 +6,12 @@
   <title>راديو وحيد عمر — Kiosk</title>
   <link rel="stylesheet" href="/css/theme.css">
   <style>
-    body { background: #000; color: #fff; font-family: var(--font-ar); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .kiosk { text-align: center; max-width: 900px; width: 90vw; }
+    body { background: #000; color: #fff; font-family: var(--font-ar); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
+    body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse at 30% 50%, rgba(0,229,255,0.08) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(168,85,247,0.06) 0%, transparent 50%); animation: bgPulse 8s ease-in-out infinite alternate; pointer-events: none; }
+    @keyframes bgPulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
+    .kiosk { text-align: center; max-width: 900px; width: 90vw; position: relative; z-index: 1; }
     .kiosk-title { font-size: 14px; color: var(--cyan); font-family: var(--font-en); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
-    .kiosk-now { font-size: 32px; font-weight: 900; line-height: 1.5; margin-bottom: 24px; min-height: 48px; }
+    .kiosk-now { font-size: 36px; font-weight: 900; line-height: 1.5; margin-bottom: 24px; min-height: 48px; background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .kiosk-stats { display: flex; justify-content: center; gap: 48px; margin-top: 24px; }
     .kiosk-stat { text-align: center; }
     .kiosk-stat-num { font-family: var(--font-en); font-size: 48px; font-weight: 900; color: var(--cyan); }

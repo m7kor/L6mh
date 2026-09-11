@@ -233,6 +233,7 @@
     <div class="stat"><div class="stat-icon">⏱️</div><div class="stat-num" id="sUp">0h 0m</div><div class="stat-lbl">مدة التشغيل</div></div>
     <div class="stat"><div class="stat-icon">🎵</div><div class="stat-num" id="sPlayed">0 / 0</div><div class="stat-lbl">شُغّل / لم يشُغَّل</div></div>
     <div class="stat"><div class="stat-icon">📺</div><div class="stat-num" id="sServer" style="font-size:14px">—</div><div class="stat-lbl">السيرفر</div></div>
+    <div class="stat"><div class="stat-icon">💾</div><div class="stat-num" id="sMem" style="font-size:16px">—</div><div class="stat-lbl">الذاكرة</div></div>
   </div>
 
   <!-- Actions -->
@@ -412,6 +413,7 @@ const refresh = async () => {
     const txt = document.getElementById('connText');
 
     document.getElementById('sUp').innerText = `${Math.floor(d.uptime/3600)}h ${Math.floor((d.uptime%3600)/60)}m`;
+    document.getElementById('sMem').innerText = d.memMB ? `${d.memMB}MB` : '—';
 
     if (s && s.title) {
       pill.className = 'hdr-pill on'; txt.textContent = s.guildName || 'متصل';
