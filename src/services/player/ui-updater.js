@@ -71,18 +71,34 @@ function stopUiRefresh(session) {
 
 async function updateNowPlayingMessage(session) {
   if (!session.nowPlayingMessage || !session.current) return;
-  try {
-    const msg = buildNowPlayingMessage(session.current, {
-      volume:         session.volume,
-      mode:           session.mode,
-      continuous:     session.continuous,
-      paused:         session.paused,
-      elapsedSeconds: getElapsedSeconds(session),
-    });
-    await session.nowPlayingMessage.edit(msg);
-  } catch {
-    // الرسالة حُذفت أو انتهت صلاحية التوكن — نوقف التحديث
-    session.nowPlayingMessage = null;
-    stopUiRefresh(session);
+  const msg = buildNowPlayingMessage(session.current, {
+    volume:         session.volume,
+    mode:           session.mode,
+    continuous:     session.continuous,
+    paused:         session.paused,
+    elapsedSeconds: getElapsedSeconds(session),
+  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await session.nowPlayingMessage.edit(msg);
+      return;
+    } catch (err) {
+      if (err?.code === 50013 || err?.httpStatus === 404) {
+        session.nowPlayingMessage = null;
+        stopUiRefresh(session);
+        return;
+      }
+      if (err?.code === 429 || err?.httpStatus === 429) {
+        const retryAfter = err?.retryAfter || (attempt + 1) * 2000;
+        await new Promise(r => setTimeout(r, retryAfter));
+        continue;
+      }
+      if (attempt === 2) {
+        session.nowPlayingMessage = null;
+        stopUiRefresh(session);
+        return;
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
   }
 }

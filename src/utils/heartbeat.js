@@ -17,13 +17,27 @@ const INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS) || 60_000;
 
 let timer = null;
 
+function getMemoryMB() {
+  const mem = process.memoryUsage();
+  return {
+    rss: Math.round(mem.rss / 1024 / 1024),
+    heap: Math.round(mem.heapUsed / 1024 / 1024),
+  };
+}
+
 function writeHeartbeat() {
   try {
+    const mem = getMemoryMB();
     writeFileSync(HEARTBEAT_FILE, JSON.stringify({
       alive: true,
       timestamp: new Date().toISOString(),
       pid: process.pid,
+      memory: mem,
     }));
+    if (mem.rss > 300) {
+      logger.warn(`High memory usage: ${mem.rss}MB RSS`);
+      if (global.gc) global.gc();
+    }
   } catch (err) {
     logger.warn('Failed to write heartbeat:', err.message);
   }

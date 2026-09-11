@@ -74,12 +74,30 @@ function saveDiskCache() {
 loadDiskCache();
 
 async function callApi(endpoint, params) {
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/${endpoint}?${params}`);
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`YouTube API error ${res.status} on ${endpoint}: ${body.slice(0, 300)}`);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/${endpoint}?${params}`);
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('retry-after') || (attempt + 1) * 2;
+        await new Promise(r => setTimeout(r, retryAfter * 1000));
+        continue;
+      }
+      if (res.status === 403 || res.status === 500 || res.status === 503) {
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+          continue;
+        }
+      }
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`YouTube API error ${res.status} on ${endpoint}: ${body.slice(0, 300)}`);
+      }
+      return res.json();
+    } catch (err) {
+      if (attempt === 2) throw err;
+      await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+    }
   }
-  return res.json();
 }
 
 /** Resolve (and cache) the channel's "uploads" playlist ID. */

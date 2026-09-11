@@ -601,6 +601,19 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
       }
     });
 
+    thisConnection.on(VoiceConnectionStatus.Destroyed, () => {
+      if (session.connection !== thisConnection) return;
+      logger.warn(`[${guild.id}] Voice connection destroyed.`);
+      session.connection = null;
+    });
+
+    thisConnection.on('stateChange', (oldState, newState) => {
+      if (session.connection !== thisConnection) return;
+      if (oldState.status !== newState.status) {
+        logger.info(`[${guild.id}] Voice: ${oldState.status} → ${newState.status}`);
+      }
+    });
+
     try {
       await entersState(session.connection, VoiceConnectionStatus.Ready, 60_000);
       logger.info(`[${guild.id}] Connected to #${channel.name}`);

@@ -490,10 +490,29 @@ function gracefulShutdown(signal) {
   for (const [guildId] of sessions) {
     tasks.push(stopPlayback(guildId, { manual: false }));
   }
+
+  const shutdownTimeout = setTimeout(() => {
+    logger.warn('Shutdown timeout — forcing exit.');
+    process.exit(1);
+  }, 10_000);
+
   Promise.all(tasks)
-    .then(() => { closeDb(); return client.destroy(); })
-    .catch(() => { closeDb(); try { client.destroy(); } catch {} })
-    .finally(() => process.exit(0));
+    .then(() => {
+      logger.info('All sessions saved. Closing database...');
+      closeDb();
+      logger.info('Destroying Discord client...');
+      return client.destroy();
+    })
+    .catch((err) => {
+      logger.error('Error during shutdown:', err.message);
+      closeDb();
+      try { client.destroy(); } catch {}
+    })
+    .finally(() => {
+      clearTimeout(shutdownTimeout);
+      logger.info('Shutdown complete.');
+      process.exit(0);
+    });
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
