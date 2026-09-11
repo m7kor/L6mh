@@ -107,6 +107,13 @@
     .err-list { max-height: 200px; overflow-y: auto; }
     .err-item { padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 12px; display: flex; gap: 12px; }
     .err-item:last-child { border-bottom: none; }
+    .err-item.err-error { border-right: 3px solid var(--red); }
+    .err-item.err-warn { border-right: 3px solid var(--yellow); }
+    .err-item.err-info { border-right: 3px solid var(--cyan); }
+    .err-lvl { font-family: var(--font-en); font-weight: 700; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: var(--surface-2); color: var(--text-3); text-transform: uppercase; flex-shrink: 0; }
+    .err-item.err-error .err-lvl { background: rgba(239,68,68,0.15); color: var(--red); }
+    .err-item.err-warn .err-lvl { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    .err-item.err-info .err-lvl { background: rgba(0,229,255,0.15); color: var(--cyan); }
     .err-time { color: var(--text-3); font-family: var(--font-en); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
     .err-msg { color: var(--red); font-weight: 600; word-break: break-word; }
 
@@ -449,10 +456,11 @@ const refresh = async () => {
       errSection.style.display = '';
       errList.innerHTML = '';
       errors.forEach(e => {
-        const row = document.createElement('div'); row.className = 'err-item';
+        const row = document.createElement('div'); row.className = 'err-item' + (e.level ? ` err-${e.level}` : '');
         const time = document.createElement('span'); time.className = 'err-time'; time.textContent = new Date(e.time).toLocaleTimeString('ar-SA');
+        const lvl = document.createElement('span'); lvl.className = 'err-lvl'; lvl.textContent = e.level ? e.level.toUpperCase() : '';
         const msg = document.createElement('span'); msg.className = 'err-msg'; msg.textContent = e.message;
-        row.append(time, msg); errList.appendChild(row);
+        row.append(time, lvl, msg); errList.appendChild(row);
       });
     } else { errSection.style.display = 'none'; }
 
