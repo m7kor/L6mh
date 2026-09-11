@@ -193,7 +193,6 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       '--retries', '15',
       '--fragment-retries', '30',
       '--retry-sleep', '5',
-      '--http-chunk-size', '2M',
       youtubeUrl,
     );
 
@@ -202,10 +201,10 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       ffmpegArgs.push('-ss', String(startSeconds));
     }
     ffmpegArgs.push(
-      '-probesize', '131072',
+      '-probesize', '32768',
       '-analyzeduration', '0',
       '-i', 'pipe:0',
-      '-bufsize', '2M',
+      '-bufsize', '512k',
       '-af', `volume=${volume / 100},afade=t=in:ss=0:d=0.4,aresample=48000`,
       '-vn',
       '-f', 's16le',
@@ -276,7 +275,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
 
     let dataReceived = false;
 
-    const bufferingStream = new PassThrough({ highWaterMark: 1024 * 1024 });
+    const bufferingStream = new PassThrough({ highWaterMark: 1024 * 128 });
     ffmpegProcess.stdout.pipe(bufferingStream);
 
     bufferingStream.once('data', () => {

@@ -405,7 +405,6 @@ async function preloadNextTrack(session) {
       '--retries', '15',
       '--fragment-retries', '30',
       '--retry-sleep', '5',
-      '--http-chunk-size', '2M',
       ...getCookieArgs(),
       next.url,
     ];
@@ -627,7 +626,7 @@ async function connectAndPlay(guild, channel, video, { countPlay = true } = {}) 
 
   const resource = createAudioResource(stream, {
     inputType: StreamType.Raw,
-    highWaterMark: 1024 * 256,
+    highWaterMark: 1024 * 64,
   });
   session.resource = resource;
 
