@@ -88,14 +88,23 @@ playerEvents.on('trackChange', ({ guildId, video, paused }) => {
     ? Math.floor((Date.now() - session.segmentStartedAt) / 1000)
     : 0;
 
+  const thumbnailUrl = video.thumbnail || (video.videoId ? `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg` : null);
+
   const activity = {
-    name: video.title || '—',
-    type: ActivityType.Listening,
-    state: `🎙️ راديو وحيد عمر • #${channelName}`,
-    details: paused
-      ? '⏸️ متوقف مؤقتاً'
-      : `▶️ ${formatTime(elapsed)}${video.durationSeconds ? ' / ' + formatTime(video.durationSeconds) : ''}`,
+    name: '🎙️ راديو وحيد عمر',
+    type: ActivityType.Playing,
+    state: `▶️ ${channelName}`,
+    details: video.title || '—',
   };
+
+  if (thumbnailUrl) {
+    activity.assets = {
+      largeImage: thumbnailUrl,
+      largeImageText: video.title || '',
+      smallImage: paused ? 'https://i.imgur.com/4bTmjO9.png' : 'https://i.imgur.com/KKocmZE.png',
+      smallImageText: paused ? 'متوقف مؤقتاً' : `🔴 مباشر`,
+    };
+  }
 
   if (!paused && session?.segmentStartedAt) {
     activity.timestamps = { start: new Date(session.segmentStartedAt) };
