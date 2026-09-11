@@ -151,6 +151,23 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     next();
   });
 
+  // API Rate Limiting — 60 req/min per IP for public, 120 for authed
+  const rateBuckets = new Map();
+  setInterval(() => rateBuckets.clear(), 60_000);
+  app.use('/api/', (req, res, next) => {
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    const limit = token === DASHBOARD_TOKEN ? 120 : 60;
+    const key = `${ip}:${token ? 'a' : 'p'}`;
+    const count = (rateBuckets.get(key) || 0) + 1;
+    rateBuckets.set(key, count);
+    if (count > limit) {
+      res.setHeader('Retry-After', '60');
+      return res.status(429).json({ error: 'Too many requests' });
+    }
+    next();
+  });
+
   // Public Endpoints
   app.get('/health', async (req, res) => {
     const checks = { ok: true, uptime: Math.floor(process.uptime()) };
