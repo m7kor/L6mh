@@ -144,10 +144,15 @@ client.once(Events.ClientReady, async (c) => {
       return done > 0 ? `Playing random on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === '/كمل' || lower === 'resume') {
+      const { resumePlayback } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
-        const guild = c.guilds.cache.get(s.guildId);
-        if (guild && guild.members.me.voice.channel) { await resume(guild, guild.members.me.voice.channel); done++; }
+        if (s.paused) {
+          try { await resumePlayback(s.guildId); done++; } catch {}
+        } else {
+          const guild = c.guilds.cache.get(s.guildId);
+          if (guild && guild.members.me?.voice?.channel) { await resume(guild, guild.members.me.voice.channel); done++; }
+        }
       }
       return done > 0 ? `Resumed on ${done} server(s).` : 'No active servers found.';
     }
@@ -158,6 +163,14 @@ client.once(Events.ClientReady, async (c) => {
         if (guild && guild.members.me.voice.channel) { await playLatest(guild, guild.members.me.voice.channel); done++; }
       }
       return done > 0 ? `Playing latest on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower === 'pause') {
+      const { pausePlayback } = await import('./services/player/controls.js');
+      let done = 0;
+      for (const s of all) {
+        try { await pausePlayback(s.guildId); done++; } catch {}
+      }
+      return done > 0 ? `Paused on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === '/ايقاف' || lower === 'stop') {
       const { stopPlayback } = await import('./services/player/index.js');

@@ -247,8 +247,8 @@
 
   <!-- Player Controls -->
   <div class="np-controls" id="npControls" style="display:none">
-    <button class="ctrl-btn" onclick="cmd('pause',this)" title="إيقاف مؤقت"><i class="fas fa-pause"></i></button>
-    <button class="ctrl-btn" onclick="cmd('resume',this)" title="استئناف"><i class="fas fa-play"></i></button>
+    <button class="ctrl-btn" id="btnPause" onclick="cmd('pause',this)" title="إيقاف مؤقت"><i class="fas fa-pause"></i></button>
+    <button class="ctrl-btn" id="btnResume" onclick="cmd('resume',this)" title="استئناف" style="display:none"><i class="fas fa-play"></i></button>
     <button class="ctrl-btn" onclick="cmd('skip',this)" title="تخطي"><i class="fas fa-forward-step"></i></button>
     <div class="volume-control">
       <button class="ctrl-btn" onclick="cmd('volume',this,0)" title="كتم الصوت"><i class="fas fa-volume-xmark"></i></button>
@@ -467,6 +467,13 @@ const refresh = async () => {
       document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
       // Show player controls
       document.getElementById('npControls').style.display = '';
+      if (s.paused) {
+        document.getElementById('btnPause').style.display = 'none';
+        document.getElementById('btnResume').style.display = '';
+      } else {
+        document.getElementById('btnPause').style.display = '';
+        document.getElementById('btnResume').style.display = 'none';
+      }
       if (s.volume !== undefined) {
         const vol = Math.round(s.volume * 100);
         document.getElementById('volumeSlider').value = vol;
