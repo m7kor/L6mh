@@ -1,16 +1,10 @@
 /**
- * Community / Gamification — tracks member presence and awards badges.
- * Read-only for display: leaderboard, badges, stats.
- * No playback control.
- *
- * النصوص والأوسمة مُستوردة من lang.js بدلاً من تعريفها هنا.
+ * Community — tracks member presence and leaderboard.
+ * Minimal: presence tracking + leaderboard for dashboard.
  */
 
 import { createLogger } from '../utils/logger.js';
 import { getDb } from '../utils/database.js';
-import { BADGES, getLevel } from '../lang.js';
-
-export { BADGES, getLevel };
 
 const logger = createLogger('community');
 
@@ -24,7 +18,7 @@ export function onVoiceJoin(userId, guildId) {
   const key = `${userId}:${guildId}`;
   if (!presenceMap.has(key)) {
     presenceMap.set(key, Date.now());
-    trackPresence(userId, guildId, 'join');
+    trackPresence(userId, guildId);
   }
 }
 
@@ -41,7 +35,7 @@ export function onVoiceLeave(userId, guildId) {
   }
 }
 
-function trackPresence(userId, guildId, event) {
+function trackPresence(userId, guildId) {
   try {
     const db = getDb();
     const now = new Date().toISOString();
@@ -52,13 +46,6 @@ function trackPresence(userId, guildId, event) {
         sessions_count = sessions_count + 1,
         last_seen_at = excluded.last_seen_at
     `).run(userId, guildId, now, now);
-    // Award first_join badge
-    awardBadge(userId, guildId, 'first_join');
-    // Check night owl (hour 0-5 AM)
-    const hour = new Date().getHours();
-    if (hour >= 0 && hour < 6) {
-      awardBadge(userId, guildId, 'night_owl');
-    }
   } catch (err) {
     logger.warn('trackPresence error:', err.message);
   }
@@ -67,122 +54,22 @@ function trackPresence(userId, guildId, event) {
 function addMinutes(userId, guildId, minutes) {
   try {
     if (isBlacklisted(userId)) return;
-
     const db = getDb();
-    // تحديث الدقائق وإضافة النقاط (1 نقطة كل 15 دقيقة)
-    const pointsEarned = Math.floor(minutes / 15);
     db.prepare(`
       UPDATE member_stats
       SET minutes_present = minutes_present + ?,
-          points = COALESCE(points, 0) + ?,
           last_seen_at = datetime('now')
       WHERE user_id = ? AND guild_id = ?
-    `).run(minutes, pointsEarned, userId, guildId);
-
-    if (pointsEarned > 0) {
-      try {
-        db.prepare(`INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, 'listening', ?)`)
-          .run(userId, guildId, pointsEarned);
-      } catch {}
-    }
-
-    // فحص الأوسمة بناءً على ساعات الاستماع والجلسات
-    const row = db.prepare('SELECT minutes_present, sessions_count FROM member_stats WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
-    if (row) {
-      const hours = row.minutes_present / 60;
-      if (hours >= 10)  awardBadge(userId, guildId, 'hours_10');
-      if (hours >= 50)  awardBadge(userId, guildId, 'hours_50');
-      if (hours >= 100) awardBadge(userId, guildId, 'hours_100');
-      if (row.sessions_count >= 200) awardBadge(userId, guildId, 'addict');
-    }
+    `).run(minutes, userId, guildId);
   } catch (err) {
     logger.warn('addMinutes error:', err.message);
-  }
-}
-
-function awardBadge(userId, guildId, badgeId) {
-  try {
-    const db = getDb();
-    db.prepare(`INSERT OR IGNORE INTO badges (user_id, guild_id, badge_id) VALUES (?, ?, ?)`)
-      .run(userId, guildId, badgeId);
-  } catch (err) {
-    logger.warn('awardBadge error:', err.message);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// نظام النقاط — API عام
-// ---------------------------------------------------------------------------
-
-/**
- * يُرجع نقاط المستخدم الحالية في سيرفر معين.
- * @param {string} userId
- * @param {string} guildId
- * @returns {number}
- */
-export function getUserPoints(userId, guildId) {
-  try {
-    const db  = getDb();
-    const row = db.prepare('SELECT points FROM member_stats WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
-    return row?.points || 0;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * يخصم نقاطاً من المستخدم ويُسجّل السبب.
- * يُرجع false إذا كانت النقاط غير كافية.
- * @param {string} userId
- * @param {string} guildId
- * @param {number} cost
- * @param {string} reason
- * @returns {boolean}
- */
-export function deductPoints(userId, guildId, cost, reason = 'action') {
-  try {
-    const db      = getDb();
-    const current = getUserPoints(userId, guildId);
-    if (current < cost) return false;
-
-    db.prepare('UPDATE member_stats SET points = points - ? WHERE user_id = ? AND guild_id = ?')
-      .run(cost, userId, guildId);
-    try {
-      db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)')
-        .run(userId, guildId, reason, -cost);
-    } catch {}
-    return true;
-  } catch (err) {
-    logger.warn('deductPoints error:', err.message);
-    return false;
-  }
-}
-
-/**
- * يُضيف نقاطاً للمستخدم.
- * @param {string} userId
- * @param {string} guildId
- * @param {number} amount
- * @param {string} reason
- */
-export function addPoints(userId, guildId, amount, reason = 'reward') {
-  try {
-    const db = getDb();
-    db.prepare('UPDATE member_stats SET points = COALESCE(points, 0) + ? WHERE user_id = ? AND guild_id = ?')
-      .run(amount, userId, guildId);
-    try {
-      db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)')
-        .run(userId, guildId, reason, amount);
-    } catch {}
-  } catch (err) {
-    logger.warn('addPoints error:', err.message);
   }
 }
 
 /**
  * Get leaderboard for a guild (top N by minutes, excluding opted-out users).
  */
-export function getLeaderboard(guildId, limit = 10) {
+export function getLeaderboard(guildId, limit = 100) {
   const db = getDb();
   return db.prepare(`
     SELECT user_id, minutes_present, sessions_count, first_seen_at, last_seen_at
@@ -194,128 +81,9 @@ export function getLeaderboard(guildId, limit = 10) {
 }
 
 /**
- * Get badges for a user in a guild.
- */
-export function getUserBadges(userId, guildId) {
-  const db = getDb();
-  const rows = db.prepare(`
-    SELECT badge_id, earned_at FROM badges WHERE user_id = ? AND guild_id = ?
-  `).all(userId, guildId);
-  return rows.map(r => ({ ...BADGES[r.badge_id], earnedAt: r.earned_at })).filter(Boolean);
-}
-
-/**
- * Get a user's stats summary.
- */
-export function getUserStats(userId, guildId) {
-  const db = getDb();
-  const row = db.prepare(`
-    SELECT * FROM member_stats WHERE user_id = ? AND guild_id = ?
-  `).get(userId, guildId);
-  return row || { user_id: userId, guild_id: guildId, minutes_present: 0, sessions_count: 0, opted_out: 0 };
-}
-
-/**
- * Check if user opted out of public leaderboard.
- */
-export function isOptedOut(userId, guildId) {
-  const db = getDb();
-  const row = db.prepare('SELECT opted_out FROM member_stats WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
-  return row ? row.opted_out === 1 : false;
-}
-
-/**
- * Opt out a user from public leaderboard (preserves minutes_present).
- */
-export function optOut(userId, guildId) {
-  const db = getDb();
-  db.prepare(`
-    INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, opted_out, first_seen_at, last_seen_at)
-    VALUES (?, ?, 0, 0, 1, datetime('now'), datetime('now'))
-    ON CONFLICT(user_id, guild_id) DO UPDATE SET opted_out = 1
-  `).run(userId, guildId);
-}
-
-/**
- * Opt back in (restore visibility on leaderboard).
- */
-export function optIn(userId, guildId) {
-  const db = getDb();
-  db.prepare(`
-    INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, opted_out, first_seen_at, last_seen_at)
-    VALUES (?, ?, 0, 0, 0, datetime('now'), datetime('now'))
-  `).run(userId, guildId);
-}
-
-/**
- * Transfer points from one user to another.
- */
-export function transferPoints(fromUserId, toUserId, guildId, amount) {
-  try {
-    const db = getDb();
-    const current = getUserPoints(fromUserId, guildId);
-    if (current < amount) return false;
-
-    db.transaction(() => {
-      // Deduct from sender
-      db.prepare('UPDATE member_stats SET points = points - ? WHERE user_id = ? AND guild_id = ?').run(amount, fromUserId, guildId);
-      db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)').run(fromUserId, guildId, `transfer_to_${toUserId}`, -amount);
-      
-      // Add to receiver
-      db.prepare(`
-        INSERT INTO member_stats (user_id, guild_id, points, first_seen_at, last_seen_at)
-        VALUES (?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(user_id, guild_id) DO UPDATE SET points = COALESCE(points, 0) + ?
-      `).run(toUserId, guildId, amount, amount);
-      db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)').run(toUserId, guildId, `transfer_from_${fromUserId}`, amount);
-    })();
-    return true;
-  } catch (err) {
-    logger.warn('transferPoints error:', err.message);
-    return false;
-  }
-}
-
-/**
- * Claim daily reward (50 points).
- * Returns { success: boolean, message: string }
- */
-export function claimDaily(userId, guildId) {
-  try {
-    const db = getDb();
-    const row = db.prepare('SELECT last_daily_at FROM member_stats WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
-    const now = new Date();
-    
-    if (row && row.last_daily_at) {
-      const lastDaily = new Date(row.last_daily_at);
-      const diffHours = (now - lastDaily) / (1000 * 60 * 60);
-      if (diffHours < 24) {
-        const remaining = Math.ceil(24 - diffHours);
-        return { success: false, message: `لقد حصلت على مكافأتك اليومية بالفعل! يرجى العودة بعد **${remaining} ساعة**.` };
-      }
-    }
-    
-    const reward = 50;
-    db.prepare(`
-      INSERT INTO member_stats (user_id, guild_id, points, last_daily_at, first_seen_at, last_seen_at)
-      VALUES (?, ?, ?, datetime('now'), datetime('now'), datetime('now'))
-      ON CONFLICT(user_id, guild_id) DO UPDATE SET 
-        points = COALESCE(points, 0) + ?,
-        last_daily_at = datetime('now')
-    `).run(userId, guildId, reward, reward);
-    
-    db.prepare('INSERT INTO points_log (user_id, guild_id, reason, delta) VALUES (?, ?, ?, ?)').run(userId, guildId, 'daily_reward', reward);
-    return { success: true, message: `🎉 مبروك! لقد حصلت على مكافأتك اليومية: **${reward} نقطة**.` };
-  } catch (err) {
-    logger.warn('claimDaily error:', err.message);
-    return { success: false, message: 'حدث خطأ أثناء محاولة الحصول على المكافأة.' };
-  }
-}
-
-/**
  * Check if a user is blacklisted.
  */
-export function isBlacklisted(userId) {
+function isBlacklisted(userId) {
   try {
     const db = getDb();
     const row = db.prepare('SELECT user_id FROM blacklist WHERE user_id = ?').get(userId);
@@ -324,32 +92,3 @@ export function isBlacklisted(userId) {
     return false;
   }
 }
-
-/**
- * Add user to blacklist.
- */
-export function addToBlacklist(userId, reason, addedBy) {
-  try {
-    const db = getDb();
-    db.prepare('INSERT OR REPLACE INTO blacklist (user_id, reason, added_by) VALUES (?, ?, ?)').run(userId, reason, addedBy);
-    return true;
-  } catch (err) {
-    logger.warn('addToBlacklist error:', err.message);
-    return false;
-  }
-}
-
-/**
- * Remove user from blacklist.
- */
-export function removeFromBlacklist(userId) {
-  try {
-    const db = getDb();
-    const info = db.prepare('DELETE FROM blacklist WHERE user_id = ?').run(userId);
-    return info.changes > 0;
-  } catch (err) {
-    logger.warn('removeFromBlacklist error:', err.message);
-    return false;
-  }
-}
-

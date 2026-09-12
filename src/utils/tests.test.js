@@ -114,35 +114,34 @@ describe('videoId validation', () => {
 });
 
 // ============================================
-// cooldown
+// cooldown (disabled — no limits)
 // ============================================
 describe('cooldown', () => {
   it('is not on cooldown initially', () => {
     assert.equal(isOnCooldown('user1', 'cmd1'), false);
   });
 
-  it('is on cooldown after setCooldown', () => {
+  it('is never on cooldown (disabled)', () => {
     setCooldown('user2', 'cmd2');
-    assert.equal(isOnCooldown('user2', 'cmd2'), true);
+    assert.equal(isOnCooldown('user2', 'cmd2'), false);
   });
 
   it('different users are independent', () => {
     setCooldown('userA', 'cmd3');
-    assert.equal(isOnCooldown('userA', 'cmd3'), true);
+    assert.equal(isOnCooldown('userA', 'cmd3'), false);
     assert.equal(isOnCooldown('userB', 'cmd3'), false);
   });
 
   it('different commands are independent', () => {
     setCooldown('userC', 'cmdX');
-    assert.equal(isOnCooldown('userC', 'cmdX'), true);
+    assert.equal(isOnCooldown('userC', 'cmdX'), false);
     assert.equal(isOnCooldown('userC', 'cmdY'), false);
   });
 
-  it('getRemainingCooldown returns seconds > 0 when on cooldown', () => {
+  it('getRemainingCooldown returns 0 (disabled)', () => {
     setCooldown('userD', 'cmdR');
     const remaining = getRemainingCooldown('userD', 'cmdR');
-    assert.ok(remaining > 0);
-    assert.ok(remaining <= 8);
+    assert.equal(remaining, 0);
   });
 
   it('getRemainingCooldown returns 0 when not on cooldown', () => {
@@ -322,7 +321,7 @@ describe('killProcesses', () => {
 // ============================================
 // database (SQLite)
 // ============================================
-import { getDb, closeDb } from './database.js';
+import { getDb } from './database.js';
 
 describe('database', () => {
   it('getDb returns a database connection', () => {
@@ -467,5 +466,109 @@ describe('session state (SQLite)', () => {
     const all = await loadAllState();
     assert.deepEqual(all['test_guild_aaa'].queue, ['aaa_1']);
     assert.deepEqual(all['test_guild_bbb'].queue, ['bbb_1', 'bbb_2']);
+  });
+});
+
+// ============================================
+// embeds (buildNowPlayingMessage)
+// ============================================
+import { buildNowPlayingMessage, buildNowPlayingEmbed } from './embeds.js';
+
+describe('buildNowPlayingMessage', () => {
+  const video = { videoId: 'dQw4w9WgXcQ', title: 'Test Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg', durationSeconds: 300 };
+
+  it('returns embeds and components arrays', () => {
+    const msg = buildNowPlayingMessage(video, { mode: 'random', paused: false, elapsedSeconds: 0 });
+    assert.ok(Array.isArray(msg.embeds));
+    assert.ok(Array.isArray(msg.components));
+    assert.equal(msg.embeds.length, 1);
+    assert.equal(msg.components.length, 1);
+  });
+
+  it('includes pause/skip/random buttons', () => {
+    const msg = buildNowPlayingMessage(video, { mode: 'random', paused: false, elapsedSeconds: 0 });
+    const buttons = msg.components[0].components;
+    assert.equal(buttons.length, 3);
+    assert.equal(buttons[0].data.custom_id, 'radio_toggle_pause');
+    assert.equal(buttons[1].data.custom_id, 'radio_skip');
+    assert.equal(buttons[2].data.custom_id, 'radio_random');
+  });
+
+  it('shows play label when paused', () => {
+    const msg = buildNowPlayingMessage(video, { mode: 'random', paused: true, elapsedSeconds: 0 });
+    const pauseBtn = msg.components[0].components[0];
+    assert.ok(pauseBtn.data.label.includes('استكمال'));
+  });
+
+  it('shows pause label when playing', () => {
+    const msg = buildNowPlayingMessage(video, { mode: 'random', paused: false, elapsedSeconds: 0 });
+    const pauseBtn = msg.components[0].components[0];
+    assert.ok(pauseBtn.data.label.includes('إيقاف'));
+  });
+
+  it('embed has correct title', () => {
+    const msg = buildNowPlayingMessage(video, { mode: 'random', paused: false, elapsedSeconds: 0 });
+    assert.equal(msg.embeds[0].data.title, 'Test Video');
+  });
+
+  it('handles missing thumbnail', () => {
+    const noThumb = { videoId: 'abc', title: 'No Thumb', url: 'https://example.com' };
+    const msg = buildNowPlayingMessage(noThumb, { mode: 'random', paused: false, elapsedSeconds: 0 });
+    assert.ok(msg.embeds.length === 1);
+  });
+});
+
+describe('buildNowPlayingEmbed', () => {
+  it('returns just the embed object', () => {
+    const video = { videoId: 'abc', title: 'Test', url: 'https://example.com' };
+    const embed = buildNowPlayingEmbed(video, { mode: 'latest', paused: false, elapsedSeconds: 10 });
+    assert.ok(embed.data);
+    assert.equal(embed.data.title, 'Test');
+  });
+});
+
+// ============================================
+// lang.js exports
+// ============================================
+import { MODE_LABELS, CMD, BADGES, LEVELS, getLevel } from '../lang.js';
+
+describe('lang.js', () => {
+  it('MODE_LABELS has all modes', () => {
+    assert.ok(MODE_LABELS.random);
+    assert.ok(MODE_LABELS.latest);
+    assert.ok(MODE_LABELS.resume);
+    assert.ok(MODE_LABELS.live);
+  });
+
+  it('CMD has all command strings', () => {
+    assert.ok(CMD.skip);
+    assert.ok(CMD.priority);
+    assert.ok(CMD.points);
+    assert.ok(CMD.live);
+    assert.ok(CMD.stopLive);
+    assert.ok(CMD.general);
+  });
+
+  it('BADGES has expected badges', () => {
+    assert.ok(BADGES.first_join);
+    assert.ok(BADGES.hours_10);
+    assert.ok(BADGES.hours_50);
+    assert.ok(BADGES.hours_100);
+    assert.ok(BADGES.night_owl);
+    assert.ok(BADGES.addict);
+  });
+
+  it('LEVELS sorted by minPoints', () => {
+    for (let i = 1; i < LEVELS.length; i++) {
+      assert.ok(LEVELS[i].minPoints >= LEVELS[i - 1].minPoints);
+    }
+  });
+
+  it('getLevel returns correct level', () => {
+    assert.equal(getLevel(0).id, 'beginner');
+    assert.equal(getLevel(50).id, 'listener');
+    assert.equal(getLevel(200).id, 'loyal');
+    assert.equal(getLevel(500).id, 'legend');
+    assert.equal(getLevel(9999).id, 'legend');
   });
 });

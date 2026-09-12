@@ -5,7 +5,7 @@
  * النصوص مُستوردة من lang.js بدلاً من تعريفها هنا.
  */
 
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { formatTime } from './format.js';
 import { MODE_LABELS, randomPersonalityLine } from '../lang.js';
 
@@ -47,7 +47,22 @@ export function buildNowPlayingMessage(video, state) {
     embed.setThumbnail(video.thumbnail);
   }
 
-  return { embeds: [embed], components: [] };
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('radio_toggle_pause')
+      .setLabel(state.paused ? '▶️ استكمال' : '⏸️ إيقاف مؤقت')
+      .setStyle(state.paused ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('radio_skip')
+      .setLabel('⏭️ تخطي')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('radio_random')
+      .setLabel('🔀 عشوائي')
+      .setStyle(ButtonStyle.Primary),
+  );
+
+  return { embeds: [embed], components: [row] };
 }
 
 export function buildNowPlayingEmbed(video, state) {

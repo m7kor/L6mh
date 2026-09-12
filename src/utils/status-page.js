@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { createLogger } from './logger.js';
@@ -28,9 +27,9 @@ let getAllSessionsFn = null;
 let executeCommandFn = null;
 let getQueueFn = null;
 
-// In-memory error log (last 100 errors, auto-rotated)
+// In-memory error log (last 1000 errors, auto-rotated)
 const errorLog = [];
-const MAX_ERROR_LOG = 100;
+const MAX_ERROR_LOG = 1000;
 
 export function logDashboardError(message, level = 'error') {
   errorLog.unshift({ message, level, time: new Date().toISOString() });
@@ -157,22 +156,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     next();
   });
 
-  // API Rate Limiting — 60 req/min per IP for public, 120 for authed
-  const rateBuckets = new Map();
-  setInterval(() => rateBuckets.clear(), 60_000);
-  app.use('/api/', (req, res, next) => {
-    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-    const token = (req.headers.authorization || '').replace('Bearer ', '');
-    const limit = token === DASHBOARD_TOKEN ? 120 : 60;
-    const key = `${ip}:${token ? 'a' : 'p'}`;
-    const count = (rateBuckets.get(key) || 0) + 1;
-    rateBuckets.set(key, count);
-    if (count > limit) {
-      res.setHeader('Retry-After', '60');
-      return res.status(429).json({ error: 'Too many requests' });
-    }
-    next();
-  });
+  // No rate limiting — unlimited API access
 
   // Public Endpoints
   app.get('/health', async (req, res) => {

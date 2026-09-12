@@ -72,10 +72,10 @@ export async function recordPlay(video, opts = {}) {
       VALUES (?, ?, ?, ?)
     `).run(video.videoId, video.title || null, video.guildId || null, 0);
 
-    // Trim history to last 500 entries
+    // Trim history to last 10000 entries
     db.prepare(`
       DELETE FROM play_history WHERE id NOT IN (
-        SELECT id FROM play_history ORDER BY id DESC LIMIT 500
+        SELECT id FROM play_history ORDER BY id DESC LIMIT 10000
       )
     `).run();
   }

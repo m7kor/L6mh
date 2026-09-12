@@ -290,3 +290,17 @@ export async function getVideoDetails(videoId, apiKey = config.youtubeApiKey) {
     return null;
   }
 }
+
+/**
+ * Return a Map<videoId, title> from the cached catalog.
+ * Used by controls.js to resolve queue item titles without async fetches.
+ */
+export function getCachedTitleMap() {
+  const map = new Map();
+  if (listCache.items) {
+    for (const v of listCache.items) {
+      if (v.videoId && v.title) map.set(v.videoId, v.title);
+    }
+  }
+  return map;
+}

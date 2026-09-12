@@ -51,7 +51,7 @@ export class GuildSession {
 export const sessions = new Map();
 
 const RECENT_HISTORY_SIZE = 20;
-const MAX_FAILED_IDS = 200;
+const MAX_FAILED_IDS = 10_000;
 
 export function addFailedId(session, videoId) {
   session.failedIds.add(videoId);

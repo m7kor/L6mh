@@ -1,12 +1,11 @@
 /**
  * Per-user command cooldown.
  *
- * In-memory Map with periodic sweep to bound memory usage.
- * Resets on restart, which is fine for a cooldown.
+ * Disabled — no limits on command usage.
  */
 
 const cooldowns = new Map();
-const COOLDOWN_MS = Number(process.env.COMMAND_COOLDOWN_MS) || 8_000;
+const COOLDOWN_MS = 0;
 const SWEEP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 const ENTRY_TTL_MS = COOLDOWN_MS * 3; // keep entries 3x the cooldown window
 

@@ -21,7 +21,6 @@ import {
   NoSubscriberBehavior,
 } from '@discordjs/voice';
 import { createLogger } from '../../utils/logger.js';
-import { config } from '../../config.js';
 import { notify } from '../../utils/webhook.js';
 import { recordPlay } from '../../utils/stats.js';
 import { logDashboardError } from '../../utils/status-page.js';
@@ -37,7 +36,7 @@ import {
 } from '../session.js';
 import { playerEvents, stopPlayback } from './controls.js';
 import { playRandomJingle } from './jingles.js';
-import { triggerUiUpdate, clearNowPlayingMessage } from './ui-updater.js';
+import { triggerUiUpdate } from './ui-updater.js';
 import { spawn } from 'node:child_process';
 import { NOTIFY } from '../../lang.js';
 
@@ -58,6 +57,20 @@ function jitteredDelay(baseMs, attempt) {
   const delay  = Math.min(baseMs * attempt, RETRY_MAX_DELAY_MS);
   const jitter = delay * (0.8 + Math.random() * 0.4);
   return Math.floor(jitter);
+}
+
+/**
+ * Dynamic timeout based on video duration.
+ * Short videos get shorter timeouts, long videos get longer ones.
+ * @param {number|null} durationSeconds - video duration in seconds
+ * @param {number} pct - percentage of duration (e.g. 0.01 = 1%)
+ * @param {number} minMs - minimum timeout in ms
+ * @param {number} maxMs - maximum timeout in ms
+ */
+function dynamicTimeout(durationSeconds, pct, minMs, maxMs) {
+  if (!durationSeconds || durationSeconds <= 0) return minMs;
+  const computed = Math.floor(durationSeconds * 1000 * pct);
+  return Math.max(minMs, Math.min(maxMs, computed));
 }
 
 async function enrichWithDetails(video) {
@@ -285,9 +298,11 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   const { stream, ffmpegProcess } = await createAudioStream(session, video.url, startSeconds, session.volume);
   session.ffmpegProcess = ffmpegProcess;
 
-  // ── Dead stream detection — if no data for 60s, restart ──
+  // ── Dead stream detection — dynamic timeout based on video duration ──
+  const deadStreamTimeout = dynamicTimeout(video.durationSeconds, 0.01, 60_000, 1_800_000);
+  const deadCheckIntervalMs = Math.max(30_000, Math.floor(deadStreamTimeout / 6));
   let lastDataTime = Date.now();
-  let lastBytes = 0;
+  logger.info(`[${guild.id}] Dead stream timeout: ${Math.round(deadStreamTimeout / 1000)}s (video: ${video.durationSeconds || '?'}s)`);
   const deadCheckInterval = setInterval(() => {
     if (session.player !== player) { clearInterval(deadCheckInterval); return; }
     if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) {
@@ -295,15 +310,15 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
       return;
     }
     const elapsed = Date.now() - lastDataTime;
-    if (elapsed > 60_000 && session.player?.state?.status === AudioPlayerStatus.Playing) {
-      logger.warn(`[${guild.id}] No audio data for ${Math.round(elapsed / 1000)}s — dead stream, restarting.`);
+    if (elapsed > deadStreamTimeout && session.player?.state?.status === AudioPlayerStatus.Playing) {
+      logger.warn(`[${guild.id}] No audio data for ${Math.round(elapsed / 1000)}s — dead stream, restarting from current position.`);
       clearInterval(deadCheckInterval);
       const currentElapsed = Math.floor(getElapsedSeconds(session));
       session.current = { ...session.current, progressSeconds: currentElapsed };
       connectAndPlay(guild, channel, session.current, { countPlay: false })
         .catch(() => onTrackFinished(guild, channel));
     }
-  }, 30_000);
+  }, deadCheckIntervalMs);
 
   stream.on('data', () => { lastDataTime = Date.now(); });
   stream.on('end', () => { clearInterval(deadCheckInterval); });
@@ -334,7 +349,9 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   session.paused = false;
   session.isLive = false; // سيُكتشف لاحقاً عبر isLiveStream
 
-  // ── Stall Detection ──
+  // ── Stall Detection — dynamic timeout based on video duration ──
+  const stallTimeoutMs = dynamicTimeout(video.durationSeconds, 0.005, 60_000, 900_000);
+  logger.info(`[${guild.id}] Stall timeout: ${Math.round(stallTimeoutMs / 1000)}s`);
   if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
   player.on('stateChange', (oldState, newState) => {
     if (session.player !== player) return;
@@ -348,12 +365,12 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
         session.stallTimeout = setTimeout(() => {
           if (session.player !== player) return;
           if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) return;
-          logger.warn(`[${guild.id}] Stream stalled for 30s. Restarting track.`);
+          logger.warn(`[${guild.id}] Stream stalled for ${Math.round(stallTimeoutMs / 1000)}s. Restarting from current position.`);
           const elapsed = Math.floor(getElapsedSeconds(session));
           session.current = { ...session.current, progressSeconds: elapsed };
           connectAndPlay(guild, channel, session.current, { countPlay: false })
             .catch(() => onTrackFinished(guild, channel));
-        }, 30_000);
+        }, stallTimeoutMs);
       }
     } else {
       if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
@@ -463,12 +480,16 @@ async function onTrackFinished(guild, channel) {
       const playedSeconds = (Date.now() - session.segmentStartedAt) / 1000;
       const expectedDuration = session.current?.durationSeconds || 0;
 
+      // Dynamic early end threshold: shorter for short videos, longer for long videos
+      // 5min video → 10%, 1hr video → 5%, 10hr video → 2%
+      const earlyEndPct = expectedDuration > 3600 ? 0.02 : expectedDuration > 600 ? 0.05 : 0.10;
+
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
         addFailedId(session, session.current.videoId);
         recordPlay(session.current, { failed: true }).catch(() => {});
         await sleep(3000);
-      } else if (expectedDuration > 120 && playedSeconds < expectedDuration * 0.2 && session.current?.videoId) {
+      } else if (expectedDuration > 120 && playedSeconds < expectedDuration * earlyEndPct && session.current?.videoId) {
         const pct = Math.round(playedSeconds / expectedDuration * 100);
         logger.warn(`[${guild.id}] Track ended early: ${Math.round(playedSeconds)}s/${expectedDuration}s (${pct}%) — stream dropped, retrying from where it stopped.`);
         session.current = { ...session.current, progressSeconds: Math.floor(playedSeconds) };

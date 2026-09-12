@@ -18,6 +18,7 @@ import {
 import { killProcesses } from '../streaming.js';
 import { clearNowPlayingMessage, triggerUiUpdate } from './ui-updater.js';
 import { notify } from '../../utils/webhook.js';
+import { getCachedTitleMap } from '../youtube.js';
 
 const logger = createLogger('audio');
 
@@ -193,14 +194,18 @@ export function getAllSessions() {
       playedCount:     session.playedIds.size,
       cycleCount:      session.cycleCount,
       isLive:          session.isLive || false,
-      queue:           session.queue.slice(0, 15).map(vidId => {
-        const video = session.current?.videoId === vidId ? session.current : null;
-        return {
-          videoId: vidId,
-          title: video?.title || vidId,
-          thumbnail: video?.thumbnail || null,
-        };
-      }),
+      queue:           (() => {
+        const titleMap = getCachedTitleMap();
+        return session.queue.slice(0, 50).map((vidId, idx) => {
+          const video = session.current?.videoId === vidId ? session.current : null;
+          return {
+            videoId: vidId,
+            title: video?.title || titleMap.get(vidId) || vidId,
+            thumbnail: video?.thumbnail || null,
+            position: idx + 1,
+          };
+        });
+      })(),
     });
   }
   return result;

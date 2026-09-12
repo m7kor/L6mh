@@ -1,6 +1,6 @@
 <div align="center">
   <h1>🎙️ راديو وحيد عمر<br>WaheedTech Radio Bot</h1>
-  <p><strong>بوت ديسكورد إذاعة مستمرة 24/7 — لوحة تحكم ويب + صفحة عامة + نظام مجتمع</strong></p>
+  <p><strong>بوت ديسكورد إذاعة مستمرة 24/7 — لوحة تحكم ويب + صفحة عامة</strong></p>
   <p>
     <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D18-green" alt="Node.js"></a>
     <a href="https://discord.js.org/"><img src="https://img.shields.io/badge/discord.js-v14-blue" alt="Discord.js"></a>
@@ -21,7 +21,7 @@
 
 ### 🌐 لوحة تحكم ويب (`/`)
 - **تصميم عصري** بالdark mode
-- **Now Playing** مع شريط تقدم مباشر
+- **Now Playing** مع شريط تقدم مباشر + أزرار تحكم
 - **إحصائيات حية**: مدة التشغيل، عدد المقاطع
 - **قائمة مقاطع** مع بحث/فلترة/تشغيل + فلتر "لم تُشغَّل بعد"
 - **سجل أخطاء** + **حالة النظام** (yt-dlp، PoT Provider، الكوكيز، قاعدة البيانات)
@@ -31,17 +31,13 @@
 ### 📺 صفحة عامة (`/live`)
 - **بدون تسجيل دخول** — متاحة للجميع
 - Now Playing + إحصائيات + آخر ما شُغّل
-- **لوحة الشرف** — Top 10 أكثر الأعضاء استماعاً
-
-### 🏅 نظام المجتمع
-- **تتبّع الحضور** — يحسب ساعات الاستماع تلقائياً
-- **أوسمة**: 🎧 مستمع دائم، 🔥 لا يفوّت شي، ⭐ نجم الروم، 🌙 سهران
-- **اختياري (Opt-out)** — إخفاء الاسم من اللوحة العامة مع الحفاظ على البيانات
+- **لوحة الشرف** — Top 100 أكثر الأعضاء استماعاً
 
 ### 🛡️ استقرار
 - **Race condition free** — SQLite بدل JSON
-- **Stall Detection** — يكتشف الت停滞 ويتخطاه تلقائياً
+- **Stall Detection** — يكتشف التوقف ويتخطاه تلقائياً
 - **Graceful Shutdown** — حفظ الحالة عند الإيقاف
+- **بدون حدود** — أوامر بدون cooldown، API بدون rate limit
 
 ---
 
@@ -52,12 +48,7 @@
 | `/عشوائي` | تشغيل عشوائي مستمر |
 | `/اخر_مقطع` | آخر مقطع بالقناة |
 | `/كمل` | استكمال التشغيل |
-| `/قريب` | الفيديوهات القادمة بالقائمة |
-| `/اختبر` | فحص yt-dlp + PoT Provider |
-| `/احصائياتي` | إحصائياتك + أوسمتك |
-| `/المتصدرين` | لوحة Top 10 الشهرية |
-| `/اخفاء_احصائياتي` | إخفاء اسمك من اللوحة العامة |
-| `/اظهار_احصائياتي` | إظهار اسمك مرة ثانية |
+| `/قائمة` | عرض مقاطع التشغيل القادمة |
 
 ---
 
@@ -89,15 +80,19 @@ npm install
 ```
 
 ### 2. إعداد المتغيرات
-أنشئ ملف `.env`:
+أنشئ ملف `.env` من `.env.example`:
+```bash
+cp .env.example .env
+```
+
+ثم عدّل القيم المطلوبة:
 ```env
 DISCORD_TOKEN=توكن البوت
+CLIENT_ID=معرّف التطبيق (Application ID)
 YOUTUBE_API_KEY=مفتاح YouTube API
 CHANNEL_ID=معرّف القناة
 DASHBOARD_TOKEN=كلمة سر الداشبورد
 STATUS_PORT=3333
-POT_PROVIDER_URL=http://127.0.0.1:4416
-COOKIE_BROWSER=none
 ```
 
 ### 3. التشغيل
@@ -126,22 +121,45 @@ pm2 status                  # حالة البوت
 
 ```
 src/
-├── index.js                 # نقطة الدخول الرئيسية
-├── config.js                # قراءة متغيرات البيئة
-├── commands/                # أوامر البوت (9 أوامر)
+├── index.js                    # نقطة الدخول الرئيسية
+├── config.js                   # قراءة متغيرات البيئة
+├── lang.js                     # النصوص المركزي
+├── deploy-commands.js          # تسجيل أوامر ديسكورد
+├── commands/                   # أوامر البوت (4 أوامر)
+│   ├── random.js               # /عشوائي
+│   ├── latest.js               # /اخر_مقطع
+│   ├── resume.js               # /كمل
+│   ├── queue.js                # /قائمة
+│   └── play-command.js         # helper مشترك
 ├── services/
-│   ├── player.js            # محرك التشغيل الرئيسي
-│   ├── streaming.js         # yt-dlp + FFmpeg
-│   ├── session.js           # إدارة الجلسات (SQLite)
-│   ├── youtube.js           # YouTube API
-│   ├── cookies.js           # إدارة الكوكيز
-│   └── community.js         # نظام المجتمع والأوسمة
+│   ├── player/                 # محرك التشغيل
+│   │   ├── index.js            # barrel exports
+│   │   ├── engine.js           # محرك الصوت الأساسي
+│   │   ├── controls.js         # التحكم بالتشغيل
+│   │   ├── jingles.js          # المؤثرات الصوتية
+│   │   └── ui-updater.js       # تحديث رسائل ديسكورد
+│   ├── streaming.js            # yt-dlp + FFmpeg
+│   ├── session.js              # إدارة الجلسات (SQLite)
+│   ├── youtube.js              # YouTube API
+│   ├── cookies.js              # إدارة الكوكيز
+│   ├── community.js            # الحضور واللوحة
+│   └── scheduler.js            # جدولة التشغيل
 └── utils/
-    ├── database.js          # SQLite (better-sqlite3)
-    ├── stats.js             # إحصائيات التشغيل
-    ├── status-page.js       # Dashboard + API
-    ├── embeds.js            # رسائل ديسكورد
-    └── tests.test.js        # 60 اختبار
+    ├── database.js             # SQLite (better-sqlite3)
+    ├── stats.js                # إحصائيات التشغيل
+    ├── status-page.js          # Dashboard + API
+    ├── embeds.js               # رسائل ديسكورد
+    ├── logger.js               # تسجيل مركزي
+    ├── format.js               # تنسيق الأوقات
+    ├── cooldown.js             # إدارة Cooldown
+    ├── permissions.js          # صلاحيات DJ
+    ├── sounds.js               # الملفات الصوتية
+    ├── heartbeat.js            # ملف النبض
+    ├── migration.js            # JSON → SQLite
+    ├── webhook.js              # إشعارات Webhook
+    ├── weekly-recap.js         # ملخص أسبوعي
+    ├── ytdlp-update.js         # تحديث yt-dlp
+    └── tests.test.js           # 72 اختبار
 ```
 
 ---
@@ -152,7 +170,7 @@ src/
 npm test
 ```
 
-- 60 اختبار يغطي: formatTime, cookies, videoId, cooldown, queue, database, stats, session state
+- **72 اختبار** يغطي: formatTime, cookies, videoId, cooldown, queue, database, stats, session state, embeds, lang.js
 - يستخدم **in-memory SQLite** — لا يلمس قاعدة الإنتاج
 
 ---

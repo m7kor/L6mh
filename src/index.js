@@ -26,6 +26,7 @@ import {
   playerEvents,
   getSessionInfo,
   getAllSessions,
+  getQueue,
 } from './services/player/index.js';
 import { sessions, saveState, getSession } from './services/session.js';
 import { closeDb } from './utils/database.js';
@@ -123,7 +124,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, random, resume, latest';
+    if (lower === 'help') return 'Commands: status, np, random, resume, latest, play <videoId>';
     
     const all = getAllSessions();
     
@@ -157,10 +158,30 @@ client.once(Events.ClientReady, async (c) => {
       }
       return done > 0 ? `Playing latest on ${done} server(s).` : 'No active servers found.';
     }
+    if (lower.startsWith('play ')) {
+      const videoId = cmd.slice(5).trim();
+      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+        return 'Invalid video ID format.';
+      }
+      const { getVideos } = await import('./services/youtube.js');
+      const { playVideo } = await import('./services/player/index.js');
+      const catalog = await getVideos();
+      const video = catalog.find(v => v.videoId === videoId);
+      if (!video) return 'Video not found in catalog.';
+      let done = 0;
+      for (const s of all) {
+        const guild = c.guilds.cache.get(s.guildId);
+        if (guild && guild.members.me.voice.channel) {
+          await playVideo(guild, guild.members.me.voice.channel, video);
+          done++;
+        }
+      }
+      return done > 0 ? `Playing "${video.title}" on ${done} server(s).` : 'No active servers found.';
+    }
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
-  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
+  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand, getQueue);
 
   // Weekly recap — check daily
   setInterval(checkWeeklyRecap, 60 * 60 * 1000);
