@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { getSessionInfo } from '../services/player/controls.js';
+import { getSessionInfo } from '../services/player/index.js';
 
 export const data = new SlashCommandBuilder()
   .setName('حالة')

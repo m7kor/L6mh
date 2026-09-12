@@ -228,7 +228,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         });
       });
       try {
-        const r = await fetch(process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416', { signal: AbortSignal.timeout(3000) });
+        const r = await fetch(getActiveProvider(), { signal: AbortSignal.timeout(3000) });
         health.pot.ok = r.ok;
         health.pot.status = r.status;
         health.pot.activeProvider = getActiveProvider();

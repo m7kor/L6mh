@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { playLatest, attachNowPlayingMessage, getSessionInfo } from '../services/player.js';
+import { playLatest, attachNowPlayingMessage, getSessionInfo } from '../services/player/index.js';
 import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from '../utils/cooldown.js';
 import { requireDjRole } from '../utils/permissions.js';

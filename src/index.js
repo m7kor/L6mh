@@ -300,7 +300,7 @@ client.once(Events.ClientReady, async (c) => {
               const soundPath = resolveSoundPath(randomSound);
               if (soundPath) {
                 logger.info(`[${guild.id}] Playing startup sound: ${randomSound}`);
-                const { playSoundEffect } = await import('./services/player.js');
+                const { playSoundEffect } = await import('./services/player/index.js');
                 await playSoundEffect(guild, targetChannel, soundPath);
                 logger.info(`[${guild.id}] Startup sound finished.`);
               }
@@ -362,7 +362,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
               const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
               const soundPath = resolveSoundPath(randomSound);
               if (soundPath) {
-                const { playSoundEffect } = await import('./services/player.js');
+                const { playSoundEffect } = await import('./services/player/index.js');
                 await playSoundEffect(guild, joinedChannel, soundPath);
               }
             }

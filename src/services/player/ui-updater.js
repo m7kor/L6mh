@@ -8,7 +8,7 @@
 
 import { createLogger } from '../../utils/logger.js';
 import { buildNowPlayingMessage } from '../../utils/embeds.js';
-import { getElapsedSeconds } from '../session.js';
+import { getElapsedSeconds, getSession } from '../session.js';
 
 const logger = createLogger('audio');
 
@@ -29,6 +29,7 @@ const UI_REFRESH_MS = 30_000;
  * @param {import('../session.js').GuildSession} session
  */
 export function attachNowPlayingMessage(guildId, message, session) {
+  if (!session) session = getSession(guildId);
   session.nowPlayingMessage = message;
   startUiRefresh(session);
   updateNowPlayingMessage(session).catch(() => {});

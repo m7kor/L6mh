@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { execFile } from 'node:child_process';
-import { config } from '../config.js';
+import { getActiveProvider } from '../services/streaming.js';
 
 export const data = new SlashCommandBuilder()
   .setName('اختبر')
@@ -20,9 +20,10 @@ export async function execute(interaction) {
   });
 
   // Test PoT provider
+  const provider = getActiveProvider();
   await new Promise(resolve => {
     execFile('yt-dlp', [
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
+      '--extractor-args', `youtubepot-bgutilhttp:base_url=${provider}`,
       '--simulate', '--print', 'title',
       'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     ], { timeout: 30000 }, (err, stdout, stderr) => {
@@ -32,7 +33,7 @@ export async function execute(interaction) {
           : `❌ PoT: ${err.message}`;
         results.push(msg);
       } else {
-        results.push(`✅ PoT provider: متاح`);
+        results.push(`✅ PoT provider: متاح (${provider})`);
       }
       resolve();
     });

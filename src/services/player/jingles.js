@@ -5,7 +5,7 @@
  * لضمان التوزيع العادل بين المؤثرات المتاحة.
  */
 
-import { createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } from '@discordjs/voice';
+import { createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState, joinVoiceChannel } from '@discordjs/voice';
 import { createLogger } from '../../utils/logger.js';
 import { listSounds, resolveSoundPath } from '../../utils/sounds.js';
 import { getSession } from '../session.js';
@@ -53,10 +53,46 @@ export function pickJingle(sounds) {
 // ---------------------------------------------------------------------------
 
 export function playSoundEffect(guild, channel, filePath) {
-  // ملاحظة: نستورد joinVoiceChannel من engine لتجنب دائرية الاستيراد
-  // سيُمرَّر من engine.js عبر parameter
-  // لذلك هذه الدالة تستقبل connection مباشرة بدلاً من إعادة إنشائه
-  throw new Error('Use playSoundEffectWithConnection instead');
+  const session = getSession(guild.id);
+
+  return new Promise((resolve, reject) => {
+    const alreadyHere = session.connection
+      && session.connection.joinConfig.channelId === channel.id
+      && session.connection.state.status !== VoiceConnectionStatus.Destroyed;
+
+    if (!alreadyHere) {
+      if (session.connection) { try { session.connection.destroy(); } catch {} }
+      session.connection = joinVoiceChannel({
+        channelId: channel.id,
+        guildId: guild.id,
+        adapterCreator: guild.voiceAdapterCreator,
+        selfDeaf: true,
+      });
+      entersState(session.connection, VoiceConnectionStatus.Ready, 30_000)
+        .then(() => playFile(session.connection))
+        .catch((err) => reject(new Error(`تعذّر الاتصال بالقناة الصوتية: ${err.message}`)));
+    } else {
+      playFile(session.connection);
+    }
+
+    function playFile(conn) {
+      const effectPlayer = createAudioPlayer();
+      let resource;
+      try {
+        resource = createAudioResource(filePath);
+      } catch (err) {
+        reject(new Error(`تعذّر تشغيل الملف الصوتي: ${err.message}`));
+        return;
+      }
+      effectPlayer.on('error', (err) => {
+        logger.error(`[${guild.id}] Sound effect error:`, err.message);
+        reject(err);
+      });
+      effectPlayer.on(AudioPlayerStatus.Idle, () => { resolve(); });
+      conn.subscribe(effectPlayer);
+      effectPlayer.play(resource);
+    }
+  });
 }
 
 /**
@@ -82,7 +118,6 @@ export function playSoundEffectWithConnection(existingConnection, guild, channel
       const conn = joinFn(channel, guild);
       session.connection = conn;
 
-      const { entersState } = require('@discordjs/voice');
       entersState(conn, VoiceConnectionStatus.Ready, 30_000)
         .then(() => playFile(conn))
         .catch((err) => reject(new Error(`تعذّر الاتصال بالقناة الصوتية: ${err.message}`)));

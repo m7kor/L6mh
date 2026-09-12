@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { getQueue } from '../services/player.js';
+import { getQueue } from '../services/player/index.js';
 import { getVideos } from '../services/youtube.js';
 
 export const data = new SlashCommandBuilder()
