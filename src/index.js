@@ -2,7 +2,7 @@
  * discord-yt-audio-bot — main entry point.
  *
  * Plays YouTube audio in voice channels with continuous playback.
- * Commands: /كمل, /اخر_مقطع, /عشوائي
+ * Commands: /كمل, /عشوائي
  */
 
 import { readdirSync } from 'node:fs';
@@ -22,12 +22,10 @@ import {
   stopPlayback,
   playRandom,
   playLatest,
-  playVideo,
   resume,
   playerEvents,
   getSessionInfo,
   getAllSessions,
-  getQueue,
 } from './services/player/index.js';
 import { sessions, saveState, getSession } from './services/session.js';
 import { closeDb } from './utils/database.js';
@@ -125,7 +123,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, random, resume, latest, play <videoId>';
+    if (lower === 'help') return 'Commands: status, np, random, resume, latest';
     
     const all = getAllSessions();
     
@@ -134,34 +132,6 @@ client.once(Events.ClientReady, async (c) => {
     }
     if (lower === 'np' || lower === 'nowplaying') {
       return all.map(s => s.guildName + ': ' + (s.title || 'No track')).join('\n');
-    }
-    if (lower.startsWith('play ')) {
-      const videoId = cmd.split(' ').slice(1).join(' ').trim();
-      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-        return 'Usage: play <videoId> (must be a valid 11-character YouTube ID)';
-      }
-      let done = 0;
-      for (const s of all) {
-        const guild = c.guilds.cache.get(s.guildId);
-        if (guild && guild.members.me.voice.channel) {
-          try {
-            const { getVideoDetails } = await import('./services/youtube.js');
-            const details = await getVideoDetails(videoId);
-            const video = {
-              videoId,
-              title: details?.title || videoId,
-              url: `https://www.youtube.com/watch?v=${videoId}`,
-              thumbnail: details?.thumbnail || null,
-              durationSeconds: details?.durationSeconds || null,
-            };
-            await playVideo(guild, guild.members.me.voice.channel, video);
-            done++;
-          } catch (err) {
-            return `Error playing video: ${err.message}`;
-          }
-        }
-      }
-      return done > 0 ? `Playing on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === '/عشوائي' || lower === 'random') {
       let done = 0;
@@ -187,62 +157,10 @@ client.once(Events.ClientReady, async (c) => {
       }
       return done > 0 ? `Playing latest on ${done} server(s).` : 'No active servers found.';
     }
-    if (lower === 'skip' || lower === '/تخطي') {
-      let done = 0;
-      for (const s of all) {
-        const guild = c.guilds.cache.get(s.guildId);
-        if (guild && guild.members.me.voice.channel) { 
-          const { skipTrack } = await import('./services/player/index.js');
-          skipTrack(guild.id); 
-          done++; 
-        }
-      }
-      return done > 0 ? `Skipped on ${done} server(s).` : 'No active servers found.';
-    }
-    if (lower.startsWith('priority ')) {
-      const videoId = cmd.split(' ').slice(1).join(' ').trim();
-      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return 'Usage: priority <videoId>';
-      let done = 0;
-      for (const s of all) {
-        const { getSession, saveState } = await import('./services/session.js');
-        const guildSession = getSession(s.guildId);
-        guildSession.queue.unshift(videoId);
-        await saveState(guildSession);
-        done++;
-      }
-      return done > 0 ? `Added ${videoId} as priority next track on ${done} server(s).` : 'No active servers found.';
-    }
-    if (lower.startsWith('live ')) {
-      const input = cmd.split(' ').slice(1).join(' ').trim();
-      const idMatch = input.match(/(?:v=|youtu\.be\/|embed\/|\/v\/|^)([A-Za-z0-9_-]{11})/);
-      const videoId = idMatch?.[1];
-      if (!videoId) return 'Usage: live <youtube_url_or_id>';
-      
-      let done = 0;
-      for (const s of all) {
-        const guild = c.guilds.cache.get(s.guildId);
-        if (guild && guild.members.me.voice.channel) {
-          const { isLiveStream } = await import('./services/streaming.js');
-          const { getVideoDetails } = await import('./services/youtube.js');
-          
-          const url = `https://www.youtube.com/watch?v=${videoId}`;
-          const isLive = await isLiveStream(url).catch(() => false);
-          if (!isLive) return `Error: ${url} is not a detected live stream. Use "play" instead.`;
-          
-          let title = videoId;
-          try { const details = await getVideoDetails(videoId); title = details?.title || videoId; } catch {}
-          
-          const video = { videoId, title, url, thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`, durationSeconds: null, isLive: true };
-          await playVideo(guild, guild.members.me.voice.channel, video);
-          done++;
-        }
-      }
-      return done > 0 ? `Playing live stream on ${done} server(s).` : 'No active servers found.';
-    }
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
-  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand, getQueue);
+  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand);
 
   // Weekly recap — check daily
   setInterval(checkWeeklyRecap, 60 * 60 * 1000);

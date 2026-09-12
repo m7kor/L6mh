@@ -6,7 +6,7 @@ import { requireDjRole } from '../utils/permissions.js';
 
 export const data = new SlashCommandBuilder()
   .setName('اخر_مقطع')
-  .setDescription('تشغيل اخر فيديو من القناه');
+  .setDescription('تشغيل احدث مقطع من القناة');
 
 export async function execute(interaction) {
   const voiceChannel = interaction.member?.voice?.channel;
