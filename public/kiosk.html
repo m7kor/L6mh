@@ -67,7 +67,46 @@
     #kioskFlash.general{background:radial-gradient(circle at center,rgba(0,229,255,0.25) 0%,transparent 50%)}
 
     /* ── Responsive ── */
-    @media(max-width:600px){.kiosk-now{font-size:28px}.kiosk-stats{gap:32px}.kiosk-stat-num{font-size:40px}}
+    @media(max-width:768px){
+      .kiosk{width:95vw}
+      .kiosk-now{font-size:32px;line-height:1.4}
+      .kiosk-stats{gap:40px}
+      .kiosk-stat-num{font-size:44px}
+      .kiosk-wave{height:40px;gap:3px}
+    }
+    @media(max-width:480px){
+      .kiosk{width:92vw}
+      .kiosk-title{font-size:12px;letter-spacing:2px}
+      .kiosk-now{font-size:24px;line-height:1.5;margin-bottom:24px}
+      .kiosk-wave{height:32px;gap:2px;margin-bottom:24px}
+      .kiosk-wave .bar{width:3px}
+      .kiosk-stats{gap:24px;margin-top:24px}
+      .kiosk-stat-num{font-size:36px}
+      .kiosk-stat-lbl{font-size:11px}
+      .kiosk-live-text{font-size:11px;letter-spacing:1px}
+      .kiosk-time{font-size:12px;margin-top:24px}
+      .kiosk-footer{font-size:9px;margin-top:16px}
+      .extra-orb{display:none}
+    }
+    @media(max-width:360px){
+      .kiosk-now{font-size:20px}
+      .kiosk-stats{gap:16px}
+      .kiosk-stat-num{font-size:30px}
+      .kiosk-wave{height:28px}
+    }
+    /* ── Landscape ── */
+    @media(max-height:500px)and(orientation:landscape){
+      .kiosk-now{font-size:24px;margin-bottom:16px}
+      .kiosk-wave{height:28px;margin-bottom:16px}
+      .kiosk-stats{gap:32px;margin-top:16px}
+      .kiosk-stat-num{font-size:36px}
+    }
+    /* ── Large screens ── */
+    @media(min-width:1200px){
+      .kiosk-now{font-size:52px}
+      .kiosk-stat-num{font-size:64px}
+      .kiosk-wave{height:56px}
+    }
   </style>
 </head>
 <body>

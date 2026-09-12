@@ -257,4 +257,23 @@
 @media (max-width: 768px) {
   .particles::before { width: 250px; height: 250px; }
   .particles::after { width: 200px; height: 200px; }
+  .particle-orb { opacity: 0.2; }
+  .glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+}
+@media (max-width: 480px) {
+  .particles::before { width: 180px; height: 180px; }
+  .particles::after { width: 150px; height: 150px; }
+  .extra-orb { display: none; }
+  .glass { border-radius: 12px; }
+  .waveform { gap: 2px; height: 28px; }
+  .waveform .bar { width: 2px; }
+}
+@media (hover:none) and (pointer:coarse) {
+  .glass:hover { transform: none; box-shadow: none; }
+  .ripple::after { display: none; }
+}
+
+/* ── Safe Area (notch phones) ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .particles { top: env(safe-area-inset-top); }
 }

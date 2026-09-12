@@ -98,7 +98,7 @@ export default function Player({ videoId, elapsedSeconds, durationSeconds, pause
   }, [videoId, elapsedSeconds, paused, updatedAt, playerReady]);
 
   return (
-    <div style={styles.wrapper}>
+    <div style={styles.wrapper} className="activity-player">
       <div style={styles.playerContainer} ref={containerRef}>
         <div id="youtube-player" style={styles.iframe} />
       </div>

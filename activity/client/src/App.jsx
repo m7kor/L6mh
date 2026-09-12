@@ -145,10 +145,10 @@ export default function App() {
       <div style={styles.bgGradient} />
 
       {/* Header */}
-      <div style={styles.header}>
+      <div style={styles.header} className="activity-header">
         <div style={styles.headerLeft}>
           <span style={styles.headerIcon}>🎙️</span>
-          <span style={styles.headerTitle}>راديو وحيد عمر</span>
+          <span style={styles.headerTitle} className="activity-header-title">راديو وحيد عمر</span>
         </div>
         {user && (
           <div style={styles.headerRight}>
@@ -156,14 +156,15 @@ export default function App() {
               src={user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : `https://cdn.discordapp.com/embed/avatars/${Number(user.discriminator || 0) % 5}.png`}
               alt=""
               style={styles.avatar}
+              className="activity-header-avatar"
             />
-            <span style={styles.username}>{user.username}</span>
+            <span style={styles.username} className="activity-header-username">{user.username}</span>
           </div>
         )}
       </div>
 
       {/* Main content */}
-      <div style={styles.content}>
+      <div style={styles.content} className="activity-content">
         <Player
           videoId={state?.videoId}
           elapsedSeconds={state?.elapsedSeconds}

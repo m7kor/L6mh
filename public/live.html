@@ -110,8 +110,79 @@
     #latmaFlash.general{background:radial-gradient(circle at center,rgba(0,229,255,0.2) 0%,transparent 60%)}
 
     /* ── Responsive ── */
-    @media(max-width:768px){.hero{grid-template-columns:1fr;gap:20px}.hero-thumb{max-width:400px;margin:0 auto}.hero-title{font-size:22px}.stats{grid-template-columns:repeat(2,1fr)}.stat-num{font-size:24px}}
-    @media(max-width:480px){.page{padding:16px 12px 100px}.stats{grid-template-columns:1fr 1fr;gap:10px}.stat{padding:16px 12px}}
+    @media(max-width:1024px){
+      .hero{grid-template-columns:280px 1fr;gap:24px}
+      .hero-title{font-size:26px}
+    }
+    @media(max-width:768px){
+      .page{padding:20px 16px 100px}
+      .hero{grid-template-columns:1fr;gap:20px}
+      .hero-thumb{max-width:420px;margin:0 auto}
+      .hero-title{font-size:22px;line-height:1.4}
+      .hero-meta{flex-wrap:wrap;gap:10px}
+      .stats{grid-template-columns:repeat(2,1fr);gap:12px}
+      .stat{padding:20px 14px}
+      .stat-num{font-size:26px}
+      .stat-icon{font-size:24px}
+      .section-hdr h2{font-size:16px}
+      .top-item{padding:12px 14px;gap:10px}
+      .top-img{width:48px;height:28px}
+      .top-info h4{font-size:12px}
+      .lb-item{padding:12px 14px}
+      .share-bar{gap:8px}
+      .share-btn{padding:8px 16px;font-size:12px}
+    }
+    @media(max-width:480px){
+      .page{padding:14px 12px 90px}
+      .hero-thumb{max-width:100%;border-radius:12px}
+      .hero-title{font-size:20px}
+      .hero-tag{font-size:11px}
+      .hero-meta{font-size:12px}
+      .stats{grid-template-columns:1fr 1fr;gap:8px}
+      .stat{padding:16px 10px;border-radius:12px}
+      .stat-num{font-size:22px}
+      .stat-lbl{font-size:11px}
+      .stat-icon{font-size:22px;margin-bottom:6px}
+      .top-item{padding:10px 12px;gap:8px}
+      .top-rank{width:20px;font-size:12px}
+      .top-img{width:42px;height:24px;border-radius:4px}
+      .top-info h4{font-size:11px}
+      .top-plays{font-size:11px;padding:3px 8px}
+      .history-item{padding:8px 12px;font-size:12px}
+      .history-dot{width:5px;height:5px}
+      .history-time{width:50px;font-size:10px}
+      .lb-item{padding:10px 12px;gap:10px}
+      .lb-rank{font-size:16px;width:24px}
+      .lb-name{font-size:13px}
+      .lb-time{font-size:11px;padding:3px 8px}
+      .share-bar{flex-direction:column;align-items:stretch}
+      .share-btn{justify-content:center}
+      .footer{font-size:11px;padding:24px 16px}
+      .kiosk-footer{font-size:10px}
+    }
+    @media(max-width:360px){
+      .page{padding:10px 10px 80px}
+      .hero-title{font-size:18px}
+      .stats{gap:6px}
+      .stat{padding:12px 8px}
+      .stat-num{font-size:20px}
+    }
+    /* ── Touch-friendly tap targets ── */
+    @media(hover:none)and(pointer:coarse){
+      .share-btn{min-height:44px;min-width:44px}
+      .top-item{min-height:48px}
+      .history-item{min-height:40px}
+      .lb-item{min-height:48px}
+    }
+    /* ── Landscape phone ── */
+    @media(max-height:500px)and(orientation:landscape){
+      .hero{grid-template-columns:200px 1fr;gap:16px}
+      .hero-thumb{max-width:240px}
+      .hero-title{font-size:18px}
+      .stats{grid-template-columns:repeat(4,1fr);gap:8px}
+      .stat{padding:12px 8px}
+      .stat-num{font-size:20px}
+    }
   </style>
 </head>
 <body>
