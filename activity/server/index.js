@@ -8,17 +8,19 @@
  *   4. Jingle event relay: forward jingle events to connected clients
  */
 
-import 'dotenv/config';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
-import { join } from 'node:path';
 import { createServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load .env from project root (two levels up from activity/server/)
+dotenv.config({ path: join(__dirname, '..', '..', '.env') });
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,9 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
   process.exit(1);
 }
 
+console.log(`[activity] CLIENT_ID: ${CLIENT_ID.slice(0, 8)}...`);
+console.log(`[activity] CLIENT_SECRET: ${CLIENT_SECRET.slice(0, 8)}...`);
+
 // ── Express + HTTP ──────────────────────────────────────────────────────────
 
 const app = express();
@@ -45,8 +50,6 @@ const clientDist = join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
 
 // OAuth2 token exchange — POST /api/token
-// Receives { code } from the Discord Embedded App SDK client,
-// exchanges it for an access_token via Discord's OAuth2 token endpoint.
 app.post('/api/token', async (req, res) => {
   const { code } = req.body;
   if (!code) {
@@ -91,8 +94,8 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, uptime: Math.floor(process.uptime()) });
 });
 
-// SPA fallback — serve index.html for all non-API routes
-app.get('*', (req, res) => {
+// SPA fallback
+app.get('/{*path}', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'Not found' });
   }
@@ -104,7 +107,6 @@ app.get('*', (req, res) => {
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-// State polling
 let lastPollTime = 0;
 let lastState = null;
 let lastJingles = [];
@@ -126,7 +128,6 @@ async function pollBotState() {
     lastJingles = data.jingles || [];
     lastPollTime = data.timestamp || Date.now();
 
-    // Broadcast to all connected WebSocket clients
     const message = JSON.stringify({
       type: 'state',
       state: lastState,
@@ -139,19 +140,13 @@ async function pollBotState() {
         try { client.send(message); } catch {}
       }
     }
-  } catch (err) {
-    // Silently ignore poll errors — clients will get stale state
-  }
+  } catch {}
 }
 
-// Poll every 2 seconds
 const pollTimer = setInterval(pollBotState, POLL_INTERVAL_MS);
 
-// WebSocket connection handler
 wss.on('connection', (ws) => {
   console.log('[activity] Client connected');
-
-  // Send current state immediately
   if (lastState || lastJingles.length > 0) {
     try {
       ws.send(JSON.stringify({
@@ -162,14 +157,8 @@ wss.on('connection', (ws) => {
       }));
     } catch {}
   }
-
-  ws.on('close', () => {
-    console.log('[activity] Client disconnected');
-  });
-
-  ws.on('error', (err) => {
-    console.error('[activity] WebSocket error:', err.message);
-  });
+  ws.on('close', () => console.log('[activity] Client disconnected'));
+  ws.on('error', (err) => console.error('[activity] WS error:', err.message));
 });
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
