@@ -1,7 +1,7 @@
 {
   "name": "discord-yt-audio-bot",
-  "version": "1.0.0",
-  "description": "Discord bot that plays YouTube audio in voice channels",
+  "version": "1.1.0",
+  "description": "Discord bot that plays YouTube audio in voice channels 24/7 with web dashboard",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,12 @@
     "dev": "node --watch src/index.js",
     "deploy": "node src/deploy-commands.js",
     "typecheck": "tsc --noEmit",
-    "test": "cross-env NODE_ENV=test node --test src/utils/tests.test.js"
+    "test": "cross-env NODE_ENV=test node --test src/utils/tests.test.js",
+    "pm2:start": "pm2 start src/index.js --name yt-audio-bot",
+    "pm2:restart": "pm2 restart yt-audio-bot",
+    "pm2:stop": "pm2 stop yt-audio-bot",
+    "pm2:logs": "pm2 logs yt-audio-bot",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
