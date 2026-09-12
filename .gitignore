@@ -30,3 +30,7 @@ data/
 activity/server/node_modules/
 activity/client/node_modules/
 activity/client/dist/
+
+cloudflared.exe
+tunnel-launcher.mjs
+tunnel.bat
