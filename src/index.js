@@ -29,7 +29,7 @@ import {
   getAllSessions,
   getQueue,
 } from './services/player/index.js';
-import { sessions, saveState } from './services/session.js';
+import { sessions, saveState, getSession } from './services/session.js';
 import { closeDb } from './utils/database.js';
 import { migrateJsonToSqlite } from './utils/migration.js';
 import { formatTime } from './utils/format.js';
@@ -255,7 +255,7 @@ client.once(Events.ClientReady, async (c) => {
   // Periodic state backup — save all sessions every 60s
   setInterval(() => {
     for (const [guildId] of sessions) {
-      try { saveState(getSessionInfo(guildId)); } catch {}
+      try { saveState(getSession(guildId)); } catch {}
     }
   }, 60_000);
 

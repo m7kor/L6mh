@@ -274,9 +274,14 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
     });
 
     let dataReceived = false;
+    let totalBytes = 0;
 
     const bufferingStream = new PassThrough({ highWaterMark: 1024 * 128 });
     ffmpegProcess.stdout.pipe(bufferingStream);
+
+    bufferingStream.on('data', (chunk) => {
+      totalBytes += chunk.length;
+    });
 
     bufferingStream.once('data', () => {
       dataReceived = true;
@@ -290,6 +295,8 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
         const snippet = ffmpegStderr.slice(-500).trim();
         const detail = snippet ? `\n${snippet}` : '';
         safeReject(new Error(`ffmpeg exited with code ${code} before producing audio${detail}`));
+      } else if (dataReceived && totalBytes < 48000 * 2 * 5) {
+        logger.warn(`[streaming] Stream ended with only ${(totalBytes / 1024).toFixed(1)}KB of audio data — likely dropped connection.`);
       }
     });
 

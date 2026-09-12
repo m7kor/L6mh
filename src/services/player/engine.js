@@ -27,7 +27,7 @@ import { recordPlay } from '../../utils/stats.js';
 import { logDashboardError } from '../../utils/status-page.js';
 import { getVideoDetails, getVideos, getLatestVideo } from '../youtube.js';
 import { getCookieArgs } from '../cookies.js';
-import { createAudioStream, killProcesses, preValidateVideo, isLiveStream } from '../streaming.js';
+import { createAudioStream, killProcesses, preValidateVideo, isLiveStream, getActiveProvider } from '../streaming.js';
 import {
   getSession, saveState,
   getElapsedSeconds, freezeProgress,
@@ -90,10 +90,13 @@ async function preloadNextTrack(session) {
     const ytDlpArgs = [
       '-f', 'bestaudio/best', '--no-playlist', '--no-warnings', '--no-progress',
       '-o', '-', '--no-part',
-      '--extractor-args', `youtubepot-bgutilhttp:base_url=${config.potProviderUrl}`,
       ...getCookieArgs(),
       next.url,
     ];
+    const provider = getActiveProvider();
+    if (provider && provider !== 'none') {
+      ytDlpArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${provider}`);
+    }
     const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     proc.stderr.on('data', () => {});
     proc.on('close', () => { if (session.preloaded?.proc === proc) session.preloaded = null; });
@@ -309,13 +312,13 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
     ) {
       if (!session.stallTimeout) {
         session.stallTimeout = setTimeout(() => {
+          if (session.player !== player) return;
+          if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) return;
           logger.warn(`[${guild.id}] Stream stalled for 30s. Restarting track.`);
-          if (session.player === player) {
-            const elapsed = Math.floor(getElapsedSeconds(session));
-            session.current = { ...session.current, progressSeconds: elapsed };
-            connectAndPlay(guild, channel, session.current, { countPlay: false })
-              .catch(() => onTrackFinished(guild, channel));
-          }
+          const elapsed = Math.floor(getElapsedSeconds(session));
+          session.current = { ...session.current, progressSeconds: elapsed };
+          connectAndPlay(guild, channel, session.current, { countPlay: false })
+            .catch(() => onTrackFinished(guild, channel));
         }, 30_000);
       }
     } else {
@@ -326,6 +329,10 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   player.on(AudioPlayerStatus.Idle, () => {
     if (session.player !== player) return;
     if (session.interjecting) return;
+    if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) {
+      logger.warn(`[${guild.id}] Track finished but connection destroyed — stopping.`);
+      return;
+    }
     logger.info(`[${guild.id}] Track finished.`);
     onTrackFinished(guild, channel);
   });
@@ -334,6 +341,7 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
     if (session.player !== player) return;
     if (session.interjecting) return;
     logger.error(`[${guild.id}] Player error:`, err.message);
+    if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) return;
     onTrackFinished(guild, channel);
   });
 
@@ -418,11 +426,19 @@ async function onTrackFinished(guild, channel) {
     // تسجيل نتيجة المقطع الحالي
     if (session.segmentStartedAt) {
       const playedSeconds = (Date.now() - session.segmentStartedAt) / 1000;
+      const expectedDuration = session.current?.durationSeconds || 0;
+
       if (playedSeconds < 10 && session.current?.videoId) {
         logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
         addFailedId(session, session.current.videoId);
         recordPlay(session.current, { failed: true }).catch(() => {});
         await sleep(3000);
+      } else if (expectedDuration > 120 && playedSeconds < expectedDuration * 0.2 && session.current?.videoId) {
+        const pct = Math.round(playedSeconds / expectedDuration * 100);
+        logger.warn(`[${guild.id}] Track ended early: ${Math.round(playedSeconds)}s/${expectedDuration}s (${pct}%) — stream dropped, retrying from where it stopped.`);
+        session.current = { ...session.current, progressSeconds: Math.floor(playedSeconds) };
+        recordPlay(session.current, { failed: true }).catch(() => {});
+        await sleep(2000);
       } else if (session.current?.videoId) {
         recordPlay(session.current, { completed: true }).catch(() => {});
       }

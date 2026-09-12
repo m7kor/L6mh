@@ -94,11 +94,11 @@ export async function saveState(session) {
       mode: session.mode,
       continuous: session.continuous,
       volume: session.volume,
-      queue: session.queue,
-      playedIds: [...session.playedIds],
-      failedIds: [...session.failedIds],
-      cycleCount: session.cycleCount,
-      cycleStartedAt: session.cycleStartedAt,
+      queue: Array.isArray(session.queue) ? session.queue : [],
+      playedIds: session.playedIds instanceof Set ? [...session.playedIds] : Array.isArray(session.playedIds) ? session.playedIds : [],
+      failedIds: session.failedIds instanceof Set ? [...session.failedIds] : Array.isArray(session.failedIds) ? session.failedIds : [],
+      cycleCount: typeof session.cycleCount === 'number' ? session.cycleCount : 0,
+      cycleStartedAt: session.cycleStartedAt || null,
       savedAt: new Date().toISOString(),
     };
     db.prepare(`
