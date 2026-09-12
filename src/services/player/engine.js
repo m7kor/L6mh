@@ -281,6 +281,10 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
 
   stream.on('error', (err) => {
     if (err.code === 'EPIPE') return;
+    if (err.message?.includes('Premature close')) {
+      logger.warn(`[${guild.id}] Audio stream ended prematurely (network drop?).`);
+      return;
+    }
     logger.error(`[${guild.id}] Audio stream error: ${err.message}`);
     if (session.player === player) {
       try { session.player.stop(true); } catch {}
@@ -408,6 +412,7 @@ async function onTrackFinished(guild, channel) {
   const session = getSession(guild.id);
   if (session.advancing) return;
   session.advancing = true;
+  session.advancingSince = Date.now();
 
   try {
     // البث المباشر لا يُكمّل تلقائياً (ينتهي فقط بأمر يدوي)

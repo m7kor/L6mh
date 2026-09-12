@@ -498,6 +498,7 @@ process.on('unhandledRejection', (reason) => {
   // EPIPE errors from broken pipes are non-fatal — Discord voice sockets close abruptly
   if (reason?.code === 'EPIPE' || reason?.message?.includes('EPIPE')) return;
   if (reason?.message?.includes('Cannot perform IP discovery')) return;
+  if (reason?.code === 'EAI_AGAIN' || reason?.code === 'ENOTFOUND' || reason?.code === 'ETIMEDOUT') return;
   logger.error('Unhandled promise rejection:', redactSecrets(reason));
 });
 
@@ -510,6 +511,11 @@ process.on('uncaughtException', (err) => {
   // IP discovery failure on voice reconnect — recoverable, no restart needed
   if (err?.message?.includes('Cannot perform IP discovery')) {
     logger.warn('Ignored IP discovery error (voice reconnect in progress).');
+    return;
+  }
+  // DNS/network transient errors — wait and let Discord.js reconnect naturally
+  if (err?.code === 'EAI_AGAIN' || err?.code === 'ENOTFOUND' || err?.code === 'ETIMEDOUT') {
+    logger.warn(`Ignored transient network error (${err.code}): ${err.message}`);
     return;
   }
   logger.error('Uncaught exception — restarting:', redactSecrets(err?.stack || err));
