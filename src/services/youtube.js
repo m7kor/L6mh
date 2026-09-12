@@ -78,6 +78,7 @@ async function callApi(endpoint, params) {
     try {
       const res = await fetch(`https://www.googleapis.com/youtube/v3/${endpoint}?${params}`);
       if (res.status === 429) {
+        if (attempt === 2) throw new Error(`YouTube API rate limited after 3 retries on ${endpoint}`);
         const retryAfter = res.headers.get('retry-after') || (attempt + 1) * 2;
         await new Promise(r => setTimeout(r, retryAfter * 1000));
         continue;
@@ -254,8 +255,11 @@ function parseIsoDuration(iso) {
 export async function getVideoDetails(videoId, apiKey = config.youtubeApiKey) {
   const now = Date.now();
   const cached = detailsCache.get(videoId);
-  if (cached && now - cached.fetchedAt < DETAILS_CACHE_TTL_MS) {
-    return cached.data;
+  if (cached) {
+    if (now - cached.fetchedAt < DETAILS_CACHE_TTL_MS) {
+      return cached.data;
+    }
+    detailsCache.delete(videoId);
   }
 
   try {

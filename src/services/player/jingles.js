@@ -95,56 +95,6 @@ export function playSoundEffect(guild, channel, filePath) {
   });
 }
 
-/**
- * تشغيل مؤثر صوتي على connection موجود أو إنشاء واحد جديد.
- * @param {import('@discordjs/voice').VoiceConnection|null} existingConnection
- * @param {import('discord.js').Guild} guild
- * @param {import('discord.js').VoiceChannel} channel
- * @param {string} filePath
- * @param {Function} joinFn - دالة joinVoiceChannel من engine
- */
-export function playSoundEffectWithConnection(existingConnection, guild, channel, filePath, joinFn) {
-  const session = getSession(guild.id);
-
-  return new Promise((resolve, reject) => {
-    const alreadyHere = existingConnection
-      && existingConnection.joinConfig.channelId === channel.id
-      && existingConnection.state.status !== VoiceConnectionStatus.Destroyed;
-
-    if (!alreadyHere) {
-      if (existingConnection) {
-        try { existingConnection.destroy(); } catch {}
-      }
-      const conn = joinFn(channel, guild);
-      session.connection = conn;
-
-      entersState(conn, VoiceConnectionStatus.Ready, 30_000)
-        .then(() => playFile(conn))
-        .catch((err) => reject(new Error(`تعذّر الاتصال بالقناة الصوتية: ${err.message}`)));
-    } else {
-      playFile(existingConnection);
-    }
-
-    function playFile(conn) {
-      const effectPlayer = createAudioPlayer();
-      let resource;
-      try {
-        resource = createAudioResource(filePath);
-      } catch (err) {
-        reject(new Error(`تعذّر تشغيل الملف الصوتي: ${err.message}`));
-        return;
-      }
-      effectPlayer.on('error', (err) => {
-        logger.error(`[${guild.id}] Sound effect error:`, err.message);
-        reject(err);
-      });
-      effectPlayer.on(AudioPlayerStatus.Idle, () => resolve());
-      conn.subscribe(effectPlayer);
-      effectPlayer.play(resource);
-    }
-  });
-}
-
 // ---------------------------------------------------------------------------
 // تشغيل جينغل عشوائي بين المقاطع
 // ---------------------------------------------------------------------------

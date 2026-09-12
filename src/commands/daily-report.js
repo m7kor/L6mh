@@ -19,7 +19,7 @@ export async function execute(interaction) {
 
   const topPlayed = db.prepare(`
     SELECT video_id, title, COUNT(*) as cnt
-    FROM plays
+    FROM play_history
     WHERE guild_id = ? AND played_at >= ?
     GROUP BY video_id
     ORDER BY cnt DESC

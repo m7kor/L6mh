@@ -32,4 +32,4 @@ export {
 export { attachNowPlayingMessage, triggerUiUpdate, clearNowPlayingMessage } from './ui-updater.js';
 
 // من jingles.js
-export { playRandomJingle, playSoundEffectWithConnection as playSoundEffect } from './jingles.js';
+export { playRandomJingle, playSoundEffect } from './jingles.js';

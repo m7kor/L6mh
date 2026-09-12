@@ -25,7 +25,7 @@ async function computeRecap() {
     return new Date(v.lastPlayedAt).getTime() >= cutoff;
   });
 
-  const sorted = recent.sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
+  const sorted = recent.sort((a, b) => (b[1].playCount || 0) - (a[1].playCount || 0));
   return sorted.slice(0, 5);
 }
 
@@ -38,7 +38,7 @@ export async function checkWeeklyRecap() {
   if (top5.length === 0) return;
 
   const lines = top5.map(([, v], i) =>
-    `${i + 1}. **${v.title || '—'}** — ${v.count || 0} مرة`,
+    `${i + 1}. **${v.title || '—'}** — ${v.playCount || 0} مرة`,
   );
 
   notify(

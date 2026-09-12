@@ -191,7 +191,7 @@ export async function resume(guild, channel) {
   const savedVideo  = session.current || await restoreLastVideo(guild.id);
   const savedElapsed = session.current
     ? Math.floor(getElapsedSeconds(session))
-    : (session.current?.progressSeconds || 0);
+    : (savedVideo?.progressSeconds || 0);
 
   await stopPlayback(guild.id, { manual: false });
 
@@ -448,13 +448,13 @@ async function onTrackFinished(guild, channel) {
     // البث المباشر لا يُكمّل تلقائياً (ينتهي فقط بأمر يدوي)
     if (session.isLive) {
       logger.info(`[${guild.id}] Live stream ended — stopping.`);
-      stopPlayback(guild.id, { manual: false });
+      await stopPlayback(guild.id, { manual: false });
       return;
     }
 
     if (!session.continuous) {
       logger.info(`[${guild.id}] Continuous mode off. Stopping.`);
-      stopPlayback(guild.id, { manual: false });
+      await stopPlayback(guild.id, { manual: false });
       return;
     }
 
@@ -536,7 +536,7 @@ async function onTrackFinished(guild, channel) {
       logger.error(`[${guild.id}] Stopped after ${MAX_ATTEMPTS} failed attempts.`);
       notify('🔴 توقف', NOTIFY.stopped(guild.name || guild.id, MAX_ATTEMPTS), 'error').catch(() => {});
       logDashboardError(`Guild ${guild.id} stopped after ${MAX_ATTEMPTS} failed attempts.`);
-      stopPlayback(guild.id, { manual: false });
+      await stopPlayback(guild.id, { manual: false });
     }
   } finally {
     session.advancing = false;
@@ -551,10 +551,17 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
   const session = getSession(guild.id);
   if (!session.continuous || session.manualStop) return;
 
+  if (attempt > 20) {
+    logger.error(`[${guild.id}] Giving up rejoin after ${attempt} attempts.`);
+    logDashboardError(`[${guild.id}] Giving up rejoin after ${attempt} attempts.`);
+    await stopPlayback(guild.id, { manual: false });
+    return;
+  }
+
   try {
     const freshChannel = await guild.channels.fetch(channel.id).catch(() => channel);
     if (!freshChannel || (freshChannel.isVoiceBased && !freshChannel.isVoiceBased())) {
-      stopPlayback(guild.id, { manual: false });
+      await stopPlayback(guild.id, { manual: false });
       return;
     }
 

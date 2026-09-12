@@ -468,10 +468,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.customId === 'radio_toggle_pause') {
         const session = getSessionInfo(guildId);
         if (session.paused) {
-          resumePlayback(guildId);
+          await resumePlayback(guildId);
           await interaction.reply({ content: '▶️ تم استكمال التشغيل.', ephemeral: true });
         } else {
-          pausePlayback(guildId);
+          await pausePlayback(guildId);
           await interaction.reply({ content: '⏸️ تم إيقاف التشغيل مؤقتاً.', ephemeral: true });
         }
       } else if (interaction.customId === 'radio_skip') {
@@ -526,6 +526,8 @@ process.on('uncaughtException', (err) => {
 
 function gracefulShutdown(signal) {
   logger.info(`Received ${signal} — saving state and shutting down...`);
+  for (const [, timeout] of voiceActionTimeouts) clearTimeout(timeout);
+  voiceActionTimeouts.clear();
   const tasks = [];
   for (const [guildId] of sessions) {
     tasks.push(stopPlayback(guildId, { manual: false }));

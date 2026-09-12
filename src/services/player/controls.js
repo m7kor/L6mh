@@ -63,9 +63,9 @@ export async function stopPlayback(guildId, { manual = true } = {}) {
   logger.info(`[${guildId}] Stopped playback${manual ? ' and disconnected.' : '.'}`);
 }
 
-export function stopAllSessions() {
+export async function stopAllSessions() {
   for (const guildId of sessions.keys()) {
-    stopPlayback(guildId);
+    await stopPlayback(guildId);
   }
 }
 
@@ -94,7 +94,7 @@ export async function setVolume(guildId, volume, connectAndPlayFn) {
   const session = getSession(guildId);
   const clamped = Math.max(0, Math.min(200, volume));
   session.volume = clamped;
-  saveState(session);
+  await saveState(session);
 
   if (session.current && session.connection && session.guild && session.channel && !session.volumeChanging) {
     session.volumeChanging = true;
@@ -135,7 +135,7 @@ export async function resumePlayback(guildId) {
   session.player.unpause();
   session.paused = false;
   startProgressAutosave(session);
-  saveState(session);
+  await saveState(session);
   playerEvents.emit('trackChange', { guildId, video: session.current, paused: false });
   triggerUiUpdate(session).catch(() => {});
   logger.info(`[${guildId}] Resumed playback.`);
