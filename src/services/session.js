@@ -80,8 +80,19 @@ export async function loadAllState() {
   const result = {};
   for (const row of rows) {
     try {
-      result[row.guild_id] = JSON.parse(row.state);
-    } catch {}
+      const parsed = JSON.parse(row.state);
+      // Validate critical fields
+      if (parsed && typeof parsed === 'object') {
+        if (!Array.isArray(parsed.playedIds)) parsed.playedIds = [];
+        if (!Array.isArray(parsed.failedIds)) parsed.failedIds = [];
+        if (!Array.isArray(parsed.queue)) parsed.queue = [];
+        if (typeof parsed.cycleCount !== 'number') parsed.cycleCount = 0;
+        result[row.guild_id] = parsed;
+      }
+    } catch {
+      logger.warn(`Corrupted session state for guild ${row.guild_id} — deleting.`);
+      db.prepare('DELETE FROM session_state WHERE guild_id = ?').run(row.guild_id);
+    }
   }
   return result;
 }

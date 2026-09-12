@@ -254,7 +254,12 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
         const snippet = ytDlpStderr.slice(-500).trim();
         const detail = snippet ? `\n${snippet}` : '';
         if (isPotProviderError(ytDlpStderr)) {
-          safeReject(new Error(`yt-dlp failed — PoT provider unreachable at ${config.potProviderUrl}${detail}`));
+          logger.warn(`[streaming] PoT provider unreachable — switching provider.`);
+          switchToNextProvider();
+          safeReject(new Error(`yt-dlp failed — PoT provider unreachable at ${getActiveProvider()}${detail}`));
+        } else if (ytDlpStderr.includes('HTTP Error 403') || ytDlpStderr.includes('Sign in to confirm')) {
+          logger.warn(`[streaming] YouTube auth error (code ${code}) — check cookies.`);
+          safeReject(new Error(`yt-dlp auth error${detail}`));
         } else {
           safeReject(new Error(`yt-dlp exited with code ${code}${detail}`));
         }

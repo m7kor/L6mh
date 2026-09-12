@@ -214,6 +214,12 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   session.guild   = guild;
   session.channel = channel;
 
+  // ── Health check: ensure guild/channel are still valid ──
+  if (!guild.available || !channel) {
+    logger.warn(`[${guild.id}] Guild or channel unavailable — skipping play.`);
+    return;
+  }
+
   logger.info(`[${guild.id}] Playing: ${video.title}`);
 
   // ── الاتصال بالقناة الصوتية ──
@@ -279,7 +285,31 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   const { stream, ffmpegProcess } = await createAudioStream(session, video.url, startSeconds, session.volume);
   session.ffmpegProcess = ffmpegProcess;
 
+  // ── Dead stream detection — if no data for 60s, restart ──
+  let lastDataTime = Date.now();
+  let lastBytes = 0;
+  const deadCheckInterval = setInterval(() => {
+    if (session.player !== player) { clearInterval(deadCheckInterval); return; }
+    if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) {
+      clearInterval(deadCheckInterval);
+      return;
+    }
+    const elapsed = Date.now() - lastDataTime;
+    if (elapsed > 60_000 && session.player?.state?.status === AudioPlayerStatus.Playing) {
+      logger.warn(`[${guild.id}] No audio data for ${Math.round(elapsed / 1000)}s — dead stream, restarting.`);
+      clearInterval(deadCheckInterval);
+      const currentElapsed = Math.floor(getElapsedSeconds(session));
+      session.current = { ...session.current, progressSeconds: currentElapsed };
+      connectAndPlay(guild, channel, session.current, { countPlay: false })
+        .catch(() => onTrackFinished(guild, channel));
+    }
+  }, 30_000);
+
+  stream.on('data', () => { lastDataTime = Date.now(); });
+  stream.on('end', () => { clearInterval(deadCheckInterval); });
+
   stream.on('error', (err) => {
+    clearInterval(deadCheckInterval);
     if (err.code === 'EPIPE') return;
     if (err.message?.includes('Premature close')) {
       logger.warn(`[${guild.id}] Audio stream ended prematurely (network drop?).`);
