@@ -249,18 +249,38 @@ function parseIsoDuration(iso) {
 
 /**
  * Fetch (and cache) duration + thumbnail for a single video, used to build
- * the "Now Playing" embed. Cheap (1 quota unit) and cached for an hour
+ * the "Now Playing" embed. Cheap (1 quota unit) and cached in SQLite
  * since this data never changes for an existing video.
- * @returns {Promise<{durationSeconds: number|null, thumbnail: string|null} | null>}
+ * @returns {Promise<{durationSeconds: number|null, thumbnail: string|null, viewCount: number|null, publishedAt: string|null} | null>}
  */
-export async function getVideoDetails(videoId, apiKey = config.youtubeApiKey) {
+export async function getVideoDetails(videoId: string, apiKey = config.youtubeApiKey) {
   const now = Date.now();
-  const cached = detailsCache.get(videoId);
-  if (cached) {
-    if (now - cached.fetchedAt < DETAILS_CACHE_TTL_MS) {
-      return cached.data;
+  
+  // First, check in-memory cache
+  const memCached = detailsCache.get(videoId);
+  if (memCached && (now - memCached.fetchedAt < DETAILS_CACHE_TTL_MS)) {
+    return memCached.data;
+  }
+
+  // Second, check SQLite database
+  try {
+    const db = (await import('../utils/database.js')).getDb();
+    const row = db.prepare('SELECT * FROM video_details WHERE video_id = ?').get(videoId) as any;
+    
+    // We treat SQLite data as permanent unless it lacks duration
+    if (row && row.duration_s !== null) {
+      const details = {
+        durationSeconds: row.duration_s,
+        thumbnail: row.thumbnail,
+        viewCount: row.view_count,
+        publishedAt: row.published_at,
+      };
+      // Populate memory cache to save DB hits
+      detailsCache.set(videoId, { data: details, fetchedAt: now });
+      return details;
     }
-    detailsCache.delete(videoId);
+  } catch (err) {
+    logger.error('Failed to read video_details from DB:', err.message);
   }
 
   try {
@@ -285,8 +305,28 @@ export async function getVideoDetails(videoId, apiKey = config.youtubeApiKey) {
       publishedAt: item.snippet?.publishedAt || null,
     };
     detailsCache.set(videoId, { data: details, fetchedAt: now });
+    
+    // Save to SQLite for permanent storage across restarts
+    try {
+      const db = (await import('../utils/database.js')).getDb();
+      db.prepare(`
+        INSERT OR REPLACE INTO video_details 
+        (video_id, title, duration_s, thumbnail, view_count, published_at, fetched_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `).run(
+        videoId,
+        item.snippet?.title || null,
+        details.durationSeconds,
+        details.thumbnail,
+        details.viewCount,
+        details.publishedAt
+      );
+    } catch (dbErr) {
+      logger.error('Failed to save video_details to DB:', dbErr.message);
+    }
+
     return details;
-  } catch (err) {
+  } catch (err: any) {
     logger.warn(`Failed to fetch video details for ${videoId}:`, err.message);
     return null;
   }
