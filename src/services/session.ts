@@ -13,7 +13,42 @@ const logger = createLogger('audio');
 const PROGRESS_AUTOSAVE_MS = 15_000;
 
 export class GuildSession {
-  constructor(guildId) {
+  guildId: string;
+  connection: any;
+  player: any;
+  resource: any;
+  mode: string | null;
+  continuous: boolean;
+  volume: number;
+  paused: boolean;
+  queue: string[];
+  recentIds: string[];
+  playedIds: Set<string>;
+  failedIds: Set<string>;
+  current: any;
+  manualStop: boolean;
+  advancing: boolean;
+  segmentStartOffset: number;
+  segmentStartedAt: number | null;
+  progressTimer: any;
+  uiTimer: any;
+  resolveProcess: any;
+  ffmpegProcess: any;
+  nowPlayingMessage: any;
+  interjecting: boolean;
+  guild: any;
+  channel: any;
+  preloaded: any;
+  volumeChanging: boolean;
+  stallTimeout: any;
+  keepAliveTimer: any;
+  cycleCount: number;
+  cycleStartedAt: number | null;
+  isLive?: boolean;
+  advancingSince?: number;
+  retryCount?: number;
+
+  constructor(guildId: string) {
     this.guildId = guildId;
     this.connection = null;
     this.player = null;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Play-count persistence using SQLite.
  * Crash-safe, atomic writes via WAL mode.

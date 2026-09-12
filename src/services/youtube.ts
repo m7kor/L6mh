@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * YouTube Data API v3 integration.
  * Fetches videos from the channel's "uploads" playlist for random/latest

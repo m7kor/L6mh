@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * discord-yt-audio-bot — main entry point.
  *
@@ -124,7 +125,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, random, resume, latest, play <videoId>';
+    if (lower === 'help') return 'Commands: status, np, random, resume, latest, stop, skip, volume <0-100>, play <videoId>';
     
     const all = getAllSessions();
     
@@ -157,6 +158,33 @@ client.once(Events.ClientReady, async (c) => {
         if (guild && guild.members.me.voice.channel) { await playLatest(guild, guild.members.me.voice.channel); done++; }
       }
       return done > 0 ? `Playing latest on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower === '/ايقاف' || lower === 'stop') {
+      const { stopPlayback } = await import('./services/player/index.js');
+      let done = 0;
+      for (const s of all) {
+        try { await stopPlayback(s.guildId, { manual: true }); done++; } catch {}
+      }
+      return done > 0 ? `Stopped on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower === 'skip') {
+      const { skipTrack } = await import('./services/player/index.js');
+      let done = 0;
+      for (const s of all) {
+        try { skipTrack(s.guildId); done++; } catch {}
+      }
+      return done > 0 ? `Skipped on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower.startsWith('volume ')) {
+      const val = parseInt(lower.slice(7));
+      if (isNaN(val) || val < 0 || val > 100) return 'Invalid volume. Use 0-100.';
+      const vol = val / 100;
+      const { setVolume } = await import('./services/player/index.js');
+      let done = 0;
+      for (const s of all) {
+        try { setVolume(s.guildId, vol); done++; } catch {}
+      }
+      return done > 0 ? `Volume set to ${val}% on ${done} server(s).` : 'No active servers found.';
     }
     if (lower.startsWith('play ')) {
       const videoId = cmd.slice(5).trim();

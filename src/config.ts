@@ -36,14 +36,24 @@ function clampNumber(value, fallback, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+export interface AppConfig {
+  discordToken: string;
+  clientId: string;
+  youtubeApiKey: string;
+  channelId: string;
+  healthWebhookUrl: string | null;
+  defaultVolume: number;
+  potProviderUrl: string;
+}
+
 /**
  * Lazy config proxy — validates on first property access.
  * In production, first access happens at boot (index.js → config.discordToken).
  * In tests, if no property is ever accessed, no validation occurs.
  */
-export const config = new Proxy({}, {
-  get(_, prop) {
+export const config = new Proxy({} as AppConfig, {
+  get(_, prop: keyof AppConfig) {
     if (!_config) _config = loadConfig();
     return _config[prop];
   },
-});
+}) as AppConfig;

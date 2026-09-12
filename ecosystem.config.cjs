@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'yt-audio-bot',
-    script: 'src/index.js',
+    script: 'dist/index.js',
     env: {
       NODE_ENV: 'production',
     },

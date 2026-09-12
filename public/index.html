@@ -73,6 +73,15 @@
     .act-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-glow); }
     .act-btn:disabled { opacity: .4; cursor: default; }
 
+    /* ── Player Controls ── */
+    .np-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .ctrl-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 14px; cursor: pointer; transition: all .2s; display: grid; place-items: center; }
+    .ctrl-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-glow); }
+    .volume-control { display: flex; align-items: center; gap: 8px; margin-right: auto; }
+    .volume-slider { width: 120px; height: 4px; -webkit-appearance: none; appearance: none; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
+    .volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--cyan); cursor: pointer; }
+    .volume-value { font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 700; min-width: 36px; }
+
     /* ── Servers ── */
     .srv-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
     .srv-tab { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; font-family: var(--font-en); display: flex; align-items: center; gap: 6px; }
@@ -236,6 +245,18 @@
     </div>
   </div>
 
+  <!-- Player Controls -->
+  <div class="np-controls" id="npControls" style="display:none">
+    <button class="ctrl-btn" onclick="cmd('pause',this)" title="إيقاف مؤقت"><i class="fas fa-pause"></i></button>
+    <button class="ctrl-btn" onclick="cmd('resume',this)" title="استئناف"><i class="fas fa-play"></i></button>
+    <button class="ctrl-btn" onclick="cmd('skip',this)" title="تخطي"><i class="fas fa-forward-step"></i></button>
+    <div class="volume-control">
+      <button class="ctrl-btn" onclick="cmd('volume',this,0)" title="كتم الصوت"><i class="fas fa-volume-xmark"></i></button>
+      <input type="range" id="volumeSlider" min="0" max="100" value="100" class="volume-slider" onchange="setVolume(this.value)">
+      <span id="volumeValue" class="volume-value">100%</span>
+    </div>
+  </div>
+
   <!-- Stats -->
   <div class="stats">
     <div class="stat"><div class="stat-icon">⏱️</div><div class="stat-num" id="sUp">0h 0m</div><div class="stat-lbl">مدة التشغيل</div></div>
@@ -385,6 +406,16 @@ const cmd = async (c, btn) => {
   refresh();
 };
 
+const setVolume = async (val) => {
+  const vol = parseInt(val);
+  document.getElementById('volumeValue').textContent = vol + '%';
+  try {
+    const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: `volume ${vol}` }) });
+    const d = await r.json();
+    showToast(r.ok && d.ok ? 'تم ضبط الصوت' : 'خطأ', r.ok && d.ok ? 'success' : 'error');
+  } catch { showToast('تعذر الاتصال', 'error'); }
+};
+
 const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60); return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`; };
 
 let curVid = null;
@@ -434,6 +465,13 @@ const refresh = async () => {
       document.getElementById('npFill').style.width = dur ? `${Math.min(100, el/dur*100)}%` : '100%';
       if (s.videoId) setEmb(s.videoId); else { curVid = null; }
       document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
+      // Show player controls
+      document.getElementById('npControls').style.display = '';
+      if (s.volume !== undefined) {
+        const vol = Math.round(s.volume * 100);
+        document.getElementById('volumeSlider').value = vol;
+        document.getElementById('volumeValue').textContent = vol + '%';
+      }
     } else {
       pill.className = 'hdr-pill warn'; txt.textContent = 'لا يوجد بث';
       document.getElementById('npTitle').innerText = 'لا يوجد بث حالياً';
@@ -443,6 +481,8 @@ const refresh = async () => {
       document.getElementById('npFill').style.width = '0%';
       curVid = null;
       document.querySelectorAll('.np-vis span').forEach(b => b.classList.add('off'));
+      // Hide player controls
+      document.getElementById('npControls').style.display = 'none';
     }
 
     document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';

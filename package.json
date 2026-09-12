@@ -5,13 +5,14 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "deploy": "node src/deploy-commands.js",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx --watch src/index.ts",
+    "deploy": "tsx src/deploy-commands.ts",
     "typecheck": "tsc --noEmit",
-    "test": "cross-env NODE_ENV=test node --test src/utils/tests.test.js",
-    "pm2:start": "pm2 start src/index.js --name yt-audio-bot",
-    "pm2:restart": "pm2 restart yt-audio-bot",
+    "test": "cross-env NODE_ENV=test node --import tsx --test src/utils/tests.test.ts",
+    "pm2:start": "npm run build && pm2 start ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs",
     "pm2:stop": "pm2 stop yt-audio-bot",
     "pm2:logs": "pm2 logs yt-audio-bot",
     "pm2:status": "pm2 status"
@@ -33,7 +34,12 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.2",
     "cross-env": "^10.1.0",
-    "typescript": "^5.9.0"
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
   }
 }

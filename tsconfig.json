@@ -6,7 +6,8 @@
     "allowJs": true,
     "checkJs": true,
     "strict": false,
-    "noEmit": true,
+    "noEmit": false,
+    "outDir": "dist",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true

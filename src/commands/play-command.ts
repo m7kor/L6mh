@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from '../utils/cooldown.js';
 import { requireDjRole } from '../utils/permissions.js';

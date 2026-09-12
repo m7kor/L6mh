@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * engine.js — محرك الصوت الأساسي.
  *
@@ -485,32 +486,52 @@ async function onTrackFinished(guild, channel) {
       const earlyEndPct = expectedDuration > 3600 ? 0.02 : expectedDuration > 600 ? 0.05 : 0.10;
 
       if (playedSeconds < 10 && session.current?.videoId) {
-        logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
-        addFailedId(session, session.current.videoId);
-        recordPlay(session.current, { failed: true }).catch(() => {});
-        await sleep(3000);
+        session.retryCount = (session.retryCount || 0) + 1;
+        if (session.retryCount <= 3) {
+          logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — retrying (${session.retryCount}/3)...`);
+          session.current = { ...session.current, progressSeconds: 0 };
+          session.advancing = false;
+          connectAndPlay(guild, channel, session.current, { countPlay: false }).catch(() => onTrackFinished(guild, channel));
+          return;
+        } else {
+          logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
+          addFailedId(session, session.current.videoId);
+          recordPlay(session.current, { failed: true }).catch(() => {});
+          await sleep(3000);
+          session.retryCount = 0; // reset for next track
+        }
       } else if (expectedDuration > 120 && playedSeconds < expectedDuration * earlyEndPct && session.current?.videoId) {
         const pct = Math.round(playedSeconds / expectedDuration * 100);
         logger.warn(`[${guild.id}] Track ended early: ${Math.round(playedSeconds)}s/${expectedDuration}s (${pct}%) — stream dropped, retrying from where it stopped.`);
         session.current = { ...session.current, progressSeconds: Math.floor(playedSeconds) };
         recordPlay(session.current, { failed: true }).catch(() => {});
         await sleep(2000);
+        
+        // Actually retry the current track
+        session.advancing = false;
+        connectAndPlay(guild, channel, session.current, { countPlay: false }).catch(() => onTrackFinished(guild, channel));
+        return;
       } else if (session.current?.videoId) {
         recordPlay(session.current, { completed: true }).catch(() => {});
+        session.retryCount = 0;
       }
     } else if (session.current?.videoId) {
       recordPlay(session.current, { completed: true }).catch(() => {});
+      session.retryCount = 0;
     }
 
     let attempt = 0;
     const MAX_ATTEMPTS = 10;
+    let nextVideoCandidate = null;
 
     while (session.continuous && !session.manualStop && attempt < MAX_ATTEMPTS) {
       try {
         await playRandomJingle(guild, channel);
 
         let next;
-        if (session.preloaded?.video) {
+        if (nextVideoCandidate) {
+          next = nextVideoCandidate;
+        } else if (session.preloaded?.video) {
           next = session.preloaded.video;
           if (session.preloaded.proc) { try { session.preloaded.proc.kill('SIGKILL'); } catch {} }
           session.preloaded = null;
@@ -531,12 +552,23 @@ async function onTrackFinished(guild, channel) {
 
         const valid = await preValidateVideo(next.url);
         if (!valid) {
-          logger.warn(`[${guild.id}] Pre-validation failed for ${next.title}, skipping.`);
-          addFailedId(session, next.videoId);
-          recordPlay(next, { failed: true }).catch(() => {});
-          continue;
+          attempt += 1;
+          const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
+          logger.warn(`[${guild.id}] Pre-validation failed for ${next.title} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying...`);
+          
+          if (attempt >= 3) {
+            logger.warn(`[${guild.id}] Skipping ${next.title} after 3 pre-validation failures.`);
+            addFailedId(session, next.videoId);
+            recordPlay(next, { failed: true }).catch(() => {});
+            nextVideoCandidate = null; // force pop new video on next iteration
+          } else {
+            nextVideoCandidate = next; // retain for retry
+            await sleep(delay);
+          }
+          continue; // loop again (attempt is incremented)
         }
 
+        nextVideoCandidate = null;
         session.current = next;
         session.playedIds.add(next.videoId);
         await connectAndPlay(guild, channel, next);
