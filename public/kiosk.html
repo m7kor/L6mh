@@ -5,60 +5,166 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>راديو وحيد عمر — Kiosk</title>
   <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/effects.css">
   <style>
-    body { background: #000; color: #fff; font-family: var(--font-ar); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; overflow: hidden; }
-    body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse at 30% 50%, rgba(0,229,255,0.08) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(168,85,247,0.06) 0%, transparent 50%); animation: bgPulse 8s ease-in-out infinite alternate; pointer-events: none; }
-    @keyframes bgPulse { 0% { opacity: 0.6; } 100% { opacity: 1; } }
-    .kiosk { text-align: center; max-width: 900px; width: 90vw; position: relative; z-index: 1; }
-    .kiosk-title { font-size: 14px; color: var(--cyan); font-family: var(--font-en); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
-    .kiosk-now { font-size: 36px; font-weight: 900; line-height: 1.5; margin-bottom: 24px; min-height: 48px; background: linear-gradient(135deg, #fff 0%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    .kiosk-stats { display: flex; justify-content: center; gap: 48px; margin-top: 24px; }
-    .kiosk-stat { text-align: center; }
-    .kiosk-stat-num { font-family: var(--font-en); font-size: 48px; font-weight: 900; color: var(--cyan); }
-    .kiosk-stat-lbl { font-size: 12px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
-    .kiosk-time { font-family: var(--font-en); font-size: 13px; color: #555; margin-top: 32px; }
-    .kiosk-live { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; margin-left: 8px; animation: pulse 2s infinite; vertical-align: middle; }
-    .kiosk-off { background: #555; animation: none; }
+    body{background:#000;color:#fff;font-family:var(--font-ar);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;overflow:hidden}
+
+    /* ── Animated Background ── */
+    .bg-layer{position:fixed;inset:0;pointer-events:none;z-index:0}
+    .bg-layer::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,0.12),transparent 70%);top:-15%;right:-10%;animation:bgOrb1 15s ease-in-out infinite alternate;filter:blur(40px)}
+    .bg-layer::after{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.1),transparent 70%);bottom:-15%;left:-10%;animation:bgOrb2 18s ease-in-out infinite alternate;filter:blur(40px)}
+    @keyframes bgOrb1{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-40px,30px) scale(1.15)}100%{transform:translate(30px,-20px) scale(0.9)}}
+    @keyframes bgOrb2{0%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-40px) scale(1.1)}100%{transform:translate(-20px,20px) scale(0.95)}}
+
+    .extra-orb{position:fixed;border-radius:50%;filter:blur(50px);opacity:0.3;animation:orbFloat 20s ease-in-out infinite;pointer-events:none;z-index:0}
+    .extra-orb:nth-child(1){width:300px;height:300px;background:rgba(0,229,255,0.08);top:15%;left:8%;animation-duration:22s}
+    .extra-orb:nth-child(2){width:250px;height:250px;background:rgba(255,107,53,0.06);bottom:15%;right:12%;animation-duration:25s;animation-delay:-8s}
+
+    /* ── Main Content ── */
+    .kiosk{position:relative;z-index:1;text-align:center;max-width:900px;width:90vw}
+
+    .kiosk-live{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px}
+    .kiosk-live-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;animation:pulse 2s infinite;box-shadow:0 0 12px rgba(239,68,68,0.5)}
+    .kiosk-live-dot.off{background:#555;animation:none;box-shadow:none}
+    .kiosk-live-text{font-size:13px;color:var(--text-2);font-family:var(--font-en);text-transform:uppercase;letter-spacing:2px;font-weight:700}
+
+    .kiosk-title{font-size:14px;color:var(--cyan);font-family:var(--font-en);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;font-weight:800}
+    .kiosk-now{font-size:42px;font-weight:900;line-height:1.6;margin-bottom:32px;min-height:56px;background:linear-gradient(135deg,#fff 30%,var(--cyan) 70%,var(--purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:200% auto;animation:textShine 5s linear infinite}
+    @keyframes textShine{0%{background-position:0% center}100%{background-position:200% center}}
+
+    /* ── Waveform ── */
+    .kiosk-wave{display:flex;align-items:center;justify-content:center;gap:4px;height:48px;margin-bottom:32px}
+    .kiosk-wave .bar{width:4px;background:var(--cyan);border-radius:2px;animation:waveform 1.2s ease-in-out infinite;transform-origin:bottom}
+    .kiosk-wave .bar:nth-child(1){height:35%;animation-delay:0s}
+    .kiosk-wave .bar:nth-child(2){height:65%;animation-delay:.1s}
+    .kiosk-wave .bar:nth-child(3){height:100%;animation-delay:.2s}
+    .kiosk-wave .bar:nth-child(4){height:55%;animation-delay:.15s}
+    .kiosk-wave .bar:nth-child(5){height:80%;animation-delay:.05s}
+    .kiosk-wave .bar:nth-child(6){height:40%;animation-delay:.25s}
+    .kiosk-wave .bar:nth-child(7){height:70%;animation-delay:.12s}
+    .kiosk-wave .bar:nth-child(8){height:90%;animation-delay:.08s}
+    .kiosk-wave .bar:nth-child(9){height:50%;animation-delay:.18s}
+    .kiosk-wave.off .bar{animation-play-state:paused;transform:scaleY(0.12);opacity:0.25}
+    @keyframes waveform{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+
+    /* ── Stats ── */
+    .kiosk-stats{display:flex;justify-content:center;gap:64px;margin-top:32px}
+    .kiosk-stat{text-align:center}
+    .kiosk-stat-num{font-family:var(--font-en);font-size:56px;font-weight:900;color:var(--cyan);font-variant-numeric:tabular-nums;line-height:1}
+    .kiosk-stat-lbl{font-size:13px;color:var(--text-3);margin-top:8px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+
+    /* ── Time ── */
+    .kiosk-time{font-family:var(--font-en);font-size:14px;color:var(--text-3);margin-top:40px;font-weight:600}
+
+    /* ── Footer ── */
+    .kiosk-footer{font-size:11px;color:var(--text-3);margin-top:24px;letter-spacing:0.5px}
+
+    /* ── Jingle Flash ── */
+    #kioskFlash{position:fixed;inset:0;pointer-events:none;z-index:100;opacity:0;transition:opacity .15s}
+    #kioskFlash.active{opacity:1}
+    #kioskFlash.latma{background:radial-gradient(circle at center,rgba(255,107,53,0.3) 0%,transparent 50%)}
+    #kioskFlash.basmala{background:radial-gradient(circle at center,rgba(168,85,247,0.3) 0%,transparent 50%)}
+    #kioskFlash.general{background:radial-gradient(circle at center,rgba(0,229,255,0.25) 0%,transparent 50%)}
+
+    /* ── Responsive ── */
+    @media(max-width:600px){.kiosk-now{font-size:28px}.kiosk-stats{gap:32px}.kiosk-stat-num{font-size:40px}}
   </style>
 </head>
 <body>
-  <div class="kiosk">
-    <div class="kiosk-title"><span class="kiosk-live" id="liveDot"></span> راديو وحيد عمر — مباشر</div>
-    <div class="kiosk-now" id="nowTitle">جاري التحميل...</div>
-    <div class="kiosk-stats">
-      <div class="kiosk-stat">
-        <div class="kiosk-stat-num" id="statPlays">0</div>
-        <div class="kiosk-stat-lbl">مرة شُغّل</div>
-      </div>
-      <div class="kiosk-stat">
-        <div class="kiosk-stat-num" id="statUptime">0</div>
-        <div class="kiosk-stat-lbl">ساعة تشغيل</div>
-      </div>
-      <div class="kiosk-stat">
-        <div class="kiosk-stat-num" id="statVideos">0</div>
-        <div class="kiosk-stat-lbl">مقطع</div>
-      </div>
-    </div>
-    <div class="kiosk-time" id="kioskTime"></div>
+
+<!-- Animated Background -->
+<div class="bg-layer"></div>
+<div class="extra-orb"></div>
+<div class="extra-orb"></div>
+
+<!-- Jingle Flash -->
+<div id="kioskFlash"></div>
+
+<div class="kiosk">
+  <div class="kiosk-live">
+    <div class="kiosk-live-dot" id="liveDot"></div>
+    <div class="kiosk-live-text" id="liveText">مباشر الآن</div>
   </div>
-  <script>
-    const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60); return h > 0 ? h+'h '+m+'m' : m+'m'; };
-    const refresh = async () => {
-      try {
-        const r = await fetch('/api/public');
-        if (!r.ok) return;
-        const d = await r.json();
-        const np = d.nowPlaying;
-        document.getElementById('nowTitle').textContent = np ? np.title : 'لا يوجد بث حالياً';
-        document.getElementById('liveDot').className = 'kiosk-live' + (np && !np.paused ? '' : ' kiosk-off');
-        document.getElementById('statPlays').textContent = d.totalPlays || 0;
-        document.getElementById('statUptime').textContent = d.uptimeHours || 0;
-        document.getElementById('statVideos').textContent = d.totalVideos || 0;
-        document.getElementById('kioskTime').textContent = new Date().toLocaleString('ar-SA');
-      } catch {}
-    };
-    refresh();
-    setInterval(refresh, 5000);
-  </script>
+
+  <div class="kiosk-title">🎙️ راديو وحيد عمر</div>
+
+  <div class="kiosk-now" id="nowTitle">جاري التحميل...</div>
+
+  <!-- Waveform -->
+  <div class="kiosk-wave off" id="kioskWave">
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+  </div>
+
+  <div class="kiosk-stats">
+    <div class="kiosk-stat">
+      <div class="kiosk-stat-num" id="statPlays">0</div>
+      <div class="kiosk-stat-lbl">مرة شُغّل</div>
+    </div>
+    <div class="kiosk-stat">
+      <div class="kiosk-stat-num" id="statUptime">0</div>
+      <div class="kiosk-stat-lbl">ساعة تشغيل</div>
+    </div>
+    <div class="kiosk-stat">
+      <div class="kiosk-stat-num" id="statVideos">0</div>
+      <div class="kiosk-stat-lbl">مقطع</div>
+    </div>
+  </div>
+
+  <div class="kiosk-time" id="kioskTime"></div>
+  <div class="kiosk-footer">بث مباشر 24/7 — مقاطع عشوائية من قناة وحيد عمر</div>
+</div>
+
+<script>
+let lastJingleAt = 0;
+
+const refresh = async () => {
+  try {
+    const r = await fetch('/api/public');
+    if (!r.ok) return;
+    const d = await r.json();
+    const np = d.nowPlaying;
+    document.getElementById('nowTitle').textContent = np ? np.title : 'لا يوجد بث حالياً';
+    const dot = document.getElementById('liveDot');
+    const text = document.getElementById('liveText');
+    const wave = document.getElementById('kioskWave');
+    if (np && !np.paused) {
+      dot.className = 'kiosk-live-dot';
+      text.textContent = 'مباشر الآن';
+      wave.classList.remove('off');
+    } else {
+      dot.className = 'kiosk-live-dot off';
+      text.textContent = np ? 'متوقف مؤقتاً' : 'offline';
+      wave.classList.add('off');
+    }
+    document.getElementById('statPlays').textContent = d.totalPlays || 0;
+    document.getElementById('statUptime').textContent = d.uptimeHours || 0;
+    document.getElementById('statVideos').textContent = d.totalVideos || 0;
+    document.getElementById('kioskTime').textContent = new Date().toLocaleString('ar-SA');
+  } catch {}
+};
+
+async function checkJingles() {
+  try {
+    const r = await fetch(`/api/activity/state?since=${lastJingleAt}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.jingles && d.jingles.length > 0) {
+      for (const j of d.jingles) {
+        const flash = document.getElementById('kioskFlash');
+        flash.className = 'active ' + j.category;
+        setTimeout(() => flash.className = '', 400);
+        lastJingleAt = Math.max(lastJingleAt, j.at);
+      }
+    }
+    if (d.timestamp) lastJingleAt = Math.max(lastJingleAt, d.timestamp);
+  } catch {}
+}
+
+refresh();
+setInterval(refresh, 5000);
+setInterval(checkJingles, 2000);
+</script>
 </body>
 </html>

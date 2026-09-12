@@ -1,39 +1,70 @@
 /**
- * JingleOverlay.jsx — Visual jingle/latma animation overlay.
+ * JingleOverlay.jsx — Enhanced jingle/latma animation overlay.
  *
- * When a jingle event is received, displays a short animation
- * with the jingle name and a category-specific visual effect.
- * Auto-hides after 3 seconds.
+ * Multi-layer visual effect:
+ *   1. Full-screen color flash (300ms)
+ *   2. Centered card with pulse rings
+ *   3. Particle burst effect
+ *   4. Category-specific styling (latma/basmala/general)
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 
-const ANIMATION_DURATION = 3000;
+const ANIMATION_DURATION = 3500;
 
-const CATEGORY_STYLES = {
+const CATEGORIES = {
   latma: {
     emoji: '💥',
+    label: 'لطمة!',
     gradient: 'linear-gradient(135deg, #FF6B35, #FF2D2D)',
-    shadowColor: 'rgba(255, 107, 53, 0.4)',
-    label: 'لطمة',
+    glow: 'rgba(255, 107, 53, 0.5)',
+    flash: 'radial-gradient(circle, rgba(255,107,53,0.35) 0%, transparent 55%)',
+    particles: ['#FF6B35', '#FF2D2D', '#FFB366'],
   },
   basmala: {
     emoji: '✨',
-    gradient: 'linear-gradient(135deg, #A855F7, #6366F1)',
-    shadowColor: 'rgba(168, 85, 247, 0.4)',
     label: 'بسم الله',
+    gradient: 'linear-gradient(135deg, #A855F7, #6366F1)',
+    glow: 'rgba(168, 85, 247, 0.5)',
+    flash: 'radial-gradient(circle, rgba(168,85,247,0.35) 0%, transparent 55%)',
+    particles: ['#A855F7', '#6366F1', '#C084FC'],
   },
   general: {
     emoji: '🎵',
-    gradient: 'linear-gradient(135deg, #00E5FF, #0EA5E9)',
-    shadowColor: 'rgba(0, 229, 255, 0.4)',
     label: 'فواصل',
+    gradient: 'linear-gradient(135deg, #00E5FF, #0EA5E9)',
+    glow: 'rgba(0, 229, 255, 0.5)',
+    flash: 'radial-gradient(circle, rgba(0,229,255,0.3) 0%, transparent 55%)',
+    particles: ['#00E5FF', '#0EA5E9', '#67E8F9'],
   },
 };
 
+function Particle({ color, delay, angle }) {
+  const rad = (angle * Math.PI) / 180;
+  const dist = 60 + Math.random() * 80;
+  const tx = Math.cos(rad) * dist;
+  const ty = Math.sin(rad) * dist;
+
+  return (
+    <div style={{
+      position: 'absolute',
+      width: '6px',
+      height: '6px',
+      borderRadius: '50%',
+      background: color,
+      top: '50%',
+      left: '50%',
+      transform: `translate(-50%, -50%)`,
+      animation: `particleBurst 0.8s ${delay}s ease-out forwards`,
+      ['--tx']: `${tx}px`,
+      ['--ty']: `${ty}px`,
+    }} />
+  );
+}
+
 export default function JingleOverlay({ jingles }) {
   const [active, setActive] = useState(null);
-  const [animating, setAnimating] = useState(false);
+  const [phase, setPhase] = useState('idle'); // idle, flash, card, fade
   const lastEventRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -45,67 +76,82 @@ export default function JingleOverlay({ jingles }) {
 
     lastEventRef.current = latest.at;
 
-    // Clear any existing timer
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    // Show animation
     setActive(latest);
-    setAnimating(true);
+    setPhase('flash');
 
-    // Auto-hide
+    // Flash phase
     timerRef.current = setTimeout(() => {
-      setAnimating(false);
-      setTimeout(() => setActive(null), 500); // Wait for fade-out
-    }, ANIMATION_DURATION);
+      setPhase('card');
+      // Card phase
+      timerRef.current = setTimeout(() => {
+        setPhase('fade');
+        // Fade phase
+        timerRef.current = setTimeout(() => {
+          setPhase('idle');
+          setActive(null);
+        }, 600);
+      }, ANIMATION_DURATION);
+    }, 200);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [jingles]);
 
-  if (!active) return null;
+  if (!active || phase === 'idle') return null;
 
-  const style = CATEGORY_STYLES[active.category] || CATEGORY_STYLES.general;
+  const cat = CATEGORIES[active.category] || CATEGORIES.general;
+  const particles = Array.from({ length: 12 }, (_, i) => ({
+    color: cat.particles[i % cat.particles.length],
+    delay: i * 0.03,
+    angle: (i * 30) + (Math.random() * 15 - 7.5),
+  }));
 
   return (
-    <div style={{
-      ...styles.overlay,
-      opacity: animating ? 1 : 0,
-      transform: animating ? 'scale(1)' : 'scale(0.8)',
-    }}>
-      {/* Flash effect */}
+    <div style={styles.overlay}>
+      {/* Full-screen flash */}
       <div style={{
         ...styles.flash,
-        background: style.gradient,
-        opacity: animating ? 0.15 : 0,
+        background: cat.flash,
+        opacity: phase === 'flash' ? 1 : 0,
+        transition: 'opacity 0.3s ease',
       }} />
 
-      {/* Content */}
+      {/* Card */}
       <div style={{
-        ...styles.content,
-        boxShadow: `0 0 60px ${style.shadowColor}`,
+        ...styles.card,
+        opacity: phase === 'card' ? 1 : phase === 'fade' ? 0 : 0,
+        transform: phase === 'card' ? 'scale(1)' : phase === 'fade' ? 'scale(0.9)' : 'scale(0.7)',
+        boxShadow: `0 0 80px ${cat.glow}, 0 0 160px ${cat.glow}40`,
       }}>
-        {/* Pulse ring */}
-        <div style={{
-          ...styles.pulseRing,
-          borderColor: style.shadowColor,
-          animation: animating ? 'pulse 1.5s ease-out infinite' : 'none',
-        }} />
+        {/* Pulse rings */}
+        <div style={{ ...styles.ring, borderColor: cat.glow, animationDelay: '0s' }} />
+        <div style={{ ...styles.ring, borderColor: cat.glow, animationDelay: '0.3s' }} />
+        <div style={{ ...styles.ring, borderColor: cat.glow, animationDelay: '0.6s' }} />
+
+        {/* Particles */}
+        <div style={styles.particleContainer}>
+          {phase === 'card' && particles.map((p, i) => (
+            <Particle key={`${active.at}-${i}`} {...p} />
+          ))}
+        </div>
 
         {/* Emoji */}
-        <div style={styles.emoji}>{style.emoji}</div>
+        <div style={styles.emoji}>{cat.emoji}</div>
 
         {/* Label */}
         <div style={{
           ...styles.label,
-          background: style.gradient,
+          background: cat.gradient,
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>
-          {style.label}
+          {cat.label}
         </div>
 
-        {/* Jingle name */}
+        {/* Name */}
         <div style={styles.name}>{active.name}</div>
       </div>
     </div>
@@ -121,60 +167,78 @@ const styles = {
     alignItems: 'center',
     zIndex: 100,
     pointerEvents: 'none',
-    transition: 'opacity 0.5s ease, transform 0.5s ease',
   },
   flash: {
     position: 'absolute',
     inset: 0,
-    transition: 'opacity 0.3s ease',
   },
-  content: {
+  card: {
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '8px',
-    padding: '32px 48px',
-    borderRadius: '16px',
-    background: 'rgba(10, 10, 10, 0.85)',
-    backdropFilter: 'blur(20px)',
+    gap: '10px',
+    padding: '40px 56px',
+    borderRadius: '20px',
+    background: 'rgba(10, 10, 10, 0.9)',
+    backdropFilter: 'blur(24px)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
   },
-  pulseRing: {
+  ring: {
     position: 'absolute',
-    width: '120px',
-    height: '120px',
+    width: '140px',
+    height: '140px',
     borderRadius: '50%',
     border: '2px solid',
-    animation: 'pulse 1.5s ease-out infinite',
+    animation: 'jingleRing 1.5s ease-out infinite',
+  },
+  particleContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+    overflow: 'visible',
   },
   emoji: {
-    fontSize: '48px',
+    fontSize: '56px',
     lineHeight: 1,
+    position: 'relative',
+    zIndex: 2,
   },
   label: {
-    fontSize: '14px',
-    fontWeight: 700,
-    letterSpacing: '2px',
+    fontSize: '16px',
+    fontWeight: 800,
+    letterSpacing: '3px',
     textTransform: 'uppercase',
+    position: 'relative',
+    zIndex: 2,
   },
   name: {
-    fontSize: '16px',
-    color: '#e0e0e0',
+    fontSize: '15px',
+    color: '#ccc',
     fontWeight: 500,
     textAlign: 'center',
-    maxWidth: '300px',
+    maxWidth: '320px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    position: 'relative',
+    zIndex: 2,
   },
 };
 
-// Add pulse animation
+// Add CSS animations
 const style = document.createElement('style');
 style.textContent = `
-  @keyframes pulse {
-    0% { transform: scale(0.8); opacity: 1; }
-    100% { transform: scale(2); opacity: 0; }
+  @keyframes jingleRing {
+    0% { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+  @keyframes particleBurst {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
   }
 `;
 document.head.appendChild(style);
