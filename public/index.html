@@ -6,6 +6,10 @@
   <title>راديو وحيد عمر — لوحة الإدارة</title>
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script>
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
   <style>
     /* ── Login ── */
     .login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: grid; place-items: center; }
@@ -101,9 +105,9 @@
     .queue-hdr h2 i { color: var(--purple); }
     .queue-count { font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 700; }
     .queue-list { max-height: 200px; overflow-y: auto; }
-    .queue-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 13px; transition: background .15s; }
+    .queue-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 13px; transition: all .2s; }
     .queue-item:last-child { border-bottom: none; }
-    .queue-item:hover { background: rgba(168,85,247,0.03); }
+    .queue-item:hover { background: rgba(168,85,247,0.03); transform: translateX(-4px); }
     .queue-num { font-family: var(--font-en); font-size: 12px; font-weight: 700; color: var(--text-3); width: 24px; text-align: center; flex-shrink: 0; }
     .queue-thumb { width: 48px; height: 27px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
     .queue-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
@@ -154,9 +158,9 @@
     .vid-filter-btn:hover { border-color: var(--cyan); color: var(--cyan); }
     .vid-filter-btn[aria-pressed="true"] { background: var(--cyan-glow); border-color: var(--cyan); color: var(--cyan); }
     .vid-list { max-height: 500px; overflow-y: auto; }
-    .vid-row { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
+    .vid-row { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: all .2s; }
     .vid-row:last-child { border-bottom: none; }
-    .vid-row:hover { background: rgba(0,229,255,0.03); }
+    .vid-row:hover { background: rgba(0,229,255,0.03); transform: translateX(-4px); }
     .vid-num { font-family: var(--font-en); font-size: 12px; font-weight: 700; color: var(--text-3); width: 28px; text-align: center; flex-shrink: 0; }
     .vid-img { width: 72px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
     .vid-text { flex: 1; min-width: 0; }
@@ -182,10 +186,20 @@
       .shell { padding: 20px 16px; }
       .stats { grid-template-columns: repeat(2, 1fr); }
       .stat-num { font-size: 20px; }
+      .health-grid { grid-template-columns: repeat(2, 1fr); }
+      .hdr-actions { flex-wrap: wrap; }
     }
     @media (max-width: 480px) {
-      .shell { padding: 16px 12px; }
+      .shell { padding: 12px 8px; }
       .hdr { flex-direction: column; gap: 12px; align-items: flex-start; }
+      .stats { grid-template-columns: 1fr; }
+      .np-controls { flex-wrap: wrap; justify-content: center; }
+      .volume-control { width: 100%; justify-content: center; }
+      .vid-row { flex-direction: column; align-items: flex-start; }
+      .vid-img { width: 100%; height: auto; aspect-ratio: 16/9; }
+      .vid-num { display: none; }
+      .queue-item { flex-wrap: wrap; }
+      .queue-thumb { display: none; }
     }
   </style>
 </head>
@@ -221,6 +235,7 @@
       <div class="hdr-pill on" id="connPill"><div class="hdr-dot"></div><span id="connText">متصل</span></div>
       <div class="hdr-pill" id="refreshPill" style="font-size:11px;color:var(--text-3)"><i class="fas fa-sync-alt"></i> <span id="lastRefresh">—</span></div>
       <a href="/live" target="_blank" class="hdr-pill" style="color:var(--cyan);background:var(--cyan-glow);text-decoration:none;font-size:12px"><i class="fas fa-external-link-alt"></i> الصفحة العامة</a>
+      <button class="hdr-logout" id="themeBtn" onclick="toggleTheme()" title="تغيير المظهر"><i class="fas fa-sun"></i></button>
       <button class="hdr-logout" onclick="doLogout()">خروج</button>
     </div>
   </header>
@@ -341,6 +356,24 @@
 </div>
 
 <script>
+const toggleTheme = () => {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const newTheme = isLight ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.innerHTML = newTheme === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    const btn = document.getElementById('themeBtn');
+    if (btn) btn.innerHTML = savedTheme === 'light' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+  }
+});
+
 const showToast = (msg, type = 'info') => {
   const c = document.getElementById('toastContainer');
   const t = document.createElement('div');
@@ -524,6 +557,9 @@ const refresh = async () => {
       queue.slice(0, 10).forEach((vid, i) => {
         const row = document.createElement('div');
         row.className = 'queue-item' + (i === 0 ? ' queue-next' : '');
+        row.style.animation = `slideUp 0.3s ease forwards`;
+        row.style.opacity = '0';
+        row.style.animationDelay = `${i * 0.05}s`;
         const num = document.createElement('span');
         num.className = 'queue-num';
         num.textContent = i === 0 ? '▶' : i + 1;
@@ -621,6 +657,9 @@ const render = q => {
   if (!page.length) { vList.innerHTML = `<div class="empty">${lower ? 'لا توجد نتائج' : 'لا توجد مقاطع'}</div>`; vPager.innerHTML = ''; return; }
   page.forEach((v, i) => {
     const row = document.createElement('div'); row.className = 'vid-row'; row.tabIndex = 0;
+    row.style.animation = `slideUp 0.3s ease forwards`;
+    row.style.opacity = '0';
+    row.style.animationDelay = `${i * 0.03}s`;
     row.onclick = () => cmd(`play ${v.videoId}`);
     row.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cmd(`play ${v.videoId}`); } };
     const num = document.createElement('span'); num.className = 'vid-num'; num.textContent = start + i + 1;

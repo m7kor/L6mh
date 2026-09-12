@@ -41,6 +41,28 @@
   --font-en: 'Inter', 'Segoe UI', sans-serif;
 }
 
+[data-theme="light"] {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --surface-2: #F9FAFB;
+  --surface-3: #E5E7EB;
+  --border: #E5E7EB;
+  --border-hover: #D1D5DB;
+
+  --text: #111827;
+  --text-1: #111827;
+  --text-2: #4B5563;
+  --text-3: #9CA3AF;
+
+  --cyan: #0284C7;
+  --cyan-glow: rgba(2,132,199,0.1);
+  --purple: #7E22CE;
+  --purple-glow: rgba(126,34,206,0.1);
+  --green: #16A34A;
+  --red: #DC2626;
+  --yellow: #D97706;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
