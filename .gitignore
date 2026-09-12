@@ -34,3 +34,4 @@ activity/client/dist/
 cloudflared.exe
 tunnel-launcher.mjs
 tunnel.bat
+ngrok.exe
