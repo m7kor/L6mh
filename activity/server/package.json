@@ -1,0 +1,17 @@
+{
+  "name": "l6mh-activity-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend for Discord Activity — OAuth2 + WebSocket relay",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.0",
+    "express": "^5.2.1",
+    "ws": "^8.18.0"
+  }
+}

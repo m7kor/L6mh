@@ -26,3 +26,7 @@ test_*.py
 cdp_export.py
 *.tmp-*
 data/
+
+activity/server/node_modules/
+activity/client/node_modules/
+activity/client/dist/

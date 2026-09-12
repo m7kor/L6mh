@@ -22,6 +22,29 @@ const jingleLastPlayed  = new Map();
 const nextAllowedJingle = new Map();
 
 // ---------------------------------------------------------------------------
+// Activity: jingle event buffer — last 10 events, read by activity server
+// ---------------------------------------------------------------------------
+
+const jingleEventBuffer = [];
+const MAX_JINGLE_EVENTS = 10;
+
+/**
+ * @returns {{ name: string, category: string, at: number, guildId: string } | null}
+ * Read and consume the oldest unread jingle event.
+ */
+export function consumeJingleEvent() {
+  return jingleEventBuffer.shift() || null;
+}
+
+/**
+ * @returns {{ name: string, category: string, at: number, guildId: string }[]}
+ * Read all buffered jingle events without consuming them.
+ */
+export function peekJingleEvents() {
+  return [...jingleEventBuffer];
+}
+
+// ---------------------------------------------------------------------------
 // اختيار الجينغل — ترجيح بالعمر (الأقدم يحظى بفرصة أكبر)
 // ---------------------------------------------------------------------------
 
@@ -147,6 +170,11 @@ export async function playRandomJingle(guild, channel) {
       session.connection.subscribe(jinglePlayer);
       jinglePlayer.play(resource);
     });
+
+    // Emit jingle event for Activity overlay
+    const category = name.includes('latma') ? 'latma' : name.includes('basmala') ? 'basmala' : 'general';
+    jingleEventBuffer.push({ name, category, at: Date.now(), guildId: guild.id });
+    if (jingleEventBuffer.length > MAX_JINGLE_EVENTS) jingleEventBuffer.shift();
 
     const interval = SOUNDS_MIN_MS + Math.random() * (SOUNDS_MAX_MS - SOUNDS_MIN_MS);
     nextAllowedJingle.set(guild.id, Date.now() + interval);

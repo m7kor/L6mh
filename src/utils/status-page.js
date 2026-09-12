@@ -11,6 +11,12 @@ import { getCookieInfo } from '../services/cookies.js';
 import { getDb } from './database.js';
 import { getLeaderboard } from '../services/community.js';
 
+// Jingle event buffer — resolved lazily to avoid circular dep at load time
+let peekJingleEvents = () => [];
+import('../services/player/jingles.js')
+  .then(m => { peekJingleEvents = m.peekJingleEvents; })
+  .catch(() => {});
+
 const logger = createLogger('dashboard');
 
 const PORT = Number(process.env.STATUS_PORT) || 0;
@@ -197,6 +203,31 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     });
     sseClients.add(res);
     req.on('close', () => sseClients.delete(res));
+  });
+
+  // Activity state endpoint — public, no auth, polled by activity server
+  app.get('/api/activity/state', (req, res) => {
+    try {
+      const sessions = getAllSessionsFn ? getAllSessionsFn() : [];
+      const active = sessions.find(s => s.title) || sessions[0] || null;
+
+      const state = active ? {
+        videoId: active.videoId || null,
+        title: active.title || null,
+        elapsedSeconds: active.elapsedSeconds || 0,
+        durationSeconds: active.durationSeconds || null,
+        paused: active.paused || false,
+        guildId: active.guildId || null,
+      } : null;
+
+      // Read jingle events
+      const since = Number(req.query.since) || 0;
+      const jingles = peekJingleEvents().filter(e => e.at > since);
+
+      res.json({ state, jingles, timestamp: Date.now() });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch activity state' });
+    }
   });
 
   // Auth Middleware
