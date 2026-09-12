@@ -144,6 +144,31 @@ export async function resumePlayback(guildId) {
 }
 
 // ---------------------------------------------------------------------------
+// Queue Management
+// ---------------------------------------------------------------------------
+
+export async function removeFromQueue(guildId: string, index: number) {
+  const session = getSession(guildId);
+  if (index >= 0 && index < session.queue.length) {
+    session.queue.splice(index, 1);
+    await saveState(session);
+    return true;
+  }
+  return false;
+}
+
+export async function moveToTopQueue(guildId: string, index: number) {
+  const session = getSession(guildId);
+  if (index > 0 && index < session.queue.length) {
+    const item = session.queue.splice(index, 1)[0];
+    session.queue.unshift(item);
+    await saveState(session);
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Getters
 // ---------------------------------------------------------------------------
 

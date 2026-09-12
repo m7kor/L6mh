@@ -535,7 +535,29 @@ const refresh = async () => {
         const title = document.createElement('span');
         title.className = 'queue-title';
         title.textContent = vid.title || '—';
-        row.append(num, thumb, title);
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '6px';
+        actions.style.marginLeft = 'auto';
+
+        if (i > 0) {
+          const btnTop = document.createElement('button');
+          btnTop.innerHTML = '<i class="fas fa-arrow-up"></i>';
+          btnTop.className = 'err-clear';
+          btnTop.title = 'نقل للأعلى';
+          btnTop.onclick = () => cmd(`qtop ${i}`);
+          
+          const btnRm = document.createElement('button');
+          btnRm.innerHTML = '<i class="fas fa-trash"></i>';
+          btnRm.className = 'err-clear';
+          btnRm.title = 'حذف';
+          btnRm.onclick = () => cmd(`qrm ${i}`);
+          
+          actions.append(btnTop, btnRm);
+        }
+
+        row.append(num, thumb, title, actions);
         qList.appendChild(row);
       });
     } else {

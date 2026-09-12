@@ -199,6 +199,26 @@ client.once(Events.ClientReady, async (c) => {
       }
       return done > 0 ? `Volume set to ${val}% on ${done} server(s).` : 'No active servers found.';
     }
+    if (lower.startsWith('qrm ')) {
+      const index = parseInt(lower.slice(4).trim());
+      if (isNaN(index)) return 'Invalid index';
+      const { removeFromQueue } = await import('./services/player/controls.js');
+      let done = 0;
+      for (const s of all) {
+        if (await removeFromQueue(s.guildId, index)) done++;
+      }
+      return done > 0 ? 'Removed from queue' : 'Not found in queue';
+    }
+    if (lower.startsWith('qtop ')) {
+      const index = parseInt(lower.slice(5).trim());
+      if (isNaN(index)) return 'Invalid index';
+      const { moveToTopQueue } = await import('./services/player/controls.js');
+      let done = 0;
+      for (const s of all) {
+        if (await moveToTopQueue(s.guildId, index)) done++;
+      }
+      return done > 0 ? 'Moved to top of queue' : 'Not found in queue';
+    }
     if (lower.startsWith('play ')) {
       const videoId = cmd.slice(5).trim();
       if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
