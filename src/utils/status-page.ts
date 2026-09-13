@@ -10,7 +10,7 @@ import { getVideos } from '../services/youtube.js';
 import { getConsecutiveAuthFails, getActiveProvider } from '../services/streaming.js';
 import { getCookieInfo } from '../services/cookies.js';
 import { getDb } from './database.js';
-import { getLeaderboard } from '../services/community.js';
+import { getLeaderboard, getUserBadges } from '../services/community.js';
 
 // Jingle event buffer — resolved lazily to avoid circular dep at load time
 let peekJingleEvents = () => [];
@@ -373,6 +373,72 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
     } catch (e) {
       res.status(400).json({ error: 'Invalid request' });
+    }
+  });
+
+  // Leaderboard endpoint
+  app.get('/api/leaderboard', (req, res) => {
+    try {
+      const sessions = getAllSessionsFn ? getAllSessionsFn() : [];
+      const guildId = sessions[0]?.guildId || '';
+      const lb = getLeaderboard(guildId, 20);
+      const result = lb
+        .filter((e: any) => e.minutes_present > 0)
+        .map((e: any, i: number) => ({
+          rank: i + 1,
+          userId: e.user_id,
+          minutes: e.minutes_present,
+          hours: Math.floor(e.minutes_present / 60),
+          sessions: e.sessions_count,
+          points: e.points || 0,
+          badges: getUserBadges(e.user_id, guildId).map((b: any) => ({ emoji: b.emoji, name: b.name })),
+        }));
+      res.json({ leaderboard: result });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch leaderboard' });
+    }
+  });
+
+  // Favorites endpoints
+  app.get('/api/favorites', (req, res) => {
+    try {
+      const db = getDb();
+      const rows = db.prepare(`
+        SELECT f.user_id, f.video_id, f.added_at, pc.title
+        FROM favorites f
+        LEFT JOIN play_counts pc ON pc.video_id = f.video_id
+        ORDER BY f.added_at DESC
+        LIMIT 100
+      `).all();
+      res.json({ favorites: rows });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch favorites' });
+    }
+  });
+
+  app.post('/api/favorites', (req, res) => {
+    try {
+      const { video_id, user_id } = req.body;
+      if (!video_id || !/^[A-Za-z0-9_-]{11}$/.test(video_id)) {
+        return res.status(400).json({ error: 'Invalid videoId' });
+      }
+      const uid = user_id || 'dashboard';
+      const db = getDb();
+      db.prepare('INSERT OR IGNORE INTO favorites (user_id, video_id) VALUES (?, ?)').run(uid, video_id);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to add favorite' });
+    }
+  });
+
+  app.delete('/api/favorites/:videoId', (req, res) => {
+    try {
+      const { videoId } = req.params;
+      const db = getDb();
+      db.prepare('DELETE FROM favorites WHERE video_id = ?').run(videoId);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to remove favorite' });
     }
   });
 

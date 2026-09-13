@@ -1,7 +1,9 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { stopPlayback } from '../services/player/index.js';
 import { getSession } from '../services/session.js';
+import { createLogger } from '../utils/logger.js';
 
+const logger = createLogger('sleeptimer');
 const timers = new Map();
 
 export const data = new SlashCommandBuilder()
@@ -19,11 +21,7 @@ export async function execute(interaction) {
   const minutes = interaction.options.getInteger('الدقائق');
   const guildId = interaction.guildId;
 
-  // Cancel existing timer
-  if (timers.has(guildId)) {
-    clearTimeout(timers.get(guildId));
-    timers.delete(guildId);
-  }
+  cancelTimer(guildId);
 
   if (minutes === 0) {
     await interaction.reply('⏰ تم إلغاء مؤقت النوم.');
@@ -36,20 +34,34 @@ export async function execute(interaction) {
     return;
   }
 
+  setTimer(guildId, minutes);
+  await interaction.reply(`⏰ سيتم إيقاف التشغيل بعد ${minutes} دقيقة. للالغاء: /ساعة_نوم 0`);
+}
+
+export function setTimer(guildId: string, minutes: number): void {
+  cancelTimer(guildId);
   const timer = setTimeout(async () => {
     timers.delete(guildId);
     try {
       await stopPlayback(guildId, { manual: true });
-    } catch {}
+      logger.info(`Sleep timer triggered for guild ${guildId} after ${minutes}m`);
+    } catch (e) {
+      logger.error(`Sleep timer stop failed for guild ${guildId}:`, e);
+    }
   }, minutes * 60_000);
-
   timers.set(guildId, timer);
-  await interaction.reply(`⏰ سيتم إيقاف التشغيل بعد ${minutes} دقيقة. للالغاء: /ساعة_نوم 0`);
 }
 
-export function cancelTimer(guildId) {
+export function cancelTimer(guildId: string): boolean {
   if (timers.has(guildId)) {
     clearTimeout(timers.get(guildId));
     timers.delete(guildId);
+    return true;
   }
+  return false;
+}
+
+export function getRemainingMs(guildId: string): number {
+  // Not tracked precisely, but we can return 0 if no timer
+  return timers.has(guildId) ? -1 : 0;
 }

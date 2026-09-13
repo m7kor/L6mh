@@ -250,23 +250,12 @@ client.once(Events.ClientReady, async (c) => {
     if (lower.startsWith('sleeptimer ')) {
       const mins = parseInt(lower.slice(11));
       if (isNaN(mins) || mins < 0 || mins > 480) return 'Invalid minutes. Use 0-480.';
+      const { setTimer, cancelTimer } = await import('./commands/sleeptimer.js');
       if (mins === 0) {
-        const { cancelTimer } = await import('./commands/sleeptimer.js');
         for (const s of all) cancelTimer(s.guildId);
         return 'Sleep timer cancelled.';
       }
-      const { default: timers } = await import('./commands/sleeptimer.js');
-      for (const s of all) {
-        const guild = c.guilds.cache.get(s.guildId);
-        if (guild) {
-          const session = getSession(s.guildId);
-          if (session && session.connection) {
-            const timer = setTimeout(async () => {
-              try { await stopPlayback(s.guildId, { manual: true }); } catch {}
-            }, mins * 60_000);
-          }
-        }
-      }
+      for (const s of all) setTimer(s.guildId, mins);
       return `Sleep timer set: ${mins} minutes.`;
     }
     return `Unknown command: "${cmd}". Type help for commands list.`;
