@@ -567,28 +567,37 @@ const setEmb = id => { if (!id) { npImg.src = npImg.dataset.default; curVid = nu
 
 let statusInterval = null;
 let selectedGuild = null;
+let lastFullRefresh = 0;
+const FULL_REFRESH_INTERVAL = 30_000;
+
 const refresh = async () => {
   try {
+    const now = Date.now();
+    const forceFull = (now - lastFullRefresh > FULL_REFRESH_INTERVAL);
+    if (forceFull) lastFullRefresh = now;
+
     const r = await authFetch('/api/status');
     if (r.status === 401) { doLogout(); return; }
     if (!r.ok) return;
     const d = await r.json();
     const allSessions = d.sessions || [];
 
-    // Server tabs
-    const srvTabs = document.getElementById('srvTabs');
-    if (allSessions.length > 1) {
-      srvTabs.innerHTML = '';
-      allSessions.forEach(ses => {
-        const btn = document.createElement('button');
-        btn.className = 'srv-tab' + (selectedGuild === ses.guildId ? ' active' : '');
-        const dot = document.createElement('span');
-        dot.className = 'srv-dot ' + (ses.title ? 'on' : 'off');
-        btn.append(dot, document.createTextNode(ses.guildName || ses.guildId));
-        btn.onclick = () => { selectedGuild = ses.guildId; refresh(); };
-        srvTabs.appendChild(btn);
-      });
-    } else { srvTabs.innerHTML = ''; }
+    // Server tabs (only on full refresh)
+    if (forceFull) {
+      const srvTabs = document.getElementById('srvTabs');
+      if (allSessions.length > 1) {
+        srvTabs.innerHTML = '';
+        allSessions.forEach(ses => {
+          const btn = document.createElement('button');
+          btn.className = 'srv-tab' + (selectedGuild === ses.guildId ? ' active' : '');
+          const dot = document.createElement('span');
+          dot.className = 'srv-dot ' + (ses.title ? 'on' : 'off');
+          btn.append(dot, document.createTextNode(ses.guildName || ses.guildId));
+          btn.onclick = () => { selectedGuild = ses.guildId; refresh(); };
+          srvTabs.appendChild(btn);
+        });
+      } else { srvTabs.innerHTML = ''; }
+    }
 
     const s = selectedGuild ? allSessions.find(ses => ses.guildId === selectedGuild) : allSessions[0];
     const pill = document.getElementById('connPill');
@@ -712,6 +721,8 @@ const refresh = async () => {
       qSection.style.display = 'none';
     }
 
+    // Top played + Leaderboard + Favorites (only on full refresh to avoid flickering)
+    if (forceFull) {
     // Top played
     const topList = document.getElementById('topList');
     const topSection = document.getElementById('topSection');
@@ -856,6 +867,7 @@ const refresh = async () => {
         favSection.style.display = 'none';
       }
     } catch {}
+    } // end forceFull
 
   } catch {
     document.getElementById('connPill').className = 'hdr-pill off';
@@ -986,7 +998,7 @@ const initDashboard = async () => {
   } catch {}
   refresh();
   refreshHealth();
-  statusInterval = setInterval(refresh, 2000);
+  statusInterval = setInterval(refresh, 5000);
   healthInterval = setInterval(refreshHealth, 30000);
   // Queue search
   const qSearch = document.getElementById('qSearch');
@@ -1025,7 +1037,7 @@ if (typeof EventSource !== 'undefined') {
   const sse = new EventSource('/api/sse');
   sse.onopen = () => { sseConnected = true; if (statusInterval) { clearInterval(statusInterval); statusInterval = null; } };
   sse.onmessage = () => refresh();
-  sse.onerror = () => { sseConnected = false; if (!statusInterval && !document.hidden) statusInterval = setInterval(refresh, 10_000); };
+  sse.onerror = () => { sseConnected = false; if (!statusInterval && !document.hidden) statusInterval = setInterval(refresh, 15_000); };
 }
 
 // Keyboard shortcuts (when not focused on input)
