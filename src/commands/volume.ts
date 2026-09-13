@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { SlashCommandBuilder } from 'discord.js';
-import { setVolume, getSessionInfo } from '../services/player/index.js';
+import { setVolume, getSessionInfo, connectAndPlay } from '../services/player/index.js';
 
 export const data = new SlashCommandBuilder()
   .setName('صوت')
@@ -30,7 +30,7 @@ export async function execute(interaction) {
       return;
     }
 
-    setVolume(interaction.guildId, volume);
+    setVolume(interaction.guildId, volume, connectAndPlay);
     await interaction.reply(`🔊 تم ضبط الصوت على ${level}%`);
   } catch (err) {
     await interaction.reply(`❌ خطأ: ${err.message}`);

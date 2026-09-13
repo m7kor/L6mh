@@ -27,7 +27,7 @@ function loadConfig() {
     channelId: process.env.CHANNEL_ID,
     healthWebhookUrl: process.env.HEALTH_WEBHOOK_URL || null,
     defaultVolume: clampNumber(Number(process.env.DEFAULT_VOLUME), 100, 0, 200),
-    potProviderUrl: process.env.POT_PROVIDER_URL || 'http://127.0.0.1:4416',
+    potProviderUrl: process.env.POT_PROVIDER_URL || 'none',
   };
 }
 

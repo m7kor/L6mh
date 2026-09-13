@@ -31,7 +31,7 @@ if (!DISCORD_TOKEN || !CLIENT_ID) {
 }
 
 const commandsDir = join(__dirname, 'commands');
-const commandFiles = readdirSync(commandsDir).filter((file) => file.endsWith('.js'));
+const commandFiles = readdirSync(commandsDir).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
 
 const commands = [];
 for (const file of commandFiles) {

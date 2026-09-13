@@ -192,10 +192,10 @@ client.once(Events.ClientReady, async (c) => {
       const val = parseInt(lower.slice(7));
       if (isNaN(val) || val < 0 || val > 100) return 'Invalid volume. Use 0-100.';
       const vol = val / 100;
-      const { setVolume } = await import('./services/player/index.js');
+      const { setVolume } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
-        try { setVolume(s.guildId, vol); done++; } catch {}
+        try { setVolume(s.guildId, vol, connectAndPlay); done++; } catch {}
       }
       return done > 0 ? `Volume set to ${val}% on ${done} server(s).` : 'No active servers found.';
     }
