@@ -27,7 +27,7 @@ import { recordPlay } from '../../utils/stats.js';
 import { logDashboardError } from '../../utils/status-page.js';
 import { getVideoDetails, getVideos, getLatestVideo } from '../youtube.js';
 import { getCookieArgs } from '../cookies.js';
-import { createAudioStream, killProcesses, preValidateVideo, isLiveStream, getActiveProvider } from '../streaming.js';
+import { createAudioStream, killProcesses, preValidateVideo, isLiveStream, getActiveProvider, trackProcess } from '../streaming.js';
 import {
   getSession, saveState,
   getElapsedSeconds, freezeProgress,
@@ -112,6 +112,7 @@ async function preloadNextTrack(session) {
       ytDlpArgs.push('--extractor-args', `youtubepot-bgutilhttp:base_url=${provider}`);
     }
     const proc = spawn('yt-dlp', ytDlpArgs, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    trackProcess(proc);
     proc.stderr.on('data', () => {});
     proc.on('close', () => { if (session.preloaded?.proc === proc) session.preloaded = null; });
 

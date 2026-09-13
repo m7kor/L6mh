@@ -14,7 +14,7 @@ import { config } from './config.js';
 import { createLogger } from './utils/logger.js';
 import { notify } from './utils/webhook.js';
 import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
-import { startHeartbeat } from './utils/heartbeat.js';
+import { startHeartbeat, setProcessCounter } from './utils/heartbeat.js';
 import { startStatusPage, broadcastTrackChange, setDiscordClient } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
 import { onVoiceJoin, onVoiceLeave, backfillUsernames } from './services/community.js';
@@ -34,6 +34,7 @@ import { sessions, saveState, getSession } from './services/session.js';
 import { closeDb } from './utils/database.js';
 import { migrateJsonToSqlite } from './utils/migration.js';
 import { formatTime } from './utils/format.js';
+import { isValidVideoId } from './utils/validators.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
@@ -116,6 +117,8 @@ client.once(Events.ClientReady, async (c) => {
 
   const guildCount = c.guilds.cache.size;
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**\nServers: ${guildCount}\nCommands: /${[...client.commands.keys()].join(', /')}`, 'ok');
+  const { getActiveProcessCount } = await import('./services/streaming.js');
+  setProcessCounter(getActiveProcessCount);
   startHeartbeat();
 
   // Backfill usernames (non-blocking, with timeout)
@@ -132,11 +135,16 @@ client.once(Events.ClientReady, async (c) => {
   }).catch(err => logger.error('Failed to start scheduler:', err));
 
   // Dashboard command handler
-  async function handleDashboardCommand(cmd) {
+  async function handleDashboardCommand(cmd, targetGuildId = null) {
     const lower = cmd.toLowerCase().trim();
     if (lower === 'help') return 'Commands: status, np, random, resume, latest, stop, skip, volume <0-100>, play <videoId>, search <query>';
     
-    const all = getAllSessions();
+    let all = getAllSessions();
+    // Guild-scoped: if targetGuildId provided, only operate on that guild
+    if (targetGuildId) {
+      all = all.filter(s => s.guildId === targetGuildId);
+      if (all.length === 0) return 'Guild not found or not connected.';
+    }
     
     if (lower === 'status') {
       return 'Guilds: ' + all.length + ' | ' + all.map(s => s.guildName + ': ' + (s.connected ? 'Connected' : 'Idle')).join(', ');
@@ -228,7 +236,7 @@ client.once(Events.ClientReady, async (c) => {
     }
     if (lower.startsWith('play ')) {
       const videoId = cmd.slice(5).trim();
-      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      if (!isValidVideoId(videoId)) {
         return 'Invalid video ID format.';
       }
       const { getVideos } = await import('./services/youtube.js');
@@ -341,6 +349,12 @@ client.once(Events.ClientReady, async (c) => {
         try {
           await resume(guild, targetChannel);
           logger.info(`[${guild.id}] Auto-resumed playback.`);
+          // Restore sleep timer if one was active before restart
+          try {
+            const { restoreTimer } = await import('./commands/sleeptimer.js');
+            const session = getSession(guild.id);
+            if (session?.sleepDeadline) restoreTimer(guild.id, session.sleepDeadline);
+          } catch {}
         } catch {
           logger.info(`[${guild.id}] No saved state — starting random playback.`);
           await playRandom(guild, targetChannel);

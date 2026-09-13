@@ -16,6 +16,7 @@ const HEARTBEAT_FILE = join(process.cwd(), 'heartbeat.json');
 const INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS) || 60_000;
 
 let timer = null;
+let getActiveProcessCountFn = null;
 
 function getMemoryMB() {
   const mem = process.memoryUsage();
@@ -25,15 +26,23 @@ function getMemoryMB() {
   };
 }
 
+export function setProcessCounter(fn) {
+  getActiveProcessCountFn = fn;
+}
+
 function writeHeartbeat() {
   try {
     const mem = getMemoryMB();
-    writeFileSync(HEARTBEAT_FILE, JSON.stringify({
+    const data: any = {
       alive: true,
       timestamp: new Date().toISOString(),
       pid: process.pid,
       memory: mem,
-    }));
+    };
+    if (getActiveProcessCountFn) {
+      data.processes = getActiveProcessCountFn();
+    }
+    writeFileSync(HEARTBEAT_FILE, JSON.stringify(data));
     if (mem.rss > 300) {
       logger.warn(`High memory usage: ${mem.rss}MB RSS`);
       if (global.gc) global.gc();

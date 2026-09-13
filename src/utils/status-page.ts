@@ -11,6 +11,7 @@ import { getConsecutiveAuthFails, getActiveProvider } from '../services/streamin
 import { getCookieInfo } from '../services/cookies.js';
 import { getDb } from './database.js';
 import { getLeaderboard, getUserBadges, backfillUsernames } from '../services/community.js';
+import { isValidVideoId } from './validators.js';
 
 // Jingle event buffer — resolved lazily to avoid circular dep at load time
 let peekJingleEvents = () => [];
@@ -205,6 +206,24 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     }
   }, 300_000);
 
+  // Request logging middleware — logs all API requests with timing
+  const apiLog = [];
+  const MAX_API_LOG = 500;
+  app.use('/api', (req, res, next) => {
+    const start = Date.now();
+    const ip = req.ip || req.socket.remoteAddress || '';
+    res.on('finish', () => {
+      const ms = Date.now() - start;
+      const entry = { method: req.method, path: req.path, status: res.statusCode, ms, ip, time: new Date().toISOString() };
+      apiLog.unshift(entry);
+      if (apiLog.length > MAX_API_LOG) apiLog.length = MAX_API_LOG;
+      if (res.statusCode >= 400 || ms > 5000) {
+        logger.warn(`${req.method} ${req.path} ${res.statusCode} ${ms}ms from ${ip}`);
+      }
+    });
+    next();
+  });
+
   // Public Endpoints
   app.get('/health', async (req, res) => {
     const checks = { ok: true, uptime: Math.floor(process.uptime()) };
@@ -285,7 +304,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   app.get('/api/health', async (req, res) => {
     try {
-      const health = { ytdlp: {}, pot: {}, cookie: {}, db: {} };
+      const health = { ytdlp: {}, pot: {}, cookie: {}, db: {}, processes: {} };
       await new Promise(resolve => {
         execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
           health.ytdlp.version = err ? 'unavailable' : stdout.trim();
@@ -293,6 +312,10 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
           resolve();
         });
       });
+      try {
+        const { getActiveProcessCount } = await import('../services/streaming.js');
+        health.processes.active = getActiveProcessCount();
+      } catch { health.processes.active = -1; }
       try {
         const r = await fetch(getActiveProvider(), { signal: AbortSignal.timeout(3000) });
         health.pot.ok = r.ok;
@@ -325,10 +348,11 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
       }
       const cmd = (req.body.command || '').trim();
+      const targetGuildId = req.body.guildId || null;
       if (!cmd) return res.status(400).json({ error: 'No command provided' });
       
       if (executeCommandFn) {
-        const reply = await Promise.resolve(executeCommandFn(cmd));
+        const reply = await Promise.resolve(executeCommandFn(cmd, targetGuildId));
         res.json({ ok: true, reply: reply || 'Command executed.' });
       } else {
         res.json({ ok: true, reply: 'Command received: ' + cmd });
@@ -380,7 +404,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
       }
       const videoId = req.body.videoId;
-      if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      if (!isValidVideoId(videoId)) {
         return res.status(400).json({ error: 'Invalid videoId format' });
       }
       if (executeCommandFn) {
@@ -452,7 +476,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   app.post('/api/favorites', (req, res) => {
     try {
       const { video_id, user_id } = req.body;
-      if (!video_id || !/^[A-Za-z0-9_-]{11}$/.test(video_id)) {
+      if (!isValidVideoId(video_id)) {
         return res.status(400).json({ error: 'Invalid videoId' });
       }
       const uid = user_id || 'dashboard';
@@ -514,6 +538,15 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       else res.status(404).json({ error: 'User not found in blacklist' });
     } catch (err) {
       res.status(500).json({ error: 'Failed to remove from blacklist' });
+    }
+  });
+
+  app.get('/api/logs', (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 100, 500);
+      res.json({ logs: apiLog.slice(0, limit) });
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to fetch logs' });
     }
   });
 

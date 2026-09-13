@@ -145,6 +145,7 @@ export async function saveState(session) {
       failedIds: session.failedIds instanceof Set ? [...session.failedIds] : Array.isArray(session.failedIds) ? session.failedIds : [],
       cycleCount: typeof session.cycleCount === 'number' ? session.cycleCount : 0,
       cycleStartedAt: session.cycleStartedAt || null,
+      sleepDeadline: session.sleepDeadline || null,
       savedAt: new Date().toISOString(),
     };
     db.prepare(`
@@ -167,6 +168,7 @@ export async function restoreLastVideo(guildId) {
   if (Array.isArray(saved.queue)) session.queue = saved.queue;
   if (typeof saved.cycleCount === 'number') session.cycleCount = saved.cycleCount;
   if (saved.cycleStartedAt) session.cycleStartedAt = saved.cycleStartedAt;
+  if (saved.sleepDeadline) session.sleepDeadline = saved.sleepDeadline;
 
   if (session.queue.length === 0 && session.playedIds.size > 0) {
     try {

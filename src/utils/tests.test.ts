@@ -109,34 +109,34 @@ describe('videoId validation', () => {
 });
 
 // ============================================
-// cooldown (disabled — no limits)
+// cooldown (enabled — default 3s)
 // ============================================
 describe('cooldown', () => {
   it('is not on cooldown initially', () => {
     assert.equal(isOnCooldown('user1', 'cmd1'), false);
   });
 
-  it('is never on cooldown (disabled)', () => {
+  it('is on cooldown after setCooldown', () => {
     setCooldown('user2', 'cmd2');
-    assert.equal(isOnCooldown('user2', 'cmd2'), false);
+    assert.equal(isOnCooldown('user2', 'cmd2'), true);
   });
 
   it('different users are independent', () => {
     setCooldown('userA', 'cmd3');
-    assert.equal(isOnCooldown('userA', 'cmd3'), false);
+    assert.equal(isOnCooldown('userA', 'cmd3'), true);
     assert.equal(isOnCooldown('userB', 'cmd3'), false);
   });
 
   it('different commands are independent', () => {
     setCooldown('userC', 'cmdX');
-    assert.equal(isOnCooldown('userC', 'cmdX'), false);
+    assert.equal(isOnCooldown('userC', 'cmdX'), true);
     assert.equal(isOnCooldown('userC', 'cmdY'), false);
   });
 
-  it('getRemainingCooldown returns 0 (disabled)', () => {
+  it('getRemainingCooldown returns seconds remaining', () => {
     setCooldown('userD', 'cmdR');
     const remaining = getRemainingCooldown('userD', 'cmdR');
-    assert.equal(remaining, 0);
+    assert.ok(remaining > 0 && remaining <= 3);
   });
 
   it('getRemainingCooldown returns 0 when not on cooldown', () => {

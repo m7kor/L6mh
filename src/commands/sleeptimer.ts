@@ -43,9 +43,18 @@ export function setTimer(guildId: string, minutes: number): void {
   cancelTimer(guildId);
   const deadline = Date.now() + minutes * 60_000;
   deadlines.set(guildId, deadline);
+  // Persist deadline in session for restart recovery
+  try {
+    const session = getSession(guildId);
+    if (session) session.sleepDeadline = deadline;
+  } catch {}
   const timer = setTimeout(async () => {
     timers.delete(guildId);
     deadlines.delete(guildId);
+    try {
+      const session = getSession(guildId);
+      if (session) session.sleepDeadline = null;
+    } catch {}
     try {
       await stopPlayback(guildId, { manual: true });
       logger.info(`Sleep timer triggered for guild ${guildId} after ${minutes}m`);
@@ -61,9 +70,21 @@ export function cancelTimer(guildId: string): boolean {
     clearTimeout(timers.get(guildId));
     timers.delete(guildId);
     deadlines.delete(guildId);
+    try {
+      const session = getSession(guildId);
+      if (session) session.sleepDeadline = null;
+    } catch {}
     return true;
   }
   return false;
+}
+
+export function restoreTimer(guildId: string, deadlineTs: number): void {
+  const remaining = deadlineTs - Date.now();
+  if (remaining <= 0) return; // already expired
+  const minutes = Math.ceil(remaining / 60_000);
+  logger.info(`Restoring sleep timer for guild ${guildId} (${minutes}m remaining)`);
+  setTimer(guildId, minutes);
 }
 
 export function getRemainingMs(guildId: string): number {

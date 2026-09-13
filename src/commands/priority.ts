@@ -4,6 +4,7 @@ import { getSession } from '../services/session.js';
 import { getVideoDetails } from '../services/youtube.js';
 import { CMD } from '../lang.js';
 import { createLogger } from '../utils/logger.js';
+import { isValidVideoId } from '../utils/validators.js';
 
 const logger = createLogger('priority');
 
@@ -21,7 +22,7 @@ export async function execute(interaction) {
   const userId = interaction.user.id;
   const guildId = interaction.guildId;
 
-  if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+  if (!isValidVideoId(videoId)) {
     await interaction.reply({ content: CMD.priority.invalidId, ephemeral: true });
     return;
   }

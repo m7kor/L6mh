@@ -22,6 +22,33 @@ const AUTH_FAIL_THRESHOLD = 3;
 const STDERR_TAIL_BYTES = 4096;
 
 // ---------------------------------------------------------------------------
+// Global process tracker — detects orphaned yt-dlp / ffmpeg processes
+// ---------------------------------------------------------------------------
+
+const activeProcesses = new Set();
+
+export function trackProcess(proc) {
+  activeProcesses.add(proc);
+  proc.on('close', () => activeProcesses.delete(proc));
+  proc.on('error', () => activeProcesses.delete(proc));
+}
+
+export function getActiveProcessCount() { return activeProcesses.size; }
+
+export function killZombieProcesses() {
+  let killed = 0;
+  for (const proc of activeProcesses) {
+    try {
+      if (proc.exitCode === null && !proc.killed) {
+        proc.kill('SIGKILL');
+        killed++;
+      }
+    } catch {}
+  }
+  return killed;
+}
+
+// ---------------------------------------------------------------------------
 // Dynamic PoT Provider Switching
 // ---------------------------------------------------------------------------
 
@@ -87,6 +114,7 @@ export async function preValidateVideo(url) {
     args.push(...getCookieArgs(), url);
     
     const proc = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    trackProcess(proc);
     let stderrTail = '';
     proc.stderr.on('data', (chunk) => {
       stderrTail += chunk.toString();
@@ -133,6 +161,7 @@ export async function isLiveStream(url) {
     args.push(...getCookieArgs(), url);
 
     const proc  = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    trackProcess(proc);
     const timer = setTimeout(() => { proc.kill(); resolve(false); }, 10_000);
     let output  = '';
     proc.stdout.on('data', (d) => { output += d.toString(); });
@@ -218,6 +247,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
+    trackProcess(ytDlpProcess);
     session.resolveProcess = ytDlpProcess;
 
     let ytDlpStderr = '';
@@ -234,6 +264,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
     });
+    trackProcess(ffmpegProcess);
     session.ffmpegProcess = ffmpegProcess;
 
     ytDlpProcess.stdout.on('error', (err) => {
