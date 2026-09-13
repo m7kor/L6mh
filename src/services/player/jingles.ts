@@ -30,14 +30,6 @@ const jingleEventBuffer = [];
 const MAX_JINGLE_EVENTS = 10;
 
 /**
- * @returns {{ name: string, category: string, at: number, guildId: string } | null}
- * Read and consume the oldest unread jingle event.
- */
-export function consumeJingleEvent() {
-  return jingleEventBuffer.shift() || null;
-}
-
-/**
  * @returns {{ name: string, category: string, at: number, guildId: string }[]}
  * Read all buffered jingle events without consuming them.
  */

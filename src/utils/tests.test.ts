@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatTime } from './format.js';
 import { loadPlays } from './stats.js';
-import { getCookieArgs, describeCookieSource } from '../services/cookies.js';
+import { getCookieArgs } from '../services/cookies.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from './cooldown.js';
 import { requireDjRole } from './permissions.js';
 import { buildNewQueue, syncQueueWithCatalog } from '../services/session.js';
@@ -79,12 +79,6 @@ describe('getCookieArgs', () => {
       assert.ok(args[0] === '--cookies' || args[0] === '--cookies-from-browser');
       assert.ok(typeof args[1] === 'string' && args[1].length > 0);
     }
-  });
-});
-
-describe('describeCookieSource', () => {
-  it('returns a string', () => {
-    assert.equal(typeof describeCookieSource(), 'string');
   });
 });
 
@@ -473,7 +467,7 @@ describe('session state (SQLite)', () => {
 // ============================================
 // embeds (buildNowPlayingMessage)
 // ============================================
-import { buildNowPlayingMessage, buildNowPlayingEmbed } from './embeds.js';
+import { buildNowPlayingMessage } from './embeds.js';
 
 describe('buildNowPlayingMessage', () => {
   const video = { videoId: 'dQw4w9WgXcQ', title: 'Test Video', url: 'https://youtube.com/watch?v=dQw4w9WgXcQ', thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg', durationSeconds: 300 };
@@ -516,15 +510,6 @@ describe('buildNowPlayingMessage', () => {
     const noThumb = { videoId: 'abc', title: 'No Thumb', url: 'https://example.com' };
     const msg = buildNowPlayingMessage(noThumb, { mode: 'random', paused: false, elapsedSeconds: 0 });
     assert.ok(msg.embeds.length === 1);
-  });
-});
-
-describe('buildNowPlayingEmbed', () => {
-  it('returns just the embed object', () => {
-    const video = { videoId: 'abc', title: 'Test', url: 'https://example.com' };
-    const embed = buildNowPlayingEmbed(video, { mode: 'latest', paused: false, elapsedSeconds: 10 });
-    assert.ok(embed.data);
-    assert.equal(embed.data.title, 'Test');
   });
 });
 

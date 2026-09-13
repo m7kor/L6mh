@@ -65,7 +65,3 @@ export function buildNowPlayingMessage(video, state) {
 
   return { embeds: [embed], components: [row] };
 }
-
-export function buildNowPlayingEmbed(video, state) {
-  return buildNowPlayingMessage(video, state).embeds[0];
-}

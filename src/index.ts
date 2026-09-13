@@ -448,7 +448,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await command.execute(interaction);
     } catch (err) {
       logger.error(`Error executing /${interaction.commandName}:`, err);
-      const payload = { content: `❌ حدث خطأ غير متوقع: ${err.message}`, ephemeral: true };
+      const payload = { content: '❌ حدث خطأ غير متوقع. تم تسجيل التفاصيل.', ephemeral: true };
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply(payload).catch(() => {});
       } else {

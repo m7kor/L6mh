@@ -22,7 +22,6 @@ export class GuildSession {
   volume: number;
   paused: boolean;
   queue: string[];
-  recentIds: string[];
   playedIds: Set<string>;
   failedIds: Set<string>;
   current: any;
@@ -58,7 +57,6 @@ export class GuildSession {
     this.volume = config.defaultVolume;
     this.paused = false;
     this.queue = [];
-    this.recentIds = [];
     this.playedIds = new Set();
     this.failedIds = new Set();
     this.current = null;
@@ -85,7 +83,6 @@ export class GuildSession {
 
 export const sessions = new Map();
 
-const RECENT_HISTORY_SIZE = 20;
 const MAX_FAILED_IDS = 10_000;
 
 export function addFailedId(session, videoId) {
@@ -213,12 +210,6 @@ export function stopProgressAutosave(session) {
     clearInterval(session.progressTimer);
     session.progressTimer = null;
   }
-}
-
-export function trackRecent(session, videoId) {
-  if (!videoId) return;
-  session.recentIds.push(videoId);
-  if (session.recentIds.length > RECENT_HISTORY_SIZE) session.recentIds.shift();
 }
 
 // ---------------------------------------------------------------------------

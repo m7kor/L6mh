@@ -46,22 +46,6 @@ export function getCookieArgs() {
 }
 
 /**
- * Returns true if the cookie source is a cookies.txt file (server-side mode).
- */
-export function isFileCookieMode() {
-  return COOKIE_BROWSER === 'none';
-}
-
-/**
- * Returns the active cookie source description (for logging / dashboard).
- */
-export function describeCookieSource() {
-  if (COOKIE_BROWSER !== 'none') return `browser: ${COOKIE_BROWSER}`;
-  if (existsSync(COOKIES_PATH)) return 'cookies.txt';
-  return 'none (no authentication)';
-}
-
-/**
  * Returns cookie file info for health checks.
  */
 export function getCookieInfo() {

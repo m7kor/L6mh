@@ -7,7 +7,7 @@
 import { readdirSync, existsSync, mkdirSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 
-export const SOUNDS_DIR = join(process.cwd(), 'sounds');
+const SOUNDS_DIR = join(process.cwd(), 'sounds');
 const ALLOWED_EXT = new Set(['.mp3', '.ogg', '.wav', '.m4a', '.flac']);
 
 function ensureDir() {

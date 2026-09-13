@@ -142,7 +142,14 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   const app = express();
   
-  app.use(cors());
+  // CORS: allow all origins for local dev, restrict in production
+  const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : [];
+  app.use(cors({
+    origin: allowedOrigins.length > 0 ? (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error('Not allowed by CORS'));
+    } : undefined,
+  }));
   app.use(express.json());
   app.use(express.static(join(process.cwd(), 'public')));
   
@@ -158,7 +165,27 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     next();
   });
 
-  // No rate limiting — unlimited API access
+  // Simple in-memory rate limiter for mutation endpoints
+  const rateLimits = new Map();
+  const RATE_WINDOW_MS = 60_000;
+  const RATE_MAX = 30;
+  function checkRateLimit(ip) {
+    const now = Date.now();
+    const entry = rateLimits.get(ip);
+    if (!entry || now - entry.start > RATE_WINDOW_MS) {
+      rateLimits.set(ip, { start: now, count: 1 });
+      return true;
+    }
+    entry.count++;
+    return entry.count <= RATE_MAX;
+  }
+  // Clean up stale entries every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of rateLimits) {
+      if (now - entry.start > RATE_WINDOW_MS * 2) rateLimits.delete(ip);
+    }
+  }, 300_000);
 
   // Public Endpoints
   app.get('/health', async (req, res) => {
@@ -182,6 +209,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   });
 
   app.get('/api/sse', (req, res) => {
+    if (sseClients.size > 50) {
+      return res.status(429).json({ error: 'Too many SSE connections' });
+    }
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -204,7 +234,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         elapsedSeconds: active.elapsedSeconds || 0,
         durationSeconds: active.durationSeconds || null,
         paused: active.paused || false,
-        guildId: active.guildId || null,
       } : null;
 
       // Read jingle events
@@ -273,6 +302,10 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   app.post('/api/command', async (req, res) => {
     try {
+      const ip = req.ip || req.socket.remoteAddress || '';
+      if (!checkRateLimit(ip)) {
+        return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
+      }
       const cmd = (req.body.command || '').trim();
       if (!cmd) return res.status(400).json({ error: 'No command provided' });
       
@@ -324,6 +357,10 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   app.post('/api/play', async (req, res) => {
     try {
+      const ip = req.ip || req.socket.remoteAddress || '';
+      if (!checkRateLimit(ip)) {
+        return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
+      }
       const videoId = req.body.videoId;
       if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
         return res.status(400).json({ error: 'Invalid videoId format' });

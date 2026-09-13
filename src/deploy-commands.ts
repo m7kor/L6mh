@@ -45,7 +45,7 @@ console.log(`New commands: ${commands.map(c => c.name).join(', ')}`);
 
 // Step 1: Fetch existing commands
 console.log('Fetching existing commands...');
-const existing = await rest.get(route);
+const existing = (await rest.get(route)) as Array<{ id: string; name: string }>;
 console.log(`Found ${existing.length} existing: ${existing.map(c => c.name).join(', ')}`);
 
 const newNames = new Set(commands.map(c => c.name));

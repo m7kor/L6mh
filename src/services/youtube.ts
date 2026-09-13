@@ -210,35 +210,6 @@ export async function getLatestVideo(channelId = config.channelId, apiKey = conf
   return videos[0];
 }
 
-/**
- * Pick a random video, avoiding already-played and failed IDs.
- * When all videos are played/failed, resets so continuous playback never stalls.
- * @param {string[]} exclude - unused, kept for API compat
- * @param {Set} playedSet - mutable Set of played video IDs
- * @param {Set} failedSet - mutable Set of failed video IDs
- */
-export async function getRandomVideo(channelId = config.channelId, apiKey = config.youtubeApiKey, exclude = [], playedSet = null, failedSet = null) {
-  const videos = await getVideos(channelId, apiKey);
-  const noShorts = videos.filter((v) => {
-    const title = (v.title || '').toLowerCase();
-    return !title.includes('#short') && !title.includes('#shorts');
-  });
-  const pool = noShorts.length > 0 ? noShorts : videos;
-
-  if (playedSet) {
-    const excluded = new Set([...playedSet, ...(failedSet || [])]);
-    const candidates = pool.filter((v) => !excluded.has(v.videoId));
-    if (candidates.length === 0) {
-      playedSet.clear();
-      if (failedSet) failedSet.clear();
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
-
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
 /** Parse an ISO-8601 duration (e.g. "PT1H2M3S") into whole seconds. */
 function parseIsoDuration(iso) {
   const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || '');
