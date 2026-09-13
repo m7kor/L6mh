@@ -46,6 +46,9 @@ export class GuildSession {
   isLive?: boolean;
   advancingSince?: number;
   retryCount?: number;
+  earlyEndRetryCount?: number;
+  deadStreamRestarts?: number;
+  stallRestarts?: number;
 
   constructor(guildId: string) {
     this.guildId = guildId;

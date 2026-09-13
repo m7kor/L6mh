@@ -296,10 +296,11 @@
     <button class="ctrl-btn" id="btnResume" onclick="cmd('resume',this)" title="استئناف" style="display:none"><i class="fas fa-play"></i></button>
     <button class="ctrl-btn" onclick="cmd('skip',this)" title="تخطي"><i class="fas fa-forward-step"></i></button>
     <div class="volume-control">
-      <button class="ctrl-btn" onclick="cmd('volume',this,0)" title="كتم الصوت"><i class="fas fa-volume-xmark"></i></button>
+      <button class="ctrl-btn" onclick="cmd('volume 0',this)" title="كتم الصوت"><i class="fas fa-volume-xmark"></i></button>
       <input type="range" id="volumeSlider" min="0" max="100" value="100" class="volume-slider" onchange="setVolume(this.value)">
       <span id="volumeValue" class="volume-value">100%</span>
     </div>
+    <button class="ctrl-btn" onclick="setSleepTimer()" title="مؤقت النوم" style="margin-right:auto"><i class="fas fa-moon"></i></button>
   </div>
 
   <!-- Stats -->
@@ -328,6 +329,15 @@
       </div>
     </div>
     <div class="queue-list" id="qList"></div>
+  </div>
+
+  <!-- Top Played -->
+  <div class="top-section" id="topSection" style="display:none">
+    <div class="queue-hdr">
+      <h2><i class="fas fa-trophy"></i> الأكثر تشغيلاً</h2>
+      <span class="queue-count" id="topCount">0</span>
+    </div>
+    <div class="queue-list" id="topList"></div>
   </div>
 
   <!-- Error Log -->
@@ -483,6 +493,20 @@ const setVolume = async (val) => {
   } catch { showToast('تعذر الاتصال', 'error'); }
 };
 
+let sleepTimerMinutes = 0;
+const setSleepTimer = async () => {
+  const input = prompt('مؤقت النوم — أدخل عدد الدقائق (0 للإلغاء):', sleepTimerMinutes || '30');
+  if (input === null) return;
+  const mins = parseInt(input);
+  if (isNaN(mins) || mins < 0 || mins > 480) { showToast('أدخل رقم صحيح (0-480)', 'error'); return; }
+  try {
+    const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: `sleeptimer ${mins}` }) });
+    const d = await r.json();
+    sleepTimerMinutes = mins;
+    showToast(mins === 0 ? 'تم إلغاء المؤقت' : `سيتوقف بعد ${mins} دقيقة`, 'success');
+  } catch { showToast('تعذر الاتصال', 'error'); }
+};
+
 const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60); return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`; };
 
 let curVid = null;
@@ -531,6 +555,7 @@ const refresh = async () => {
       document.getElementById('npElapsed').innerText = fmt(el);
       document.getElementById('npDur').innerText = dur ? fmt(dur) : 'لايف';
       document.getElementById('npFill').style.width = dur ? `${Math.min(100, el/dur*100)}%` : '100%';
+      updateNpState(s);
       if (s.videoId) setEmb(s.videoId); else { curVid = null; }
       document.querySelectorAll('.np-vis span').forEach(b => s.paused ? b.classList.add('off') : b.classList.remove('off'));
       // Show player controls
@@ -635,12 +660,72 @@ const refresh = async () => {
     } else {
       qSection.style.display = 'none';
     }
+
+    // Top played
+    const topList = document.getElementById('topList');
+    const topSection = document.getElementById('topSection');
+    const topCount = document.getElementById('topCount');
+    const topPlayed = d.topPlayed || [];
+    if (topPlayed.length > 0) {
+      topSection.style.display = '';
+      topCount.textContent = `${topPlayed.length}`;
+      topList.innerHTML = '';
+      topPlayed.slice(0, 10).forEach((v, i) => {
+        const row = document.createElement('div');
+        row.className = 'queue-item';
+        const num = document.createElement('span');
+        num.className = 'queue-num';
+        num.textContent = i + 1;
+        if (i < 3) num.style.color = ['var(--yellow)', 'var(--text-2)', 'var(--orange)'][i];
+        const thumb = document.createElement('img');
+        thumb.className = 'queue-thumb';
+        thumb.src = `https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg`;
+        thumb.loading = 'lazy';
+        const title = document.createElement('span');
+        title.className = 'queue-title';
+        title.textContent = v.title || '—';
+        const badge = document.createElement('span');
+        badge.className = 'queue-num';
+        badge.textContent = `${v.playCount}x`;
+        badge.style.color = 'var(--cyan)';
+        row.append(num, thumb, title, badge);
+        topList.appendChild(row);
+      });
+    } else {
+      topSection.style.display = 'none';
+    }
   } catch {
     document.getElementById('connPill').className = 'hdr-pill off';
     document.getElementById('connText').textContent = 'تعذر الاتصال';
   }
   document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString('ar-SA');
 };
+
+// Smooth progress bar interpolation between polls
+let npState = { elapsed: 0, duration: 0, paused: true, updatedAt: 0 };
+function updateNpState(s) {
+  if (!s || !s.title) return;
+  npState = {
+    elapsed: s.elapsedSeconds || 0,
+    duration: s.durationSeconds || 0,
+    paused: s.paused || false,
+    updatedAt: Date.now(),
+  };
+}
+function tickProgress() {
+  if (!npState.paused && npState.duration > 0) {
+    const now = Date.now();
+    const delta = (now - npState.updatedAt) / 1000;
+    const currentElapsed = npState.elapsed + delta;
+    const pct = Math.min(100, (currentElapsed / npState.duration) * 100);
+    const fill = document.getElementById('npFill');
+    const elapsed = document.getElementById('npElapsed');
+    if (fill) fill.style.width = pct + '%';
+    if (elapsed) elapsed.textContent = fmt(currentElapsed);
+  }
+  requestAnimationFrame(tickProgress);
+}
+requestAnimationFrame(tickProgress);
 
 // Health checks — fetched every 30s (lighter than status polling)
 let healthAge = null;
@@ -767,6 +852,15 @@ if (typeof EventSource !== 'undefined') {
   sse.onmessage = () => refresh();
   sse.onerror = () => { sseConnected = false; if (!statusInterval && !document.hidden) statusInterval = setInterval(refresh, 10_000); };
 }
+
+// Keyboard shortcuts (when not focused on input)
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.code === 'Space') { e.preventDefault(); const isPaused = document.getElementById('btnResume')?.style.display !== 'none'; cmd(isPaused ? 'resume' : 'pause'); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); cmd('skip'); }
+  if (e.code === 'ArrowUp') { e.preventDefault(); const sl = document.getElementById('volumeSlider'); const v = Math.min(100, parseInt(sl.value) + 5); sl.value = v; setVolume(v); }
+  if (e.code === 'ArrowDown') { e.preventDefault(); const sl = document.getElementById('volumeSlider'); const v = Math.max(0, parseInt(sl.value) - 5); sl.value = v; setVolume(v); }
+});
 </script>
 </body>
 </html>

@@ -65,9 +65,8 @@ export async function stopPlayback(guildId, { manual = true } = {}) {
 }
 
 export async function stopAllSessions() {
-  for (const guildId of sessions.keys()) {
-    await stopPlayback(guildId);
-  }
+  const tasks = [...sessions.keys()].map(guildId => stopPlayback(guildId).catch(() => {}));
+  await Promise.allSettled(tasks);
 }
 
 // ---------------------------------------------------------------------------
