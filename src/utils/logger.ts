@@ -47,5 +47,6 @@ export function createLogger(scope) {
     info: (...args) => write(scope, 'info', args),
     warn: (...args) => write(scope, 'warn', args),
     error: (...args) => write(scope, 'error', args),
+    debug: (...args) => { if (process.env.LOG_LEVEL === 'debug') write(scope, 'info', args); },
   };
 }

@@ -165,7 +165,7 @@ client.once(Events.ClientReady, async (c) => {
       let done = 0;
       for (const s of all) {
         if (s.paused) {
-          try { await resumePlayback(s.guildId); done++; } catch {}
+          try { await resumePlayback(s.guildId); done++; } catch (e) { logger.debug(`resume ${s.guildId} failed: ${e.message}`); }
         } else {
           const guild = c.guilds.cache.get(s.guildId);
           if (guild && guild.members.me?.voice?.channel) { await resume(guild, guild.members.me.voice.channel); done++; }
@@ -185,14 +185,14 @@ client.once(Events.ClientReady, async (c) => {
       const { pausePlayback } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
-        try { await pausePlayback(s.guildId); done++; } catch {}
+        try { await pausePlayback(s.guildId); done++; } catch (e) { logger.debug(`pause ${s.guildId} failed: ${e.message}`); }
       }
       return done > 0 ? `Paused on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === '/ايقاف' || lower === 'stop') {
       let done = 0;
       for (const s of all) {
-        try { await stopPlayback(s.guildId, { manual: true }); done++; } catch {}
+        try { await stopPlayback(s.guildId, { manual: true }); done++; } catch (e) { logger.debug(`stop ${s.guildId} failed: ${e.message}`); }
       }
       return done > 0 ? `Stopped on ${done} server(s).` : 'No active servers found.';
     }
@@ -200,7 +200,7 @@ client.once(Events.ClientReady, async (c) => {
       const { skipTrack } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
-        try { skipTrack(s.guildId); done++; } catch {}
+        try { skipTrack(s.guildId); done++; } catch (e) { logger.debug(`skip ${s.guildId} failed: ${e.message}`); }
       }
       return done > 0 ? `Skipped on ${done} server(s).` : 'No active servers found.';
     }
@@ -210,7 +210,7 @@ client.once(Events.ClientReady, async (c) => {
       const { setVolume } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
-        try { setVolume(s.guildId, val, connectAndPlay); done++; } catch {}
+        try { setVolume(s.guildId, val, connectAndPlay); done++; } catch (e) { logger.debug(`volume ${s.guildId} failed: ${e.message}`); }
       }
       return done > 0 ? `Volume set to ${val}% on ${done} server(s).` : 'No active servers found.';
     }

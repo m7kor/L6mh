@@ -84,11 +84,11 @@ export function getConsecutiveAuthFails() { return consecutiveAuthFails; }
 
 export function killProcesses(session) {
   if (session.ffmpegProcess) {
-    try { session.ffmpegProcess.kill('SIGKILL'); } catch {}
+    try { session.ffmpegProcess.kill('SIGKILL'); } catch { /* process already dead */ }
     session.ffmpegProcess = null;
   }
   if (session.resolveProcess) {
-    try { session.resolveProcess.kill('SIGKILL'); } catch {}
+    try { session.resolveProcess.kill('SIGKILL'); } catch { /* process already dead */ }
     session.resolveProcess = null;
   }
 }

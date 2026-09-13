@@ -27,7 +27,7 @@ export function onVoiceJoin(userId: string, guildId: string, username?: string, 
         vals.push(userId, guildId);
         db.prepare(`UPDATE member_stats SET ${sets.join(', ')} WHERE user_id = ? AND guild_id = ?`).run(...vals);
       }
-    } catch {}
+    } catch (err) { logger.debug(`onVoiceJoin update failed: ${err.message}`); }
   }
 }
 

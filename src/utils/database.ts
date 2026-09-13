@@ -151,11 +151,11 @@ function initTables() {
       db.exec("ALTER TABLE member_stats ADD COLUMN avatar_url TEXT");
       logger.info('Added avatar_url column to member_stats');
     }
-  } catch {}
+  } catch (err) { logger.debug('member_stats migration (non-fatal):', err.message); }
 
   // Migration: fix any rows with minutes_present = -1 (old broken opt-out)
   try {
     const fixed = db.prepare("UPDATE member_stats SET minutes_present = 0, opted_out = 1 WHERE minutes_present = -1").run();
     if (fixed.changes > 0) logger.info(`Fixed ${fixed.changes} rows with negative minutes_present`);
-  } catch {}
+  } catch (err) { logger.debug('minutes_present fix (non-fatal):', err.message); }
 }

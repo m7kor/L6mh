@@ -122,21 +122,7 @@
     .refresh-indicator .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
     .refresh-indicator .dot.fetching { animation: pulse 0.8s infinite; background: var(--cyan); }
 
-    /* ── Queue ── */
-    .queue-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
-    .queue-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-    .queue-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-    .queue-hdr h2 i { color: var(--purple); }
-    .queue-count { font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 700; }
-    .queue-list { max-height: 200px; overflow-y: auto; }
-    .queue-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); font-size: 13px; transition: all .2s; }
-    .queue-item:last-child { border-bottom: none; }
-    .queue-item:hover { background: rgba(168,85,247,0.03); transform: translateX(-4px); }
-    .queue-num { font-family: var(--font-en); font-size: 12px; font-weight: 700; color: var(--text-3); width: 24px; text-align: center; flex-shrink: 0; }
-    .queue-thumb { width: 48px; height: 27px; border-radius: 4px; object-fit: cover; flex-shrink: 0; background: var(--surface-2); }
-    .queue-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-    .queue-next { background: var(--purple-glow); border-color: var(--purple); }
-    .err-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    /* ── Error Section ── */
     .err-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
     .err-hdr h2 i { color: var(--red); }
     .err-clear { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all .15s; }
@@ -480,7 +466,7 @@ const showToast = (msg, type = 'info') => {
   setTimeout(() => t.remove(), 3200);
 };
 
-const getToken = () => localStorage.getItem('dashboard_token') || '';
+const getToken = () => sessionStorage.getItem('dashboard_token') || '';
 const authFetch = async (url, opts = {}) => {
   const token = getToken();
   if (!token) return { ok: false, status: 401, json: () => Promise.resolve({}) };
@@ -497,7 +483,7 @@ const doLogin = async () => {
   try {
     const r = await fetch('/api/status', { headers: { 'Authorization': `Bearer ${token}` } });
     if (r.ok) {
-      localStorage.setItem('dashboard_token', token);
+      sessionStorage.setItem('dashboard_token', token);
       document.getElementById('loginOverlay').classList.add('hidden');
       document.getElementById('dashboard').style.display = '';
       initDashboard();
@@ -506,11 +492,11 @@ const doLogin = async () => {
   btn.disabled = false; btn.textContent = 'دخول';
 };
 document.getElementById('loginInput').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-const doLogout = () => { localStorage.removeItem('dashboard_token'); location.reload(); };
+const doLogout = () => { sessionStorage.removeItem('dashboard_token'); location.reload(); };
 
 // Auto-login: check for saved token on page load
 (async () => {
-  const saved = localStorage.getItem('dashboard_token');
+  const saved = sessionStorage.getItem('dashboard_token');
   if (saved) {
     try {
       const r = await fetch('/api/status', { headers: { 'Authorization': `Bearer ${saved}` } });
@@ -518,7 +504,7 @@ const doLogout = () => { localStorage.removeItem('dashboard_token'); location.re
         document.getElementById('loginOverlay').classList.add('hidden');
         document.getElementById('dashboard').style.display = '';
         initDashboard();
-      } else { localStorage.removeItem('dashboard_token'); }
+      } else { sessionStorage.removeItem('dashboard_token'); }
     } catch { /* stay on login screen */ }
   }
 })();
@@ -1105,6 +1091,17 @@ helpModal.innerHTML = `
 document.body.appendChild(helpModal);
 helpModal.addEventListener('click', e => { if (e.target === helpModal) helpModal.style.display = 'none'; });
 function showHelp() { helpModal.style.display = 'flex'; }
+
+// Global error boundary
+window.onerror = (msg, url, line, col, err) => {
+  console.error('Dashboard error:', msg, url, line);
+  showToast('خطأ في الواجهة', 'error');
+  return false;
+};
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('Unhandled promise:', e.reason);
+  showToast('خطأ غير متوقع', 'error');
+});
 </script>
 </body>
 </html>

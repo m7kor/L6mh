@@ -55,8 +55,17 @@ export function broadcastTrackChange() {
   }
 }
 
+// Simple plays cache — avoids hitting SQLite on every request
+let playsCache = { data: null as any, ts: 0 };
+const PLAYS_CACHE_TTL_MS = 5_000;
+
 async function getApiData() {
-  const plays = await loadPlays();
+  const now = Date.now();
+  let plays = playsCache.data;
+  if (!plays || now - playsCache.ts > PLAYS_CACHE_TTL_MS) {
+    plays = await loadPlays();
+    playsCache = { data: plays, ts: now };
+  }
   let totalPlays = 0;
   for (const key in plays) {
     totalPlays += plays[key].playCount || plays[key].count || 0;
@@ -169,7 +178,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       else callback(new Error('Not allowed by CORS'));
     } : undefined,
   }));
-  app.use(express.json());
+  app.use(express.json({ limit: '16kb' }));
   app.use(express.static(join(process.cwd(), 'public')));
   
   // Custom static fallbacks
@@ -181,6 +190,8 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     next();
   });
 
@@ -341,6 +352,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     }
   });
 
+  // Command whitelist — only these prefixes are allowed from dashboard
+  const CMD_WHITELIST = ['help', 'status', 'np', 'nowplaying', 'random', 'عشوائي', 'resume', 'كمل', 'latest', 'اخر_مقطع', 'pause', 'stop', 'ايقاف', 'skip', 'تخطي', 'volume', 'صوت', 'play', 'search', 'بحث', 'qrm', 'qtop', 'top'];
+
   app.post('/api/command', async (req, res) => {
     try {
       const ip = req.ip || req.socket.remoteAddress || '';
@@ -350,6 +364,13 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       const cmd = (req.body.command || '').trim();
       const targetGuildId = req.body.guildId || null;
       if (!cmd) return res.status(400).json({ error: 'No command provided' });
+
+      // Validate command against whitelist
+      const cmdLower = cmd.toLowerCase().trim();
+      const allowed = CMD_WHITELIST.some(prefix => cmdLower === prefix || cmdLower.startsWith(prefix + ' '));
+      if (!allowed) {
+        return res.status(400).json({ error: 'Unknown command' });
+      }
       
       if (executeCommandFn) {
         const reply = await Promise.resolve(executeCommandFn(cmd, targetGuildId));
@@ -358,7 +379,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         res.json({ ok: true, reply: 'Command received: ' + cmd });
       }
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      res.status(500).json({ error: 'Command execution failed' });
     }
   });
 
