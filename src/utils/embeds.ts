@@ -13,8 +13,9 @@ const RADIO_CYAN   = 0x00E5FF;
 const RADIO_ORANGE = 0xFF6B35;
 const PAUSED_COLOR = 0x2B2D31;
 
-function progressBar(elapsed, duration) {
-  if (!duration || duration <= 0) return '🔴 **بث مباشر**';
+function progressBar(elapsed, duration, isLive) {
+  if (isLive) return '🔴 **بث مباشر**';
+  if (!duration || duration <= 0) return '⏳ **جاري التحميل...**';
   const ratio = Math.max(0, Math.min(1, elapsed / duration));
   const BAR = 20;
   const filled = Math.round(ratio * BAR);
@@ -27,7 +28,7 @@ export function buildNowPlayingMessage(video, state) {
   const color = state.paused ? PAUSED_COLOR : RADIO_CYAN;
   const personality = randomPersonalityLine();
 
-  const progress = progressBar(state.elapsedSeconds ?? 0, video.durationSeconds);
+  const progress = progressBar(state.elapsedSeconds ?? 0, video.durationSeconds, state.isLive);
 
   const embed = new EmbedBuilder()
     .setColor(color)

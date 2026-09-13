@@ -166,6 +166,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     await new Promise(resolve => {
       execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
         checks.ytdlp = err ? 'unavailable' : stdout.trim();
+        if (err) checks.ok = false;
         resolve();
       });
     });

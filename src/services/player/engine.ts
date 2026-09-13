@@ -312,12 +312,20 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
     }
     const elapsed = Date.now() - lastDataTime;
     if (elapsed > deadStreamTimeout && session.player?.state?.status === AudioPlayerStatus.Playing) {
-      logger.warn(`[${guild.id}] No audio data for ${Math.round(elapsed / 1000)}s — dead stream, restarting from current position.`);
-      clearInterval(deadCheckInterval);
-      const currentElapsed = Math.floor(getElapsedSeconds(session));
-      session.current = { ...session.current, progressSeconds: currentElapsed };
-      connectAndPlay(guild, channel, session.current, { countPlay: false })
-        .catch(() => onTrackFinished(guild, channel));
+      session.deadStreamRestarts = (session.deadStreamRestarts || 0) + 1;
+      if (session.deadStreamRestarts <= 3) {
+        logger.warn(`[${guild.id}] No audio data for ${Math.round(elapsed / 1000)}s — dead stream restart (${session.deadStreamRestarts}/3)...`);
+        clearInterval(deadCheckInterval);
+        const currentElapsed = Math.floor(getElapsedSeconds(session));
+        session.current = { ...session.current, progressSeconds: currentElapsed };
+        connectAndPlay(guild, channel, session.current, { countPlay: false })
+          .catch(() => onTrackFinished(guild, channel));
+      } else {
+        logger.warn(`[${guild.id}] Dead stream ${session.deadStreamRestarts}x — giving up on this track.`);
+        clearInterval(deadCheckInterval);
+        session.deadStreamRestarts = 0;
+        onTrackFinished(guild, channel);
+      }
     }
   }, deadCheckIntervalMs);
 
@@ -366,11 +374,18 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
         session.stallTimeout = setTimeout(() => {
           if (session.player !== player) return;
           if (!session.connection || session.connection.state.status === VoiceConnectionStatus.Destroyed) return;
-          logger.warn(`[${guild.id}] Stream stalled for ${Math.round(stallTimeoutMs / 1000)}s. Restarting from current position.`);
-          const elapsed = Math.floor(getElapsedSeconds(session));
-          session.current = { ...session.current, progressSeconds: elapsed };
-          connectAndPlay(guild, channel, session.current, { countPlay: false })
-            .catch(() => onTrackFinished(guild, channel));
+          session.stallRestarts = (session.stallRestarts || 0) + 1;
+          if (session.stallRestarts <= 3) {
+            logger.warn(`[${guild.id}] Stream stalled for ${Math.round(stallTimeoutMs / 1000)}s — restart (${session.stallRestarts}/3)...`);
+            const elapsed = Math.floor(getElapsedSeconds(session));
+            session.current = { ...session.current, progressSeconds: elapsed };
+            connectAndPlay(guild, channel, session.current, { countPlay: false })
+              .catch(() => onTrackFinished(guild, channel));
+          } else {
+            logger.warn(`[${guild.id}] Stream stalled ${session.stallRestarts}x — giving up on this track.`);
+            session.stallRestarts = 0;
+            onTrackFinished(guild, channel);
+          }
         }, stallTimeoutMs);
       }
     } else {
@@ -502,18 +517,26 @@ async function onTrackFinished(guild, channel) {
         }
       } else if (expectedDuration > 120 && playedSeconds < expectedDuration * earlyEndPct && session.current?.videoId) {
         const pct = Math.round(playedSeconds / expectedDuration * 100);
-        logger.warn(`[${guild.id}] Track ended early: ${Math.round(playedSeconds)}s/${expectedDuration}s (${pct}%) — stream dropped, retrying from where it stopped.`);
-        session.current = { ...session.current, progressSeconds: Math.floor(playedSeconds) };
-        recordPlay(session.current, { failed: true }).catch(() => {});
-        await sleep(2000);
-        
-        // Actually retry the current track
-        session.advancing = false;
-        connectAndPlay(guild, channel, session.current, { countPlay: false }).catch(() => onTrackFinished(guild, channel));
-        return;
+        session.earlyEndRetryCount = (session.earlyEndRetryCount || 0) + 1;
+        if (session.earlyEndRetryCount <= 3) {
+          logger.warn(`[${guild.id}] Track ended early: ${Math.round(playedSeconds)}s/${expectedDuration}s (${pct}%) — retrying (${session.earlyEndRetryCount}/3)...`);
+          session.current = { ...session.current, progressSeconds: Math.floor(playedSeconds) };
+          recordPlay(session.current, { failed: true }).catch(() => {});
+          await sleep(2000);
+          session.advancing = false;
+          connectAndPlay(guild, channel, session.current, { countPlay: false }).catch(() => onTrackFinished(guild, channel));
+          return;
+        } else {
+          logger.warn(`[${guild.id}] Track ended early ${session.earlyEndRetryCount}x — skipping.`);
+          addFailedId(session, session.current.videoId);
+          recordPlay(session.current, { failed: true }).catch(() => {});
+          session.earlyEndRetryCount = 0;
+          await sleep(3000);
+        }
       } else if (session.current?.videoId) {
         recordPlay(session.current, { completed: true }).catch(() => {});
         session.retryCount = 0;
+        session.earlyEndRetryCount = 0;
       }
     } else if (session.current?.videoId) {
       recordPlay(session.current, { completed: true }).catch(() => {});
