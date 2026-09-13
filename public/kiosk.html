@@ -202,8 +202,20 @@ async function checkJingles() {
 }
 
 refresh();
-setInterval(refresh, 5000);
-setInterval(checkJingles, 2000);
+let pollInterval = setInterval(refresh, 5000);
+let checkInterval = setInterval(checkJingles, 2000);
+
+// SSE with auto-reconnect
+let sseConnected = false;
+function connectSSE() {
+  if (typeof EventSource === 'undefined') return;
+  const sse = new EventSource('/api/sse');
+  let delay = 1000;
+  sse.onopen = () => { delay = 1000; sseConnected = true; clearInterval(pollInterval); clearInterval(checkInterval); };
+  sse.onmessage = () => { refresh(); checkJingles(); };
+  sse.onerror = () => { sseConnected = false; sse.close(); pollInterval = setInterval(refresh, 5000); checkInterval = setInterval(checkJingles, 2000); setTimeout(connectSSE, Math.min(delay, 30000)); delay *= 2; };
+}
+connectSSE();
 </script>
 </body>
 </html>
