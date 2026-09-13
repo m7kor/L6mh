@@ -64,7 +64,7 @@
     .np-fill { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--purple)); width: 0%; transition: width 1s linear; border-radius: 3px; }
 
     /* ── Stats Row ── */
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 28px; }
     .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 16px; text-align: center; transition: all .3s; }
     .stat:hover { border-color: var(--border-hover); transform: translateY(-2px); }
     .stat-icon { font-size: 20px; margin-bottom: 8px; }
@@ -95,8 +95,32 @@
     .srv-dot.on { background: var(--green); }
     .srv-dot.off { background: var(--red); }
 
-    /* ── Error Log ── */
-    .err-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+    /* ── Queue Section ── */
+    .queue-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
+    .queue-hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .queue-hdr h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+    .queue-count { font-size: 12px; color: var(--text-3); font-family: var(--font-en); font-weight: 700; padding: 4px 10px; background: var(--surface-2); border-radius: 12px; }
+    .q-search { padding: 6px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 12px; font-family: var(--font-ar); outline: none; width: 180px; transition: border-color .2s; }
+    .q-search:focus { border-color: var(--cyan); }
+    .q-search::placeholder { color: var(--text-3); }
+    .queue-list { max-height: 400px; overflow-y: auto; }
+    .queue-item { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--border); transition: background .2s; animation: slideUp 0.3s ease forwards; }
+    .queue-item:last-child { border-bottom: none; }
+    .queue-item:hover { background: var(--surface-2); }
+    .queue-item.queue-next { background: rgba(168,85,247,0.06); border-left: 3px solid var(--purple); }
+    .queue-num { font-family: var(--font-en); font-size: 13px; font-weight: 700; color: var(--text-3); min-width: 24px; text-align: center; }
+    .queue-thumb { width: 48px; height: 32px; border-radius: 6px; object-fit: cover; background: var(--surface-3); }
+    .queue-title { font-size: 13px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-actions { display: flex; gap: 4px; }
+    .queue-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-3); cursor: pointer; display: grid; place-items: center; transition: all .2s; font-size: 11px; }
+    .queue-btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-glow); }
+    .queue-btn.danger:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.08); }
+
+    /* ── Refresh Indicator ── */
+    .refresh-indicator { position: fixed; bottom: 20px; left: 20px; display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; color: var(--text-3); font-family: var(--font-en); z-index: 100; transition: all .3s; opacity: 0; transform: translateY(10px); }
+    .refresh-indicator.visible { opacity: 1; transform: translateY(0); }
+    .refresh-indicator .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .refresh-indicator .dot.fetching { animation: pulse 0.8s infinite; background: var(--cyan); }
 
     /* ── Queue ── */
     .queue-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 24px; overflow: hidden; }
@@ -205,6 +229,12 @@
 </head>
 <body>
 
+<!-- Refresh Indicator -->
+<div class="refresh-indicator" id="refreshIndicator">
+  <span class="dot" id="refreshDot"></span>
+  <span id="refreshText">SSE</span>
+</div>
+
 <!-- Login -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
@@ -276,8 +306,9 @@
   <div class="stats">
     <div class="stat"><div class="stat-icon">⏱️</div><div class="stat-num" id="sUp">0h 0m</div><div class="stat-lbl">مدة التشغيل</div></div>
     <div class="stat"><div class="stat-icon">🎵</div><div class="stat-num" id="sPlayed">0 / 0</div><div class="stat-lbl">شُغّل / لم يشُغَّل</div></div>
-    <div class="stat"><div class="stat-icon">🔄</div><div class="stat-num" id="sCycle" style="font-size:16px">—</div><div class="stat-lbl">الدورة / الطابور</div></div>
+    <div class="stat"><div class="stat-icon">🔄</div><div class="stat-num" id="sCycle" style="font-size:16px">—</div><div class="stat-lbl">الدورة</div></div>
     <div class="stat"><div class="stat-icon">💾</div><div class="stat-num" id="sMem" style="font-size:16px">—</div><div class="stat-lbl">الذاكرة</div></div>
+    <div class="stat"><div class="stat-icon">🌐</div><div class="stat-num" id="sServer" style="font-size:13px">—</div><div class="stat-lbl">السيرفر / القناة</div></div>
   </div>
 
   <!-- Actions -->
@@ -291,7 +322,10 @@
   <div class="queue-section" id="queueSection" style="display:none">
     <div class="queue-hdr">
       <h2><i class="fas fa-list-ol"></i> قائمة التشغيل القادمة</h2>
-      <span class="queue-count" id="qCount">0 مقطع</span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <input type="text" id="qSearch" placeholder="بحث في الطابور..." class="q-search">
+        <span class="queue-count" id="qCount">0 مقطع</span>
+      </div>
     </div>
     <div class="queue-list" id="qList"></div>
   </div>
@@ -552,21 +586,22 @@ const refresh = async () => {
     const qList = document.getElementById('qList');
     const qSection = document.getElementById('queueSection');
     const qCount = document.getElementById('qCount');
+    const qSearch = document.getElementById('qSearch');
     const queue = s?.queue || [];
+    const queueFilter = (qSearch?.value || '').toLowerCase();
+    const filteredQueue = queueFilter ? queue.filter(v => (v.title || '').toLowerCase().includes(queueFilter)) : queue;
     if (queue.length > 0) {
       qSection.style.display = '';
-      qCount.textContent = `${queue.length} مقطع`;
+      qCount.textContent = queueFilter ? `${filteredQueue.length} / ${queue.length}` : `${queue.length} مقطع`;
       qList.innerHTML = '';
-      queue.slice(0, 10).forEach((vid, i) => {
+      filteredQueue.slice(0, 15).forEach((vid, i) => {
+        const realIdx = queue.indexOf(vid);
         const row = document.createElement('div');
-        row.className = 'queue-item' + (i === 0 ? ' queue-next' : '');
-        row.style.animation = `slideUp 0.3s ease forwards`;
-        row.style.opacity = '0';
-        row.style.animationDelay = `${i * 0.05}s`;
+        row.className = 'queue-item' + (realIdx === 0 ? ' queue-next' : '');
         const num = document.createElement('span');
         num.className = 'queue-num';
-        num.textContent = i === 0 ? '▶' : i + 1;
-        if (i === 0) num.style.color = 'var(--purple)';
+        num.textContent = realIdx === 0 ? '▶' : realIdx + 1;
+        if (realIdx === 0) num.style.color = 'var(--purple)';
         const thumb = document.createElement('img');
         thumb.className = 'queue-thumb';
         thumb.src = vid.thumbnail || `https://i.ytimg.com/vi/${encodeURIComponent(vid.videoId)}/mqdefault.jpg`;
@@ -576,22 +611,20 @@ const refresh = async () => {
         title.textContent = vid.title || '—';
 
         const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '6px';
-        actions.style.marginLeft = 'auto';
+        actions.className = 'queue-actions';
 
-        if (i > 0) {
+        if (realIdx > 0) {
           const btnTop = document.createElement('button');
           btnTop.innerHTML = '<i class="fas fa-arrow-up"></i>';
-          btnTop.className = 'err-clear';
+          btnTop.className = 'queue-btn';
           btnTop.title = 'نقل للأعلى';
-          btnTop.onclick = () => cmd(`qtop ${i}`);
+          btnTop.onclick = () => cmd(`qtop ${realIdx}`);
           
           const btnRm = document.createElement('button');
           btnRm.innerHTML = '<i class="fas fa-trash"></i>';
-          btnRm.className = 'err-clear';
+          btnRm.className = 'queue-btn danger';
           btnRm.title = 'حذف';
-          btnRm.onclick = () => cmd(`qrm ${i}`);
+          btnRm.onclick = () => cmd(`qrm ${realIdx}`);
           
           actions.append(btnTop, btnRm);
         }
@@ -695,6 +728,29 @@ const initDashboard = async () => {
   refreshHealth();
   statusInterval = setInterval(refresh, 2000);
   healthInterval = setInterval(refreshHealth, 30000);
+  // Queue search
+  const qSearch = document.getElementById('qSearch');
+  if (qSearch) {
+    let qTimer = null;
+    qSearch.addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(refresh, 200); });
+  }
+  // Show refresh indicator
+  const indicator = document.getElementById('refreshIndicator');
+  if (indicator) indicator.classList.add('visible');
+};
+
+// Refresh indicator logic
+let refreshCount = 0;
+const origRefresh = refresh;
+const wrappedRefresh = async () => {
+  const dot = document.getElementById('refreshDot');
+  const text = document.getElementById('refreshText');
+  if (dot) dot.classList.add('fetching');
+  if (text) text.textContent = `#${++refreshCount}`;
+  try { await origRefresh(); } finally {
+    if (dot) dot.classList.remove('fetching');
+    if (text) text.textContent = sseConnected ? 'SSE' : ' POLL';
+  }
 };
 
 

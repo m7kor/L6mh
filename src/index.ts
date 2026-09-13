@@ -126,7 +126,7 @@ client.once(Events.ClientReady, async (c) => {
   // Dashboard command handler
   async function handleDashboardCommand(cmd) {
     const lower = cmd.toLowerCase().trim();
-    if (lower === 'help') return 'Commands: status, np, random, resume, latest, stop, skip, volume <0-100>, play <videoId>';
+    if (lower === 'help') return 'Commands: status, np, random, resume, latest, stop, skip, volume <0-100>, play <videoId>, search <query>';
     
     const all = getAllSessions();
     
@@ -237,6 +237,15 @@ client.once(Events.ClientReady, async (c) => {
         }
       }
       return done > 0 ? `Playing "${video.title}" on ${done} server(s).` : 'No active servers found.';
+    }
+    if (lower.startsWith('search ')) {
+      const query = cmd.slice(7).trim();
+      if (!query) return 'Provide a search query.';
+      const { getVideos } = await import('./services/youtube.js');
+      const catalog = await getVideos();
+      const matches = catalog.filter(v => (v.title || '').toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+      if (matches.length === 0) return `No results for "${query}".`;
+      return matches.map((v, i) => `${i + 1}. ${v.title} (${v.videoId})`).join('\n');
     }
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }

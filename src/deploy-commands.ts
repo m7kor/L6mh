@@ -1,19 +1,11 @@
 /**
  * Register slash commands with Discord.
- * Auto-discovers every command in src/commands/ (the same list the bot
- * itself loads at runtime — see index.js) so this file can never drift
- * out of sync with what's actually implemented.
+ * Uses individual PATCH/POST/DELETE instead of bulk PUT to handle Entry Point commands.
  *
- * Run this once, and again any time you add/remove a command, or change a
- * command's name/description/options:
+ * Run this once, and again any time you add/remove a command:
  *   npm run deploy
  *
- * Global commands (the default) can take up to ~1 hour to show up
- * everywhere, and Discord's client sometimes caches old command
- * descriptions until you restart it. If you set GUILD_ID in .env, this
- * script registers to that one server instead, which updates instantly —
- * handy while testing changes. Right-click your server icon → "Copy
- * Server ID" to get it (enable Developer Mode in Discord settings first).
+ * Set GUILD_ID in .env for instant updates while testing.
  */
 
 import 'dotenv/config';
@@ -44,19 +36,39 @@ for (const file of commandFiles) {
 }
 
 const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+const route = GUILD_ID
+  ? Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID)
+  : Routes.applicationCommands(CLIENT_ID);
 
-console.log(`Registering ${commands.length} slash command(s): ${commands.map((c) => c.name).join(', ')}`);
+console.log(`Target: ${GUILD_ID ? `guild ${GUILD_ID}` : 'global'}`);
+console.log(`New commands: ${commands.map(c => c.name).join(', ')}`);
 
-try {
-  if (GUILD_ID) {
-    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log(`✅ Registered instantly to guild ${GUILD_ID}.`);
-  } else {
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log('✅ Registered globally (can take up to ~1 hour to fully propagate).');
-    console.log('   Tip: set GUILD_ID in .env for instant updates while testing.');
+// Step 1: Fetch existing commands
+console.log('Fetching existing commands...');
+const existing = await rest.get(route);
+console.log(`Found ${existing.length} existing: ${existing.map(c => c.name).join(', ')}`);
+
+const newNames = new Set(commands.map(c => c.name));
+const existingMap = new Map(existing.map(c => [c.name, c]));
+
+// Step 2: Delete commands that no longer exist
+for (const ex of existing) {
+  if (!newNames.has(ex.name)) {
+    console.log(`Deleting: ${ex.name} (${ex.id})`);
+    await rest.delete(Routes.applicationCommand(CLIENT_ID, ex.id));
   }
-} catch (err) {
-  console.error('❌ Failed to register commands:', err);
-  process.exit(1);
 }
+
+// Step 3: Create or update commands
+for (const cmd of commands) {
+  const ex = existingMap.get(cmd.name);
+  if (ex) {
+    console.log(`Updating: ${cmd.name}`);
+    await rest.patch(Routes.applicationCommand(CLIENT_ID, ex.id), { body: cmd });
+  } else {
+    console.log(`Creating: ${cmd.name}`);
+    await rest.post(route, { body: cmd });
+  }
+}
+
+console.log(`✅ Done! ${commands.length} commands registered.`);

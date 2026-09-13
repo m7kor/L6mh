@@ -16,9 +16,12 @@ RUN npm ci --omit=dev
 # Copy source
 COPY . .
 
+# Build TypeScript
+RUN npm run build
+
 # Create data directory
 RUN mkdir -p data sounds logs
 
 EXPOSE 3333
 
-CMD ["node", "src/index.js"]
+CMD ["node", "dist/index.js"]

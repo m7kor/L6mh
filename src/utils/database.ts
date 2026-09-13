@@ -115,6 +115,13 @@ function initTables() {
       published_at TEXT,
       fetched_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS favorites (
+      user_id TEXT NOT NULL,
+      video_id TEXT NOT NULL,
+      added_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, video_id)
+    );
   `);
 
   // Migration: add opted_out column if missing (for existing DBs)
