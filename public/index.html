@@ -170,6 +170,38 @@
     .health-val.err { color: var(--red); }
     @media (max-width: 640px) { .health-grid { grid-template-columns: repeat(2, 1fr); } }
 
+    /* ── Top Played Enhanced ── */
+    .top-item { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--border); transition: all .2s; }
+    .top-item:last-child { border-bottom: none; }
+    .top-item:hover { background: var(--surface-2); }
+    .top-rank { font-family: var(--font-en); font-size: 16px; font-weight: 900; min-width: 28px; text-align: center; }
+    .top-rank.gold { color: #FFD700; }
+    .top-rank.silver { color: #C0C0C0; }
+    .top-rank.bronze { color: #CD7F32; }
+    .top-thumb { width: 64px; height: 36px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--surface-3); border: 1px solid var(--border); }
+    .top-info { flex: 1; min-width: 0; }
+    .top-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .top-count { font-family: var(--font-en); font-size: 14px; font-weight: 900; color: var(--cyan); background: rgba(0,229,255,0.08); padding: 4px 10px; border-radius: 8px; flex-shrink: 0; }
+
+    /* ── Leaderboard Enhanced ── */
+    .lb-item { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--border); transition: all .2s; }
+    .lb-item:last-child { border-bottom: none; }
+    .lb-item:hover { background: var(--surface-2); }
+    .lb-rank { font-family: var(--font-en); font-size: 16px; font-weight: 900; min-width: 28px; text-align: center; }
+    .lb-rank.gold { color: #FFD700; }
+    .lb-rank.silver { color: #C0C0C0; }
+    .lb-rank.bronze { color: #CD7F32; }
+    .lb-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid var(--border); background: var(--surface-3); }
+    .lb-item:nth-child(1) .lb-avatar { border-color: #FFD700; box-shadow: 0 0 12px rgba(255,215,0,0.3); }
+    .lb-item:nth-child(2) .lb-avatar { border-color: #C0C0C0; }
+    .lb-item:nth-child(3) .lb-avatar { border-color: #CD7F32; }
+    .lb-info { flex: 1; min-width: 0; }
+    .lb-name { font-size: 14px; font-weight: 800; }
+    .lb-stats { font-size: 11px; color: var(--text-3); margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lb-stat { display: flex; align-items: center; gap: 3px; }
+    .lb-badges { display: flex; gap: 2px; }
+
     /* ── Video List ── */
     .vid-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 28px; }
     .vid-hdr { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
@@ -691,23 +723,32 @@ const refresh = async () => {
       topList.innerHTML = '';
       topPlayed.slice(0, 10).forEach((v, i) => {
         const row = document.createElement('div');
-        row.className = 'queue-item';
-        const num = document.createElement('span');
-        num.className = 'queue-num';
-        num.textContent = i + 1;
-        if (i < 3) num.style.color = ['var(--yellow)', 'var(--text-2)', 'var(--orange)'][i];
+        row.className = 'top-item';
+        row.style.animation = `slideUp 0.3s ease forwards`;
+        row.style.opacity = '0';
+        row.style.animationDelay = `${i * 0.05}s`;
+        const rank = document.createElement('span');
+        rank.className = `top-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`;
+        rank.textContent = i + 1;
         const thumb = document.createElement('img');
-        thumb.className = 'queue-thumb';
+        thumb.className = 'top-thumb';
         thumb.src = `https://i.ytimg.com/vi/${encodeURIComponent(v.id)}/mqdefault.jpg`;
         thumb.loading = 'lazy';
-        const title = document.createElement('span');
-        title.className = 'queue-title';
+        const info = document.createElement('div');
+        info.className = 'top-info';
+        const title = document.createElement('div');
+        title.className = 'top-title';
         title.textContent = v.title || '—';
-        const badge = document.createElement('span');
-        badge.className = 'queue-num';
-        badge.textContent = `${v.playCount}x`;
-        badge.style.color = 'var(--cyan)';
-        row.append(num, thumb, title, badge);
+        title.title = v.title || '';
+        const meta = document.createElement('div');
+        meta.className = 'top-meta';
+        const date = v.lastPlayedAt ? new Date(v.lastPlayedAt).toLocaleDateString('ar-SA') : '';
+        meta.textContent = date;
+        info.append(title, meta);
+        const count = document.createElement('span');
+        count.className = 'top-count';
+        count.textContent = `${v.playCount}x`;
+        row.append(rank, thumb, info, count);
         topList.appendChild(row);
       });
     } else {
@@ -728,27 +769,47 @@ const refresh = async () => {
         lbList.innerHTML = '';
         lb.slice(0, 15).forEach((e, i) => {
           const row = document.createElement('div');
-          row.className = 'queue-item';
-          const num = document.createElement('span');
-          num.className = 'queue-num';
-          num.textContent = e.rank;
-          if (i < 3) num.style.color = ['var(--yellow)', 'var(--text-2)', 'var(--orange)'][i];
+          row.className = 'lb-item';
+          row.style.animation = `slideUp 0.3s ease forwards`;
+          row.style.opacity = '0';
+          row.style.animationDelay = `${i * 0.05}s`;
+          const rank = document.createElement('span');
+          rank.className = `lb-rank ${i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''}`;
+          rank.textContent = e.rank;
           const avatar = document.createElement('img');
-          avatar.className = 'queue-thumb';
-          avatar.style.borderRadius = '50%';
+          avatar.className = 'lb-avatar';
           avatar.src = e.avatarUrl || `https://cdn.discordapp.com/embed/avatars/${(BigInt(e.userId) >> 22n) % 6n}.png`;
-          avatar.onerror = () => { avatar.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="%23333"/><text x="16" y="20" text-anchor="middle" fill="%23ccc" font-size="14">?</text></svg>'; };
-          const text = document.createElement('div');
-          text.className = 'queue-title';
-          const nameSpan = document.createElement('span');
-          nameSpan.textContent = e.username || `user_${e.userId.slice(-4)}`;
-          nameSpan.style.fontWeight = '600';
-          text.appendChild(nameSpan);
-          const meta = document.createElement('div');
-          meta.style.cssText = 'font-size:11px;color:var(--text-2);margin-top:2px;';
-          meta.textContent = `${e.hours}س ${e.minutes % 60}د · ${e.points}🪙 · ${e.badges.map((b) => b.emoji).join('') || '—'}`;
-          text.appendChild(meta);
-          row.append(num, avatar, text);
+          avatar.onerror = () => { avatar.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44"><circle cx="22" cy="22" r="22" fill="%23333"/><text x="22" y="27" text-anchor="middle" fill="%23ccc" font-size="16">?</text></svg>'; };
+          const info = document.createElement('div');
+          info.className = 'lb-info';
+          const name = document.createElement('div');
+          name.className = 'lb-name';
+          name.textContent = e.username || `user_${e.userId.slice(-4)}`;
+          const stats = document.createElement('div');
+          stats.className = 'lb-stats';
+          const timeStat = document.createElement('span');
+          timeStat.className = 'lb-stat';
+          timeStat.textContent = `⏱️ ${e.hours}س ${e.minutes % 60}د`;
+          const pointsStat = document.createElement('span');
+          pointsStat.className = 'lb-stat';
+          pointsStat.textContent = `🪙 ${e.points}`;
+          const sessionStat = document.createElement('span');
+          sessionStat.className = 'lb-stat';
+          sessionStat.textContent = `🎵 ${e.sessions}`;
+          stats.append(timeStat, pointsStat, sessionStat);
+          if (e.badges && e.badges.length > 0) {
+            const badges = document.createElement('span');
+            badges.className = 'lb-badges';
+            e.badges.forEach(b => {
+              const badge = document.createElement('span');
+              badge.textContent = b.emoji;
+              badge.title = b.name;
+              badges.appendChild(badge);
+            });
+            stats.appendChild(badges);
+          }
+          info.append(name, stats);
+          row.append(rank, avatar, info);
           lbList.appendChild(row);
         });
       } else {
