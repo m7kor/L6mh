@@ -736,7 +736,7 @@ const refresh = async () => {
           const avatar = document.createElement('img');
           avatar.className = 'queue-thumb';
           avatar.style.borderRadius = '50%';
-          avatar.src = `https://cdn.discordapp.com/avatars/${e.userId}.png?size=32`;
+          avatar.src = e.avatarUrl || `https://cdn.discordapp.com/embed/avatars/${(BigInt(e.userId) >> 22n) % 6n}.png`;
           avatar.onerror = () => { avatar.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="%23333"/><text x="16" y="20" text-anchor="middle" fill="%23ccc" font-size="14">?</text></svg>'; };
           const text = document.createElement('div');
           text.className = 'queue-title';

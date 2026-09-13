@@ -367,7 +367,8 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const joinedChannel = newState.channel;
     if (joinedChannel && oldState.channelId !== newState.channelId) {
       // Track community presence
-      onVoiceJoin(newState.member?.user?.id, guild.id, newState.member?.user?.username || newState.member?.displayName);
+      const avatarUrl = newState.member?.user?.displayAvatarURL({ size: 64, extension: 'png' }) || null;
+      onVoiceJoin(newState.member?.user?.id, guild.id, newState.member?.user?.username || newState.member?.displayName, avatarUrl);
 
       const debounceKey = `join-${guild.id}`;
       const existing = voiceActionTimeouts.get(debounceKey);

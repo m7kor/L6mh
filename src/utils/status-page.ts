@@ -393,6 +393,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
           rank: i + 1,
           userId: e.user_id,
           username: e.username || null,
+          avatarUrl: e.avatar_url || null,
           minutes: e.minutes_present,
           hours: Math.floor(e.minutes_present / 60),
           sessions: e.sessions_count,

@@ -10,17 +10,23 @@ const logger = createLogger('community');
 
 const presenceMap = new Map();
 
-export function onVoiceJoin(userId: string, guildId: string, username?: string): void {
+export function onVoiceJoin(userId: string, guildId: string, username?: string, avatarUrl?: string): void {
   const key = `${userId}:${guildId}`;
   if (!presenceMap.has(key)) {
     presenceMap.set(key, Date.now());
-    trackPresence(userId, guildId, username);
+    trackPresence(userId, guildId, username, avatarUrl);
     checkBadges(userId, guildId);
-  } else if (username) {
-    // Update username even if already tracked (in case it changed)
+  } else if (username || avatarUrl) {
     try {
       const db = getDb();
-      db.prepare('UPDATE member_stats SET username = ? WHERE user_id = ? AND guild_id = ?').run(username, userId, guildId);
+      const sets: string[] = [];
+      const vals: any[] = [];
+      if (username) { sets.push('username = ?'); vals.push(username); }
+      if (avatarUrl) { sets.push('avatar_url = ?'); vals.push(avatarUrl); }
+      if (sets.length > 0) {
+        vals.push(userId, guildId);
+        db.prepare(`UPDATE member_stats SET ${sets.join(', ')} WHERE user_id = ? AND guild_id = ?`).run(...vals);
+      }
     } catch {}
   }
 }
@@ -36,18 +42,19 @@ export function onVoiceLeave(userId: string, guildId: string): void {
   }
 }
 
-function trackPresence(userId: string, guildId: string, username?: string): void {
+function trackPresence(userId: string, guildId: string, username?: string, avatarUrl?: string): void {
   try {
     const db = getDb();
     const now = new Date().toISOString();
     db.prepare(`
-      INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, first_seen_at, last_seen_at, username)
-      VALUES (?, ?, 0, 1, ?, ?, ?)
+      INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, first_seen_at, last_seen_at, username, avatar_url)
+      VALUES (?, ?, 0, 1, ?, ?, ?, ?)
       ON CONFLICT(user_id, guild_id) DO UPDATE SET
         sessions_count = sessions_count + 1,
         last_seen_at = excluded.last_seen_at,
-        username = COALESCE(excluded.username, username)
-    `).run(userId, guildId, now, now, username || null);
+        username = COALESCE(excluded.username, username),
+        avatar_url = COALESCE(excluded.avatar_url, avatar_url)
+    `).run(userId, guildId, now, now, username || null, avatarUrl || null);
   } catch (err) {
     logger.warn('trackPresence error:', err.message);
   }
@@ -136,7 +143,7 @@ export function getUserBadges(userId: string, guildId: string) {
 export function getLeaderboard(guildId: string, limit = 100) {
   const db = getDb();
   return db.prepare(`
-    SELECT user_id, minutes_present, sessions_count, points, username, first_seen_at, last_seen_at
+    SELECT user_id, minutes_present, sessions_count, points, username, avatar_url, first_seen_at, last_seen_at
     FROM member_stats
     WHERE guild_id = ? AND opted_out = 0 AND minutes_present > 0
     ORDER BY minutes_present DESC
@@ -162,7 +169,7 @@ export async function backfillUsernames(client: any): Promise<number> {
   try {
     const db = getDb();
     const rows = db.prepare(
-      "SELECT user_id FROM member_stats WHERE username IS NULL OR username = ''"
+      "SELECT user_id FROM member_stats WHERE username IS NULL OR username = '' OR avatar_url IS NULL"
     ).all() as any[];
     if (rows.length === 0) return 0;
 
@@ -171,14 +178,16 @@ export async function backfillUsernames(client: any): Promise<number> {
       try {
         const user = await client.users.fetch(row.user_id);
         if (user && user.username) {
-          db.prepare('UPDATE member_stats SET username = ? WHERE user_id = ?').run(user.username, row.user_id);
+          const avatarUrl = user.displayAvatarURL({ size: 64, extension: 'png' }) || null;
+          db.prepare('UPDATE member_stats SET username = ?, avatar_url = ? WHERE user_id = ?')
+            .run(user.username, avatarUrl, row.user_id);
           updated++;
         }
       } catch {
         // User not found or DM-only — skip
       }
     }
-    if (updated > 0) logger.info(`Backfilled ${updated} usernames`);
+    if (updated > 0) logger.info(`Backfilled ${updated} usernames+avatars`);
     return updated;
   } catch (err) {
     logger.warn('backfillUsernames error:', err.message);

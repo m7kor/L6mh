@@ -146,6 +146,11 @@ function initTables() {
       db.exec("ALTER TABLE member_stats ADD COLUMN username TEXT");
       logger.info('Added username column to member_stats');
     }
+    // Migration: add avatar_url column if missing
+    if (!cols.some(c => c.name === 'avatar_url')) {
+      db.exec("ALTER TABLE member_stats ADD COLUMN avatar_url TEXT");
+      logger.info('Added avatar_url column to member_stats');
+    }
   } catch {}
 
   // Migration: fix any rows with minutes_present = -1 (old broken opt-out)
