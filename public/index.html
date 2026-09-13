@@ -741,7 +741,8 @@ const refresh = async () => {
           const text = document.createElement('div');
           text.className = 'queue-title';
           const nameSpan = document.createElement('span');
-          nameSpan.textContent = `<@${e.userId}>`;
+          nameSpan.textContent = e.username || `user_${e.userId.slice(-4)}`;
+          nameSpan.style.fontWeight = '600';
           text.appendChild(nameSpan);
           const meta = document.createElement('div');
           meta.style.cssText = 'font-size:11px;color:var(--text-2);margin-top:2px;';

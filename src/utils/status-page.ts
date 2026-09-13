@@ -10,7 +10,7 @@ import { getVideos } from '../services/youtube.js';
 import { getConsecutiveAuthFails, getActiveProvider } from '../services/streaming.js';
 import { getCookieInfo } from '../services/cookies.js';
 import { getDb } from './database.js';
-import { getLeaderboard, getUserBadges } from '../services/community.js';
+import { getLeaderboard, getUserBadges, backfillUsernames } from '../services/community.js';
 
 // Jingle event buffer — resolved lazily to avoid circular dep at load time
 let peekJingleEvents = () => [];
@@ -28,6 +28,11 @@ let getSessionInfoFn = null;
 let getAllSessionsFn = null;
 let executeCommandFn = null;
 let getQueueFn = null;
+let discordClient = null;
+
+export function setDiscordClient(client) {
+  discordClient = client;
+}
 
 // In-memory error log (last 1000 errors, auto-rotated)
 const errorLog = [];
@@ -387,6 +392,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         .map((e: any, i: number) => ({
           rank: i + 1,
           userId: e.user_id,
+          username: e.username || null,
           minutes: e.minutes_present,
           hours: Math.floor(e.minutes_present / 60),
           sessions: e.sessions_count,
@@ -396,6 +402,17 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       res.json({ leaderboard: result });
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch leaderboard' });
+    }
+  });
+
+  // Backfill usernames from Discord
+  app.post('/api/backfill-usernames', async (req, res) => {
+    try {
+      if (!discordClient) return res.status(503).json({ error: 'Discord client not available' });
+      const total = await backfillUsernames(discordClient);
+      res.json({ ok: true, updated: total });
+    } catch (err) {
+      res.status(500).json({ error: 'Backfill failed' });
     }
   });
 

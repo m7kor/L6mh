@@ -10,12 +10,18 @@ const logger = createLogger('community');
 
 const presenceMap = new Map();
 
-export function onVoiceJoin(userId: string, guildId: string): void {
+export function onVoiceJoin(userId: string, guildId: string, username?: string): void {
   const key = `${userId}:${guildId}`;
   if (!presenceMap.has(key)) {
     presenceMap.set(key, Date.now());
-    trackPresence(userId, guildId);
+    trackPresence(userId, guildId, username);
     checkBadges(userId, guildId);
+  } else if (username) {
+    // Update username even if already tracked (in case it changed)
+    try {
+      const db = getDb();
+      db.prepare('UPDATE member_stats SET username = ? WHERE user_id = ? AND guild_id = ?').run(username, userId, guildId);
+    } catch {}
   }
 }
 
@@ -30,17 +36,18 @@ export function onVoiceLeave(userId: string, guildId: string): void {
   }
 }
 
-function trackPresence(userId: string, guildId: string): void {
+function trackPresence(userId: string, guildId: string, username?: string): void {
   try {
     const db = getDb();
     const now = new Date().toISOString();
     db.prepare(`
-      INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, first_seen_at, last_seen_at)
-      VALUES (?, ?, 0, 1, ?, ?)
+      INSERT INTO member_stats (user_id, guild_id, minutes_present, sessions_count, first_seen_at, last_seen_at, username)
+      VALUES (?, ?, 0, 1, ?, ?, ?)
       ON CONFLICT(user_id, guild_id) DO UPDATE SET
         sessions_count = sessions_count + 1,
-        last_seen_at = excluded.last_seen_at
-    `).run(userId, guildId, now, now);
+        last_seen_at = excluded.last_seen_at,
+        username = COALESCE(excluded.username, username)
+    `).run(userId, guildId, now, now, username || null);
   } catch (err) {
     logger.warn('trackPresence error:', err.message);
   }
@@ -129,7 +136,7 @@ export function getUserBadges(userId: string, guildId: string) {
 export function getLeaderboard(guildId: string, limit = 100) {
   const db = getDb();
   return db.prepare(`
-    SELECT user_id, minutes_present, sessions_count, points, first_seen_at, last_seen_at
+    SELECT user_id, minutes_present, sessions_count, points, username, first_seen_at, last_seen_at
     FROM member_stats
     WHERE guild_id = ? AND opted_out = 0 AND minutes_present > 0
     ORDER BY minutes_present DESC
@@ -144,5 +151,37 @@ function isBlacklisted(userId: string): boolean {
     return !!row;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Backfill usernames using client.users.fetch() (no GuildMembers intent needed).
+ * Called on bot startup to ensure all existing members have usernames stored.
+ */
+export async function backfillUsernames(client: any): Promise<number> {
+  try {
+    const db = getDb();
+    const rows = db.prepare(
+      "SELECT user_id FROM member_stats WHERE username IS NULL OR username = ''"
+    ).all() as any[];
+    if (rows.length === 0) return 0;
+
+    let updated = 0;
+    for (const row of rows) {
+      try {
+        const user = await client.users.fetch(row.user_id);
+        if (user && user.username) {
+          db.prepare('UPDATE member_stats SET username = ? WHERE user_id = ?').run(user.username, row.user_id);
+          updated++;
+        }
+      } catch {
+        // User not found or DM-only — skip
+      }
+    }
+    if (updated > 0) logger.info(`Backfilled ${updated} usernames`);
+    return updated;
+  } catch (err) {
+    logger.warn('backfillUsernames error:', err.message);
+    return 0;
   }
 }

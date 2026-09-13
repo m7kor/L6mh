@@ -15,9 +15,9 @@ import { createLogger } from './utils/logger.js';
 import { notify } from './utils/webhook.js';
 import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
 import { startHeartbeat } from './utils/heartbeat.js';
-import { startStatusPage, broadcastTrackChange } from './utils/status-page.js';
+import { startStatusPage, broadcastTrackChange, setDiscordClient } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
-import { onVoiceJoin, onVoiceLeave } from './services/community.js';
+import { onVoiceJoin, onVoiceLeave, backfillUsernames } from './services/community.js';
 import {
   stopAllSessions,
   stopPlayback,
@@ -117,6 +117,14 @@ client.once(Events.ClientReady, async (c) => {
   const guildCount = c.guilds.cache.size;
   notify('🟢 Bot Started', `Logged in as **${c.user.tag}**\nServers: ${guildCount}\nCommands: /${[...client.commands.keys()].join(', /')}`, 'ok');
   startHeartbeat();
+
+  // Backfill usernames (non-blocking, with timeout)
+  Promise.race([
+    backfillUsernames(c),
+    new Promise(resolve => setTimeout(() => resolve(0), 30_000)),
+  ]).then(total => {
+    if (total > 0) logger.info(`Backfilled ${total} usernames`);
+  }).catch(() => {});
 
   // Start the scheduler
   import('./services/scheduler.js').then(({ startScheduler }) => {
@@ -261,6 +269,7 @@ client.once(Events.ClientReady, async (c) => {
     return `Unknown command: "${cmd}". Type help for commands list.`;
   }
 
+  setDiscordClient(c);
   startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand, getQueue);
 
   // Weekly recap — check daily
@@ -358,7 +367,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     const joinedChannel = newState.channel;
     if (joinedChannel && oldState.channelId !== newState.channelId) {
       // Track community presence
-      onVoiceJoin(newState.member?.user?.id, guild.id);
+      onVoiceJoin(newState.member?.user?.id, guild.id, newState.member?.user?.username || newState.member?.displayName);
 
       const debounceKey = `join-${guild.id}`;
       const existing = voiceActionTimeouts.get(debounceKey);

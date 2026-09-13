@@ -141,6 +141,11 @@ function initTables() {
       db.exec("ALTER TABLE member_stats ADD COLUMN last_daily_at TEXT");
       logger.info('Added last_daily_at column to member_stats');
     }
+    // Migration: add username column if missing
+    if (!cols.some(c => c.name === 'username')) {
+      db.exec("ALTER TABLE member_stats ADD COLUMN username TEXT");
+      logger.info('Added username column to member_stats');
+    }
   } catch {}
 
   // Migration: fix any rows with minutes_present = -1 (old broken opt-out)
