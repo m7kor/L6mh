@@ -300,7 +300,7 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   session.ffmpegProcess = ffmpegProcess;
 
   // ── Dead stream detection — dynamic timeout based on video duration ──
-  const deadStreamTimeout = dynamicTimeout(video.durationSeconds, 0.01, 60_000, 1_800_000);
+  const deadStreamTimeout = dynamicTimeout(video.durationSeconds, 0.01, 60_000, 300_000);
   const deadCheckIntervalMs = Math.max(30_000, Math.floor(deadStreamTimeout / 6));
   let lastDataTime = Date.now();
   logger.info(`[${guild.id}] Dead stream timeout: ${Math.round(deadStreamTimeout / 1000)}s (video: ${video.durationSeconds || '?'}s)`);
@@ -351,7 +351,7 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   session.isLive = false; // سيُكتشف لاحقاً عبر isLiveStream
 
   // ── Stall Detection — dynamic timeout based on video duration ──
-  const stallTimeoutMs = dynamicTimeout(video.durationSeconds, 0.005, 60_000, 900_000);
+  const stallTimeoutMs = dynamicTimeout(video.durationSeconds, 0.005, 60_000, 180_000);
   logger.info(`[${guild.id}] Stall timeout: ${Math.round(stallTimeoutMs / 1000)}s`);
   if (session.stallTimeout) { clearTimeout(session.stallTimeout); session.stallTimeout = null; }
   player.on('stateChange', (oldState, newState) => {

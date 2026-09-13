@@ -24,6 +24,7 @@ import {
   playRandom,
   playLatest,
   resume,
+  connectAndPlay,
   playerEvents,
   getSessionInfo,
   getAllSessions,
@@ -173,7 +174,6 @@ client.once(Events.ClientReady, async (c) => {
       return done > 0 ? `Paused on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === '/ايقاف' || lower === 'stop') {
-      const { stopPlayback } = await import('./services/player/index.js');
       let done = 0;
       for (const s of all) {
         try { await stopPlayback(s.guildId, { manual: true }); done++; } catch {}
@@ -181,7 +181,7 @@ client.once(Events.ClientReady, async (c) => {
       return done > 0 ? `Stopped on ${done} server(s).` : 'No active servers found.';
     }
     if (lower === 'skip') {
-      const { skipTrack } = await import('./services/player/index.js');
+      const { skipTrack } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
         try { skipTrack(s.guildId); done++; } catch {}

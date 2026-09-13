@@ -453,7 +453,8 @@ const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math
 
 let curVid = null;
 const npImg = document.getElementById('npImg');
-const setEmb = id => { if (!id) { npImg.src = npImg.dataset.default || npImg.src; curVid = null; return; } if (curVid === id) return; curVid = id; npImg.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`; };
+npImg.dataset.default = npImg.src;
+const setEmb = id => { if (!id) { npImg.src = npImg.dataset.default; curVid = null; return; } if (curVid === id) return; curVid = id; npImg.src = `https://img.youtube.com/vi/${encodeURIComponent(id)}/mqdefault.jpg`; };
 
 let statusInterval = null;
 let selectedGuild = null;
@@ -527,7 +528,8 @@ const refresh = async () => {
 
     document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';
     const played = s?.playedCount || 0;
-    document.getElementById('sPlayed').innerText = `${played} / ${(allVid.length || 0) - played}`;
+    const total = allVid.length || 0;
+    document.getElementById('sPlayed').innerText = total > 0 ? `${played} / ${total - played}` : `${played} / —`;
 
     // Errors
     const errList = document.getElementById('errList');
@@ -697,13 +699,16 @@ const initDashboard = async () => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (statusInterval) clearInterval(statusInterval); if (healthInterval) clearInterval(healthInterval); }
-  else { statusInterval = setInterval(refresh, 2000); healthInterval = setInterval(refreshHealth, 30000); refresh(); refreshHealth(); }
+  else { if (!sseConnected) statusInterval = setInterval(refresh, 2000); healthInterval = setInterval(refreshHealth, 30000); refresh(); refreshHealth(); }
 });
 
-// SSE
+// SSE — disable polling when connected
+let sseConnected = false;
 if (typeof EventSource !== 'undefined') {
   const sse = new EventSource('/api/sse');
+  sse.onopen = () => { sseConnected = true; if (statusInterval) { clearInterval(statusInterval); statusInterval = null; } };
   sse.onmessage = () => refresh();
+  sse.onerror = () => { sseConnected = false; if (!statusInterval && !document.hidden) statusInterval = setInterval(refresh, 10_000); };
 }
 </script>
 </body>
