@@ -5,6 +5,7 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('sleeptimer');
 const timers = new Map();
+const deadlines = new Map();
 
 export const data = new SlashCommandBuilder()
   .setName('ساعة_نوم')
@@ -40,8 +41,11 @@ export async function execute(interaction) {
 
 export function setTimer(guildId: string, minutes: number): void {
   cancelTimer(guildId);
+  const deadline = Date.now() + minutes * 60_000;
+  deadlines.set(guildId, deadline);
   const timer = setTimeout(async () => {
     timers.delete(guildId);
+    deadlines.delete(guildId);
     try {
       await stopPlayback(guildId, { manual: true });
       logger.info(`Sleep timer triggered for guild ${guildId} after ${minutes}m`);
@@ -56,12 +60,16 @@ export function cancelTimer(guildId: string): boolean {
   if (timers.has(guildId)) {
     clearTimeout(timers.get(guildId));
     timers.delete(guildId);
+    deadlines.delete(guildId);
     return true;
   }
   return false;
 }
 
 export function getRemainingMs(guildId: string): number {
-  // Not tracked precisely, but we can return 0 if no timer
-  return timers.has(guildId) ? -1 : 0;
+  const deadline = deadlines.get(guildId);
+  if (!deadline) return 0;
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) { deadlines.delete(guildId); return 0; }
+  return remaining;
 }

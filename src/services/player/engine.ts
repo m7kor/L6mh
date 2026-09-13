@@ -649,7 +649,7 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
       video = catalog.find((v) => v.videoId === videoId);
     }
 
-    await playRandomJingle(guild, freshChannel);
+    try { await playRandomJingle(guild, freshChannel); } catch {}
     await connectAndPlay(guild, freshChannel, video, { countPlay: false });
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {

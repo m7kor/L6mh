@@ -74,6 +74,19 @@ async function getApiData() {
     }));
   }
 
+  // Add sleep timer remaining for each session
+  let getRemainingMsFn: ((guildId: string) => number) | null = null;
+  try {
+    const mod = await import('../commands/sleeptimer.js');
+    getRemainingMsFn = mod.getRemainingMs;
+  } catch {}
+  if (getRemainingMsFn) {
+    sessions = sessions.map(s => ({
+      ...s,
+      sleepTimerRemainingMs: getRemainingMsFn!(s.guildId),
+    }));
+  }
+
   return {
     uptime: process.uptime(),
     pid: process.pid,
@@ -420,14 +433,16 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   // Favorites endpoints
   app.get('/api/favorites', (req, res) => {
     try {
+      const userId = req.query.user_id as string || 'dashboard';
       const db = getDb();
       const rows = db.prepare(`
         SELECT f.user_id, f.video_id, f.added_at, pc.title
         FROM favorites f
         LEFT JOIN play_counts pc ON pc.video_id = f.video_id
+        WHERE f.user_id = ?
         ORDER BY f.added_at DESC
         LIMIT 100
-      `).all();
+      `).all(userId);
       res.json({ favorites: rows });
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch favorites' });
@@ -442,8 +457,12 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       }
       const uid = user_id || 'dashboard';
       const db = getDb();
-      db.prepare('INSERT OR IGNORE INTO favorites (user_id, video_id) VALUES (?, ?)').run(uid, video_id);
-      res.json({ ok: true });
+      const existing = db.prepare('SELECT 1 FROM favorites WHERE user_id = ? AND video_id = ?').get(uid, video_id);
+      if (existing) {
+        return res.json({ ok: true, already: true });
+      }
+      db.prepare('INSERT INTO favorites (user_id, video_id) VALUES (?, ?)').run(uid, video_id);
+      res.json({ ok: true, already: false });
     } catch (err) {
       res.status(500).json({ error: 'Failed to add favorite' });
     }
@@ -452,8 +471,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   app.delete('/api/favorites/:videoId', (req, res) => {
     try {
       const { videoId } = req.params;
+      const userId = (req.query.user_id as string) || 'dashboard';
       const db = getDb();
-      db.prepare('DELETE FROM favorites WHERE video_id = ?').run(videoId);
+      db.prepare('DELETE FROM favorites WHERE video_id = ? AND user_id = ?').run(videoId, userId);
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: 'Failed to remove favorite' });

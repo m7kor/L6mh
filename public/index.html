@@ -333,6 +333,8 @@
       <span id="volumeValue" class="volume-value">100%</span>
     </div>
     <button class="ctrl-btn" onclick="setSleepTimer()" title="مؤقت النوم" style="margin-right:auto"><i class="fas fa-moon"></i></button>
+    <span id="sleepCountdown" style="font-size:12px;color:var(--yellow);font-family:var(--font-en);font-weight:700;display:none;"></span>
+    <button class="ctrl-btn" onclick="confirmStop(this)" title="إيقاف وفصل" style="color:var(--red)"><i class="fas fa-stop"></i></button>
     <button class="ctrl-btn" onclick="showHelp()" title="اختصارات لوحة المفاتيح"><i class="fas fa-keyboard"></i></button>
   </div>
 
@@ -544,6 +546,27 @@ const setVolume = async (val) => {
   } catch { showToast('تعذر الاتصال', 'error'); }
 };
 
+let stopConfirmTimer = null;
+const confirmStop = (btn) => {
+  if (stopConfirmTimer) { clearTimeout(stopConfirmTimer); stopConfirmTimer = null; }
+  if (btn.dataset.confirmed === '1') {
+    btn.dataset.confirmed = '0';
+    btn.innerHTML = '<i class="fas fa-stop"></i>';
+    btn.style.background = '';
+    cmd('stop', btn);
+    return;
+  }
+  btn.dataset.confirmed = '1';
+  btn.innerHTML = '<i class="fas fa-check"></i>';
+  btn.style.background = 'rgba(239,68,68,0.2)';
+  stopConfirmTimer = setTimeout(() => {
+    btn.dataset.confirmed = '0';
+    btn.innerHTML = '<i class="fas fa-stop"></i>';
+    btn.style.background = '';
+    stopConfirmTimer = null;
+  }, 3000);
+};
+
 let sleepTimerMinutes = 0;
 const setSleepTimer = async () => {
   const input = prompt('مؤقت النوم — أدخل عدد الدقائق (0 للإلغاء):', sleepTimerMinutes || '30');
@@ -631,6 +654,16 @@ const refresh = async () => {
         const vol = Math.round(s.volume * 100);
         document.getElementById('volumeSlider').value = vol;
         document.getElementById('volumeValue').textContent = vol + '%';
+      }
+      // Sleep timer countdown
+      const sleepEl = document.getElementById('sleepCountdown');
+      if (s.sleepTimerRemainingMs > 0) {
+        const mins = Math.floor(s.sleepTimerRemainingMs / 60000);
+        const secs = Math.floor((s.sleepTimerRemainingMs % 60000) / 1000);
+        sleepEl.textContent = `🌙 ${mins}:${String(secs).padStart(2, '0')}`;
+        sleepEl.style.display = '';
+      } else {
+        sleepEl.style.display = 'none';
       }
     } else {
       pill.className = 'hdr-pill warn'; txt.textContent = 'لا يوجد بث';
