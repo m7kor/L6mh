@@ -530,7 +530,7 @@ const refresh = async () => {
     const played = s?.playedCount || 0;
     const total = allVid.length || 0;
     document.getElementById('sPlayed').innerText = total > 0 ? `${played} / ${total - played}` : `${played} / —`;
-    document.getElementById('sCycle').innerText = s ? `#${s.cycleCount || 0} • ${s.queueCount || 0} مقطع` : '—';
+    document.getElementById('sCycle').innerText = s ? `#${s.cycleCount || 1}` : '—';
 
     // Errors
     const errList = document.getElementById('errList');

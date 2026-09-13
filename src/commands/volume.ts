@@ -21,7 +21,6 @@ export async function execute(interaction) {
   }
 
   const level = interaction.options.getInteger('المستوى');
-  const volume = Math.max(0, Math.min(1, level / 100));
 
   try {
     const info = await getSessionInfo(interaction.guildId);
@@ -30,7 +29,7 @@ export async function execute(interaction) {
       return;
     }
 
-    setVolume(interaction.guildId, volume, connectAndPlay);
+    setVolume(interaction.guildId, level, connectAndPlay);
     await interaction.reply(`🔊 تم ضبط الصوت على ${level}%`);
   } catch (err) {
     await interaction.reply(`❌ خطأ: ${err.message}`);
