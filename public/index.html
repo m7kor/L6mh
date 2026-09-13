@@ -667,6 +667,8 @@ const refresh = async () => {
       });
     } else { errSection.style.display = 'none'; }
 
+    // Queue preview + Top played + Leaderboard + Favorites (only on full refresh)
+    if (forceFull) {
     // Queue preview
     const qList = document.getElementById('qList');
     const qSection = document.getElementById('queueSection');
@@ -721,8 +723,6 @@ const refresh = async () => {
       qSection.style.display = 'none';
     }
 
-    // Top played + Leaderboard + Favorites (only on full refresh to avoid flickering)
-    if (forceFull) {
     // Top played
     const topList = document.getElementById('topList');
     const topSection = document.getElementById('topSection');
