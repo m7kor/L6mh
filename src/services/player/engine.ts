@@ -430,7 +430,7 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
     const preloadAt = Math.max(5_000, (video.durationSeconds - 15) * 1000);
     setTimeout(() => {
       if (session.current?.videoId === video.videoId && session.continuous) {
-        preloadNextTrack(session).catch(() => {});
+        preloadNextTrack(session).catch((e) => logger.debug(`Preload failed: ${e.message}`));
       }
     }, preloadAt);
   }
@@ -511,7 +511,7 @@ async function onTrackFinished(guild, channel) {
         } else {
           logger.warn(`[${guild.id}] Track played only ${Math.round(playedSeconds)}s — broken URL, skipping.`);
           addFailedId(session, session.current.videoId);
-          recordPlay(session.current, { failed: true }).catch(() => {});
+          recordPlay(session.current, { failed: true }).catch((e) => logger.debug(`recordPlay failed: ${e.message}`));
           await sleep(3000);
           session.retryCount = 0; // reset for next track
         }
@@ -521,7 +521,7 @@ async function onTrackFinished(guild, channel) {
         if (session.earlyEndRetryCount <= 3) {
           logger.warn(`[${guild.id}] Track ended early: ${Math.round(playedSeconds)}s/${expectedDuration}s (${pct}%) — retrying (${session.earlyEndRetryCount}/3)...`);
           session.current = { ...session.current, progressSeconds: Math.floor(playedSeconds) };
-          recordPlay(session.current, { failed: true }).catch(() => {});
+          recordPlay(session.current, { failed: true }).catch((e) => logger.debug(`recordPlay failed: ${e.message}`));
           await sleep(2000);
           session.advancing = false;
           connectAndPlay(guild, channel, session.current, { countPlay: false }).catch(() => onTrackFinished(guild, channel));
@@ -529,17 +529,17 @@ async function onTrackFinished(guild, channel) {
         } else {
           logger.warn(`[${guild.id}] Track ended early ${session.earlyEndRetryCount}x — skipping.`);
           addFailedId(session, session.current.videoId);
-          recordPlay(session.current, { failed: true }).catch(() => {});
+          recordPlay(session.current, { failed: true }).catch((e) => logger.debug(`recordPlay failed: ${e.message}`));
           session.earlyEndRetryCount = 0;
           await sleep(3000);
         }
       } else if (session.current?.videoId) {
-        recordPlay(session.current, { completed: true }).catch(() => {});
+        recordPlay(session.current, { completed: true }).catch((e) => logger.debug(`recordPlay failed: ${e.message}`));
         session.retryCount = 0;
         session.earlyEndRetryCount = 0;
       }
     } else if (session.current?.videoId) {
-      recordPlay(session.current, { completed: true }).catch(() => {});
+      recordPlay(session.current, { completed: true }).catch((e) => logger.debug(`recordPlay failed: ${e.message}`));
       session.retryCount = 0;
     }
 
@@ -582,7 +582,7 @@ async function onTrackFinished(guild, channel) {
           if (attempt >= 3) {
             logger.warn(`[${guild.id}] Skipping ${next.title} after 3 pre-validation failures.`);
             addFailedId(session, next.videoId);
-            recordPlay(next, { failed: true }).catch(() => {});
+            recordPlay(next, { failed: true }).catch((e) => logger.debug(`recordPlay failed: ${e.message}`));
             nextVideoCandidate = null; // force pop new video on next iteration
           } else {
             nextVideoCandidate = next; // retain for retry
