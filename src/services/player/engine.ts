@@ -545,10 +545,9 @@ async function onTrackFinished(guild, channel) {
     }
 
     let attempt = 0;
-    const MAX_ATTEMPTS = 10;
     let nextVideoCandidate = null;
 
-    while (session.continuous && !session.manualStop && attempt < MAX_ATTEMPTS) {
+    while (session.continuous && !session.manualStop) {
       try {
         await playRandomJingle(guild, channel);
 
@@ -578,7 +577,7 @@ async function onTrackFinished(guild, channel) {
         if (!valid) {
           attempt += 1;
           const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
-          logger.warn(`[${guild.id}] Pre-validation failed for ${next.title} (attempt ${attempt}/${MAX_ATTEMPTS}), retrying...`);
+          logger.warn(`[${guild.id}] Pre-validation failed for ${next.title} (attempt ${attempt}), retrying...`);
           
           if (attempt >= 3) {
             logger.warn(`[${guild.id}] Skipping ${next.title} after 3 pre-validation failures.`);
@@ -601,20 +600,14 @@ async function onTrackFinished(guild, channel) {
         attempt += 1;
         const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
         logger.error(
-          `[${guild.id}] Failed to play next (attempt ${attempt}/${MAX_ATTEMPTS}):`,
+          `[${guild.id}] Failed to play next (attempt ${attempt}):`,
           err.message,
-          attempt < MAX_ATTEMPTS ? `retrying in ${delay / 1000}s…` : 'giving up.',
+          `retrying in ${delay / 1000}s…`,
         );
-        if (attempt < MAX_ATTEMPTS) await sleep(delay);
+        await sleep(delay);
       }
     }
 
-    if (attempt >= MAX_ATTEMPTS) {
-      logger.error(`[${guild.id}] Stopped after ${MAX_ATTEMPTS} failed attempts.`);
-      notify('🔴 توقف', NOTIFY.stopped(guild.name || guild.id, MAX_ATTEMPTS), 'error').catch(() => {});
-      logDashboardError(`Guild ${guild.id} stopped after ${MAX_ATTEMPTS} failed attempts.`);
-      await stopPlayback(guild.id, { manual: false });
-    }
   } finally {
     session.advancing = false;
   }
@@ -627,13 +620,6 @@ async function onTrackFinished(guild, channel) {
 async function rejoinAndResume(guild, channel, attempt = 1) {
   const session = getSession(guild.id);
   if (!session.continuous || session.manualStop) return;
-
-  if (attempt > 20) {
-    logger.error(`[${guild.id}] Giving up rejoin after ${attempt} attempts.`);
-    logDashboardError(`[${guild.id}] Giving up rejoin after ${attempt} attempts.`);
-    await stopPlayback(guild.id, { manual: false });
-    return;
-  }
 
   try {
     const freshChannel = await guild.channels.fetch(channel.id).catch(() => channel);
@@ -655,9 +641,9 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {
     const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
-    logger.error(`[${guild.id}] Rejoin failed:`, err.message);
+    logger.error(`[${guild.id}] Rejoin failed (attempt ${attempt}):`, err.message);
     logDashboardError(`[${guild.id}] Rejoin failed (attempt ${attempt}): ${err.message}`);
-    if (attempt === 5) {
+    if (attempt === 5 || attempt % 50 === 0) {
       notify('🟡 Voice Rejoin Struggling', NOTIFY.rejoinFailed(guild.id, attempt, err.message), 'warn').catch(() => {});
     }
     setTimeout(() => rejoinAndResume(guild, channel, attempt + 1), delay);

@@ -113,8 +113,15 @@ async function getApiData() {
 
 async function getPublicData() {
   const sessions = getAllSessionsFn ? getAllSessionsFn() : [];
-  const plays = await loadPlays();
   const videos = await getVideos();
+
+  // Use cached plays (same cache as getApiData)
+  const now = Date.now();
+  let plays = playsCache.data;
+  if (!plays || now - playsCache.ts > PLAYS_CACHE_TTL_MS) {
+    plays = await loadPlays();
+    playsCache = { data: plays, ts: now };
+  }
 
   let totalPlays = 0;
   for (const key in plays) {
@@ -362,14 +369,30 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
         return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
       }
       const cmd = (req.body.command || '').trim();
-      const targetGuildId = req.body.guildId || null;
+      let targetGuildId = req.body.guildId || null;
       if (!cmd) return res.status(400).json({ error: 'No command provided' });
+
+      // Validate guildId against known sessions
+      if (targetGuildId) {
+        const sessions = getAllSessionsFn ? getAllSessionsFn() : [];
+        if (!sessions.some(s => s.guildId === targetGuildId)) {
+          targetGuildId = null; // ignore invalid guildId, broadcast to all
+        }
+      }
 
       // Validate command against whitelist
       const cmdLower = cmd.toLowerCase().trim();
       const allowed = CMD_WHITELIST.some(prefix => cmdLower === prefix || cmdLower.startsWith(prefix + ' '));
       if (!allowed) {
         return res.status(400).json({ error: 'Unknown command' });
+      }
+
+      // Validate play sub-command videoId
+      if (cmdLower.startsWith('play ')) {
+        const videoId = cmd.slice(5).trim();
+        if (!isValidVideoId(videoId)) {
+          return res.status(400).json({ error: 'Invalid video ID' });
+        }
       }
       
       if (executeCommandFn) {

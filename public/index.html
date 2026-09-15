@@ -555,16 +555,40 @@ const confirmStop = (btn) => {
 
 let sleepTimerMinutes = 0;
 const setSleepTimer = async () => {
-  const input = prompt('مؤقت النوم — أدخل عدد الدقائق (0 للإلغاء):', sleepTimerMinutes || '30');
-  if (input === null) return;
-  const mins = parseInt(input);
-  if (isNaN(mins) || mins < 0 || mins > 480) { showToast('أدخل رقم صحيح (0-480)', 'error'); return; }
-  try {
-    const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: `sleeptimer ${mins}` }) });
-    const d = await r.json();
-    sleepTimerMinutes = mins;
-    showToast(mins === 0 ? 'تم إلغاء المؤقت' : `سيتوقف بعد ${mins} دقيقة`, 'success');
-  } catch { showToast('تعذر الاتصال', 'error'); }
+  // Custom modal instead of prompt()
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:320px;max-width:90vw;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-size:15px;font-weight:800;"><i class="fas fa-moon" style="color:var(--yellow);margin-left:8px;"></i>مؤقت النوم</h3>
+        <button onclick="this.closest('div[style]').parentElement.remove()" style="background:none;border:none;color:var(--text-3);cursor:pointer;font-size:16px;">✕</button>
+      </div>
+      <input type="number" id="sleepMinInput" min="0" max="480" value="${sleepTimerMinutes || 30}" style="width:100%;padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:var(--font-en);outline:none;margin-bottom:8px;" placeholder="عدد الدقائق (0-480)">
+      <div style="display:flex;gap:8px;">
+        <button id="sleepOk" style="flex:1;padding:10px;background:var(--cyan);color:#000;border:none;border-radius:var(--radius-sm);font-weight:700;cursor:pointer;">تأكيد</button>
+        <button id="sleepCancel" style="flex:1;padding:10px;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;">إلغاء</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  const input = document.getElementById('sleepMinInput');
+  input.focus();
+  input.select();
+  const submit = async () => {
+    const mins = parseInt(input.value);
+    modal.remove();
+    if (isNaN(mins) || mins < 0 || mins > 480) { showToast('أدخل رقم صحيح (0-480)', 'error'); return; }
+    try {
+      const r = await authFetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: `sleeptimer ${mins}` }) });
+      const d = await r.json();
+      sleepTimerMinutes = mins;
+      showToast(mins === 0 ? 'تم إلغاء المؤقت' : `سيتوقف بعد ${mins} دقيقة`, 'success');
+    } catch { showToast('تعذر الاتصال', 'error'); }
+  };
+  document.getElementById('sleepOk').addEventListener('click', submit);
+  document.getElementById('sleepCancel').addEventListener('click', () => modal.remove());
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') modal.remove(); });
 };
 
 const fmt = s => { if (!s) return '0:00'; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60); return h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${m}:${String(sec).padStart(2,'0')}`; };
@@ -845,7 +869,7 @@ const refresh = async () => {
       } else {
         lbSection.style.display = 'none';
       }
-    } catch {}
+    } catch (e) { console.debug('Leaderboard fetch failed:', e.message); }
 
     // Favorites
     try {
@@ -885,7 +909,7 @@ const refresh = async () => {
       } else {
         favSection.style.display = 'none';
       }
-    } catch {}
+    } catch (e) { console.debug('Favorites fetch failed:', e.message); }
     } // end forceFull
 
   } catch {
@@ -948,7 +972,7 @@ const refreshHealth = async () => {
     const dbEl = document.getElementById('healthDbVal');
     if (h.db.ok) { const kb = h.db.bytes / 1024; dbEl.textContent = kb > 1024 ? `${(kb/1024).toFixed(1)} MB` : `${Math.round(kb)} KB`; dbEl.className = 'health-val ok'; }
     else { dbEl.textContent = 'خطأ'; dbEl.className = 'health-val err'; }
-  } catch {}
+  } catch (e) { console.debug('Health check failed:', e.message); }
 };
 let healthInterval = null;
 
@@ -1014,7 +1038,7 @@ const initDashboard = async () => {
   try {
     const r = await authFetch('/api/videos');
     if (r.ok) { const d = await r.json(); allVid = d.videos || []; render(); }
-  } catch {}
+  } catch (e) { console.debug('Video list fetch failed:', e.message); }
   refresh();
   refreshHealth();
   statusInterval = setInterval(refresh, 5000);
@@ -1031,20 +1055,6 @@ const initDashboard = async () => {
 };
 
 // Refresh indicator logic
-let refreshCount = 0;
-const origRefresh = refresh;
-const wrappedRefresh = async () => {
-  const dot = document.getElementById('refreshDot');
-  const text = document.getElementById('refreshText');
-  if (dot) dot.classList.add('fetching');
-  if (text) text.textContent = `#${++refreshCount}`;
-  try { await origRefresh(); } finally {
-    if (dot) dot.classList.remove('fetching');
-    if (text) text.textContent = sseConnected ? 'SSE' : ' POLL';
-  }
-};
-
-
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { if (statusInterval) clearInterval(statusInterval); if (healthInterval) clearInterval(healthInterval); }
   else { if (!sseConnected) statusInterval = setInterval(refresh, 2000); healthInterval = setInterval(refreshHealth, 30000); refresh(); refreshHealth(); }
