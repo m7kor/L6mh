@@ -5,7 +5,10 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
     },
-    max_memory_restart: '300M',
+    max_memory_restart: '500M',
+    autorestart: true,
+    restart_delay: 5000,
+    max_restarts: 10,
     exp_backoff_restart_delay: 100,
     log_date_format: 'YYYY-MM-DD HH:mm:ss',
     error_file: 'logs/error.log',

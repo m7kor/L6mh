@@ -60,6 +60,40 @@ function jitteredDelay(baseMs, attempt) {
   return Math.floor(jitter);
 }
 
+/** Quick network check — DNS lookup to verify internet is available */
+async function isNetworkUp(): Promise<boolean> {
+  try {
+    const { lookup } = await import('node:dns');
+    return new Promise((resolve) => {
+      lookup('discord.com', (err) => resolve(!err));
+    });
+  } catch { return false; }
+}
+
+/**
+ * Smart delay: if network is down, wait longer (2-5 min).
+ * If network is up but yt-dlp failed, use normal backoff.
+ */
+async function smartDelay(attempt: number, isNetworkError: boolean): Promise<void> {
+  if (isNetworkError) {
+    // Network is down — check every 2 minutes
+    const NETWORK_CHECK_INTERVAL_MS = 120_000;
+    logger.warn(`Network down — checking every ${NETWORK_CHECK_INTERVAL_MS / 1000}s...`);
+    while (true) {
+      await sleep(NETWORK_CHECK_INTERVAL_MS);
+      if (await isNetworkUp()) {
+        logger.info('Network is back! Resuming...');
+        return;
+      }
+    }
+  } else {
+    // Normal backoff for non-network errors
+    const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
+    logger.info(`Retrying in ${Math.round(delay / 1000)}s...`);
+    await sleep(delay);
+  }
+}
+
 /**
  * Dynamic timeout based on video duration.
  * Short videos get shorter timeouts, long videos get longer ones.
@@ -546,6 +580,7 @@ async function onTrackFinished(guild, channel) {
 
     let attempt = 0;
     let nextVideoCandidate = null;
+    let consecutiveNetworkErrors = 0;
 
     while (session.continuous && !session.manualStop) {
       try {
@@ -576,7 +611,6 @@ async function onTrackFinished(guild, channel) {
         const valid = await preValidateVideo(next.url);
         if (!valid) {
           attempt += 1;
-          const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
           logger.warn(`[${guild.id}] Pre-validation failed for ${next.title} (attempt ${attempt}), retrying...`);
           
           if (attempt >= 3) {
@@ -586,25 +620,36 @@ async function onTrackFinished(guild, channel) {
             nextVideoCandidate = null; // force pop new video on next iteration
           } else {
             nextVideoCandidate = next; // retain for retry
-            await sleep(delay);
+            await sleep(jitteredDelay(RETRY_BASE_DELAY_MS, attempt));
           }
           continue; // loop again (attempt is incremented)
         }
 
+        // Success — reset counters
         nextVideoCandidate = null;
+        attempt = 0;
+        consecutiveNetworkErrors = 0;
         session.current = next;
         session.playedIds.add(next.videoId);
         await connectAndPlay(guild, channel, next);
         return;
       } catch (err) {
         attempt += 1;
-        const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
-        logger.error(
-          `[${guild.id}] Failed to play next (attempt ${attempt}):`,
-          err.message,
-          `retrying in ${delay / 1000}s…`,
-        );
-        await sleep(delay);
+        const isNetworkError = err.message?.includes('fetch failed')
+          || err.message?.includes('ENOTFOUND')
+          || err.message?.includes('ETIMEDOUT')
+          || err.message?.includes('ECONNREFUSED')
+          || err.message?.includes('network');
+
+        if (isNetworkError) {
+          consecutiveNetworkErrors++;
+          logger.error(`[${guild.id}] Network error (consecutive: ${consecutiveNetworkErrors}):`, err.message);
+        } else {
+          consecutiveNetworkErrors = 0;
+          logger.error(`[${guild.id}] Failed to play next (attempt ${attempt}):`, err.message);
+        }
+
+        await smartDelay(attempt, isNetworkError);
       }
     }
 
@@ -640,12 +685,35 @@ async function rejoinAndResume(guild, channel, attempt = 1) {
     await connectAndPlay(guild, freshChannel, video, { countPlay: false });
     logger.info(`[${guild.id}] Rejoined and resumed.`);
   } catch (err) {
-    const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
+    const isNetworkError = err.message?.includes('ENOTFOUND')
+      || err.message?.includes('ETIMEDOUT')
+      || err.message?.includes('ECONNREFUSED')
+      || err.message?.includes('network');
+
     logger.error(`[${guild.id}] Rejoin failed (attempt ${attempt}):`, err.message);
     logDashboardError(`[${guild.id}] Rejoin failed (attempt ${attempt}): ${err.message}`);
+
     if (attempt === 5 || attempt % 50 === 0) {
       notify('🟡 Voice Rejoin Struggling', NOTIFY.rejoinFailed(guild.id, attempt, err.message), 'warn').catch(() => {});
     }
-    setTimeout(() => rejoinAndResume(guild, channel, attempt + 1), delay);
+
+    // Smart delay: network errors get longer waits, other errors get normal backoff
+    if (isNetworkError) {
+      const NETWORK_CHECK_MS = 120_000;
+      logger.warn(`[${guild.id}] Network error during rejoin — checking every ${NETWORK_CHECK_MS / 1000}s...`);
+      setTimeout(async () => {
+        while (true) {
+          await sleep(NETWORK_CHECK_MS);
+          if (await isNetworkUp()) {
+            logger.info(`[${guild.id}] Network restored — rejoining...`);
+            rejoinAndResume(guild, channel, 1); // reset attempt on recovery
+            return;
+          }
+        }
+      }, 0);
+    } else {
+      const delay = jitteredDelay(RETRY_BASE_DELAY_MS, attempt);
+      setTimeout(() => rejoinAndResume(guild, channel, attempt + 1), delay);
+    }
   }
 }
