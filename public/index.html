@@ -439,6 +439,7 @@
 </div>
 
 <script>
+const playbackView = import('/js/playback-view.js');
 const toggleTheme = () => {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const newTheme = isLight ? 'dark' : 'light';
@@ -640,7 +641,15 @@ const refresh = async () => {
     document.getElementById('sMem').innerText = d.memMB ? `${d.memMB}MB` : '—';
 
     if (s && s.title) {
-      pill.className = 'hdr-pill on'; txt.textContent = s.guildName || 'متصل';
+      // Truthful connection pill: playback state drives it, not just "a title exists".
+      const PILL_BY_STATE = {
+        playing: ['hdr-pill on', null], paused: ['hdr-pill warn', 'متوقف مؤقتاً'],
+        buffering: ['hdr-pill warn', 'جاري تجهيز الصوت'], disconnected: ['hdr-pill off', 'انقطع اتصال الصوت'],
+        stopped: ['hdr-pill off', 'متوقف'], idle: ['hdr-pill warn', 'لا يوجد بث'],
+        unknown: ['hdr-pill warn', 'حالة غير مؤكدة'],
+      };
+      const [pillClass, stateLabel] = PILL_BY_STATE[s.playbackState] || PILL_BY_STATE.unknown;
+      pill.className = pillClass; txt.textContent = stateLabel || (s.guildName || 'متصل');
       document.getElementById('npTitle').innerText = s.title;
       const mode = s.mode === 'random' ? 'عشوائي مستمر' : s.mode === 'latest' ? 'آخر مقطع' : 'استكمال';
       document.getElementById('npTag').innerText = `📻 ${mode}`;
@@ -687,6 +696,10 @@ const refresh = async () => {
       // Hide player controls
       document.getElementById('npControls').style.display = 'none';
     }
+
+    const { renderPlaybackState } = await playbackView;
+    const isPlaying = renderPlaybackState(document, s);
+    npState.paused = !isPlaying;
 
     document.getElementById('sServer').innerText = s ? `${s.guildName || '—'} • #${s.channelName || '?'}` : '—';
     const played = s?.playedCount || 0;

@@ -12,6 +12,8 @@ import { getCookieInfo } from '../services/cookies.js';
 import { getDb } from './database.js';
 import { getLeaderboard, getUserBadges, backfillUsernames } from '../services/community.js';
 import { isValidVideoId } from './validators.js';
+import { selectPublicSession } from './playback-state.js';
+import { validateDiscordInviteUrl } from './discord-invite.js';
 
 // Jingle event buffer — resolved lazily to avoid circular dep at load time
 let peekJingleEvents = () => [];
@@ -131,18 +133,22 @@ async function getPublicData() {
     .sort((a, b) => (b[1].playCount || b[1].count || 0) - (a[1].playCount || a[1].count || 0))
     .slice(0, 10);
 
-  const activeSession = sessions.find(s => s.title) || sessions[0] || null;
+  const activeSession = selectPublicSession(sessions);
 
   return {
     nowPlaying: activeSession ? {
       title: activeSession.title,
-      videoId: activeSession.guildId ? (getSessionInfoFn?.(activeSession.guildId)?.current?.videoId || null) : null,
+      videoId: activeSession.videoId ?? (activeSession.guildId ? (getSessionInfoFn?.(activeSession.guildId)?.current?.videoId || null) : null),
       mode: activeSession.mode,
       elapsed: activeSession.elapsedSeconds || 0,
       duration: activeSession.durationSeconds || null,
       paused: activeSession.paused || false,
+      playbackState: activeSession.playbackState || 'unknown',
     } : null,
     guilds: sessions.length,
+    playbackState: activeSession?.playbackState || 'idle',
+    timestamp: new Date().toISOString(),
+    discordInviteUrl: validateDiscordInviteUrl(process.env.DISCORD_INVITE_URL),
     totalPlays,
     totalVideos: videos.length,
     uptimeHours: Math.floor(process.uptime() / 3600),

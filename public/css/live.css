@@ -1,0 +1,229 @@
+/* ═══════════════════════════════════════════════════════════
+   Midnight Broadcast — هوية «البث الليلي»
+   حبر داكن + عنبر دافئ + حركة مقتصدة. الصدق قبل الزينة:
+   مصباح الهواء يضيء فقط عندما يكون الصوت مسموعاً فعلاً.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --onair: #E9B86E;
+  --onair-deep: #B9834A;
+  --onair-dim: rgba(233, 184, 110, 0.14);
+  --violet: #A855F7;
+}
+
+body {
+  background:
+    radial-gradient(1100px 620px at 85% -8%, rgba(233, 184, 110, 0.08), transparent 60%),
+    radial-gradient(900px 560px at 8% 108%, rgba(168, 85, 247, 0.07), transparent 65%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* الرقصات الضوئية الكبيرة تهدأ — محطة، لا ملهى */
+.particles::before { background: radial-gradient(circle, rgba(233, 184, 110, 0.10), transparent 70%); }
+.particles::after  { background: radial-gradient(circle, rgba(168, 85, 247, 0.08), transparent 70%); }
+.particle-orb { display: none; }
+
+.page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 100px; position: relative; z-index: 1; }
+
+/* ── رأس المحطة ── */
+.masthead { max-width: 1100px; margin: 0 auto; padding: 20px 16px 0; position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.masthead .station { display: flex; align-items: center; gap: 12px; }
+.station-mark { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--onair), var(--onair-deep)); color: #0a0d13;
+  font-weight: 900; font-size: 20px; box-shadow: 0 6px 24px rgba(233, 184, 110, 0.25); }
+.station-name { font-size: 17px; font-weight: 900; line-height: 1.3; }
+.station-sub { font-size: 11px; color: var(--text-2); font-family: var(--font-en); font-weight: 600; letter-spacing: 0.4px; }
+.masthead .clock { font-family: var(--font-en); font-size: 12px; color: var(--text-2); font-weight: 600; text-align: left; }
+.masthead-rule { max-width: 1100px; margin: 14px auto 0; height: 1px; position: relative; z-index: 1;
+  background: linear-gradient(90deg, transparent, var(--onair-dim) 30%, rgba(168, 85, 247, 0.18) 70%, transparent); }
+
+/* ── Console (البطل) ── */
+.hero { display: grid; grid-template-columns: 320px 1fr; gap: 28px; margin-bottom: 40px;
+  background: rgba(13, 17, 23, 0.55); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; animation: slideUp 0.5s ease; }
+.hero-thumb { position: relative; overflow: hidden; background: var(--surface-2); min-height: 100%; }
+.hero-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
+.hero-thumb:hover img { transform: scale(1.03); }
+.hero-thumb .live-badge { position: absolute; top: 12px; right: 12px; z-index: 2; }
+.hero-thumb::after { content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(6, 10, 19, 0.75)); pointer-events: none; }
+.hero-thumb .eq-overlay { position: absolute; bottom: 10px; left: 12px; z-index: 2; }
+
+.hero-info { display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 24px; }
+.hero-tag { font-size: 12px; font-weight: 800; color: var(--onair); font-family: var(--font-en);
+  letter-spacing: 1.2px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.hero-tag::before { content: ''; width: 24px; height: 2px; background: var(--onair); border-radius: 1px; }
+.hero-title { font-size: 28px; font-weight: 900; line-height: 1.55;
+  background: linear-gradient(135deg, #fff 55%, var(--onair) 130%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--text-2);
+  font-family: var(--font-en); font-weight: 600; }
+.hero-progress { margin-top: 6px; }
+.hero-times { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-3);
+  font-family: var(--font-en); font-weight: 600; margin-top: 6px; }
+
+/* ── مصباح الهواء وCTA ── */
+.onair-row { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 4px; }
+.onair { display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px;
+  border: 1px solid var(--border); border-radius: 999px; background: rgba(6, 10, 19, 0.5); }
+.onair-lamp { width: 10px; height: 10px; border-radius: 50%; background: var(--surface-3); transition: 0.3s; flex-shrink: 0; }
+#hero[data-state="playing"] .onair-lamp { background: var(--onair);
+  box-shadow: 0 0 0 3px var(--onair-dim), 0 0 18px rgba(233, 184, 110, 0.55);
+  animation: lampPulse 2.4s ease-in-out infinite; }
+@keyframes lampPulse { 50% { box-shadow: 0 0 0 3px var(--onair-dim), 0 0 30px rgba(233, 184, 110, 0.8); } }
+
+.join-cta { display: inline-flex; align-items: center; gap: 10px; padding: 13px 26px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--onair), var(--onair-deep)); color: #0a0d13;
+  font-weight: 800; font-size: 15px; text-decoration: none;
+  box-shadow: 0 8px 28px rgba(233, 184, 110, 0.22); transition: transform 0.2s, filter 0.2s; }
+.join-cta:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.join-cta:focus-visible { outline: 2px solid var(--onair); outline-offset: 2px; }
+.join-cta[hidden] { display: none; }
+.join-note { font-size: 12px; color: var(--text-2); }
+.join-note[hidden] { display: none; }
+
+/* ── شريط المشاركة ── */
+.share-bar { display: flex; justify-content: center; gap: 10px; margin-bottom: 28px; }
+.share-btn { padding: 10px 20px; background: rgba(13, 17, 23, 0.6); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: all 0.25s; display: flex; align-items: center; gap: 8px; font-family: var(--font-ar); }
+.share-btn:hover { border-color: var(--onair); color: var(--onair); background: var(--onair-dim); transform: translateY(-1px); }
+.share-btn.copied { border-color: var(--green); color: var(--green); }
+
+/* ── الإحصائيات ── */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 44px; animation: slideUp 0.6s ease; }
+.stat { background: rgba(13, 17, 23, 0.55); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px 16px; text-align: center; transition: all 0.3s ease; position: relative; overflow: hidden; }
+.stat::before { content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 0%, var(--onair-dim), transparent 70%); opacity: 0; transition: opacity 0.3s; }
+.stat:hover { border-color: rgba(233, 184, 110, 0.28); transform: translateY(-3px); }
+.stat:hover::before { opacity: 1; }
+.stat-icon { font-size: 28px; margin-bottom: 10px; position: relative; z-index: 1; }
+.stat-num { font-family: var(--font-en); font-size: 32px; font-weight: 900; color: var(--onair);
+  font-variant-numeric: tabular-nums; position: relative; z-index: 1; }
+.stat-lbl { font-size: 12px; color: var(--text-2); margin-top: 4px; font-weight: 600; position: relative; z-index: 1; }
+
+/* ── الأقسام ── */
+.section { margin-bottom: 40px; animation: slideUp 0.7s ease; }
+.section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.section-hdr h2 { font-size: 18px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.section-hdr h2 .icon { color: var(--onair); font-size: 16px; }
+
+/* ── الأكثر تشغيلاً ── */
+.top-list { display: flex; flex-direction: column; gap: 8px; }
+.top-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  background: rgba(13, 17, 23, 0.55); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: all 0.25s ease; }
+.top-item:hover { border-color: rgba(233, 184, 110, 0.35); background: rgba(233, 184, 110, 0.04); transform: translateX(-4px); }
+.top-rank { font-family: var(--font-en); font-size: 14px; font-weight: 900; color: var(--text-3); width: 28px; text-align: center; flex-shrink: 0; }
+.top-rank.gold { color: var(--yellow); text-shadow: 0 0 12px rgba(234, 179, 8, 0.3); }
+.top-rank.silver { color: #C0C0C0; }
+.top-rank.bronze { color: var(--onair-deep); }
+.top-img { width: 56px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0; transition: transform 0.2s; }
+.top-item:hover .top-img { transform: scale(1.1); }
+.top-info { flex: 1; min-width: 0; }
+.top-info h4 { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-plays { font-family: var(--font-en); font-size: 12px; font-weight: 800; color: var(--onair);
+  background: var(--onair-dim); padding: 4px 10px; border-radius: 20px; flex-shrink: 0; }
+
+/* ── السجل ── */
+.history-list { display: flex; flex-direction: column; gap: 6px; }
+.history-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: rgba(13, 17, 23, 0.4); border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-sm); font-size: 13px; transition: all 0.2s; }
+.history-item:hover { border-color: rgba(255, 255, 255, 0.1); background: rgba(13, 17, 23, 0.6); }
+.history-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--onair); flex-shrink: 0; opacity: 0.5; }
+.history-time { font-family: var(--font-en); font-size: 11px; color: var(--text-3); font-weight: 600; flex-shrink: 0; width: 60px; }
+.history-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+
+/* ── لوحة الشرف ── */
+.leaderboard-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  background: rgba(13, 17, 23, 0.55); border: 1px solid var(--border); border-radius: var(--radius-sm); transition: all 0.25s; }
+.lb-item:hover { border-color: rgba(168, 85, 247, 0.35); background: rgba(168, 85, 247, 0.04); }
+.lb-rank { font-family: var(--font-en); font-size: 18px; font-weight: 900; width: 32px; text-align: center; color: var(--text-3); flex-shrink: 0; }
+.lb-rank.gold { color: var(--yellow); text-shadow: 0 0 12px rgba(234, 179, 8, 0.3); }
+.lb-rank.silver { color: #C0C0C0; }
+.lb-rank.bronze { color: #CD7F32; }
+.lb-name { flex: 1; font-weight: 700; font-size: 14px; }
+.lb-time { font-family: var(--font-en); font-size: 13px; font-weight: 700; color: var(--onair);
+  background: var(--onair-dim); padding: 4px 12px; border-radius: 20px; }
+
+/* ── التذييل ── */
+.footer { text-align: center; padding: 32px; color: var(--text-3); font-size: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06); margin-top: 40px; }
+.footer .sync { font-family: var(--font-en); font-size: 11px; color: var(--text-3); margin-top: 6px; min-height: 14px; }
+
+/* ── توست الفواصل ووميض اللطمة (كانا في الـstyle القديم) ── */
+#jingleToast { position: fixed; bottom: 0; left: 0; right: 0; height: 64px;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  background: linear-gradient(180deg, transparent, rgba(233, 184, 110, 0.08));
+  border-top: 1px solid rgba(233, 184, 110, 0.15); z-index: 1000;
+  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+#jingleToast.show { transform: translateY(0); }
+#jingleToast .icon { font-size: 28px; animation: jingleBounce 0.6s ease; }
+#jingleToast .text { font-size: 14px; font-weight: 700; color: var(--onair); }
+@keyframes jingleBounce { 0% { transform: scale(0.5); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+
+#latmaFlash { position: fixed; inset: 0; pointer-events: none; z-index: 999; opacity: 0; transition: opacity 0.15s; }
+#latmaFlash.active { opacity: 1; }
+#latmaFlash.latma { background: radial-gradient(circle at center, rgba(255, 107, 53, 0.25) 0%, transparent 60%); }
+#latmaFlash.basmala { background: radial-gradient(circle at center, rgba(168, 85, 247, 0.25) 0%, transparent 60%); }
+#latmaFlash.general { background: radial-gradient(circle at center, rgba(233, 184, 110, 0.2) 0%, transparent 60%); }
+
+/* ── شارة البث المباشر بلون المصباح ── */
+.badge.live { background: rgba(233, 184, 110, 0.14); color: var(--onair); animation: glow 2s infinite; }
+.badge.live::before { background: var(--onair); }
+
+/* ── تحريك مقتصد لمن يفضّل تقليل الحركة ── */
+@media (prefers-reduced-motion: reduce) {
+  .particles { display: none; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .hero { grid-template-columns: 280px 1fr; gap: 22px; }
+  .hero-title { font-size: 24px; }
+}
+@media (max-width: 768px) {
+  .page { padding: 20px 16px 100px; }
+  .hero { grid-template-columns: 1fr; gap: 0; }
+  .hero-thumb { max-width: 480px; margin: 0 auto; width: 100%; }
+  .hero-title { font-size: 21px; }
+  .stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat { padding: 20px 14px; }
+  .stat-num { font-size: 26px; }
+  .share-bar { gap: 8px; }
+  .share-btn { padding: 8px 16px; font-size: 12px; }
+}
+@media (max-width: 480px) {
+  .page { padding: 14px 12px 90px; }
+  .hero-thumb { border-radius: 0; }
+  .hero-info { padding: 18px; }
+  .hero-title { font-size: 19px; }
+  .join-cta { width: 100%; justify-content: center; }
+  .join-note { width: 100%; text-align: center; }
+  .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { padding: 16px 10px; border-radius: 12px; }
+  .stat-num { font-size: 22px; }
+  .stat-lbl { font-size: 11px; }
+  .stat-icon { font-size: 22px; margin-bottom: 6px; }
+  .top-item { padding: 10px 12px; gap: 8px; }
+  .top-img { width: 42px; height: 24px; border-radius: 4px; }
+  .top-info h4 { font-size: 11px; }
+  .history-item { padding: 8px 12px; font-size: 12px; }
+  .lb-item { padding: 10px 12px; gap: 10px; }
+  .lb-name { font-size: 13px; }
+  .share-bar { flex-direction: column; align-items: stretch; }
+  .share-btn { justify-content: center; }
+  .footer { font-size: 11px; padding: 24px 16px; }
+}
+@media (hover: none) and (pointer: coarse) {
+  .share-btn, .join-cta { min-height: 44px; }
+  .top-item { min-height: 48px; }
+  .history-item { min-height: 40px; }
+  .lb-item { min-height: 48px; }
+}

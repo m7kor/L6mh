@@ -93,6 +93,9 @@ YOUTUBE_API_KEY=مفتاح YouTube API
 CHANNEL_ID=معرّف القناة
 DASHBOARD_TOKEN=كلمة سر الداشبورد
 STATUS_PORT=3333
+# دعوة ديسكورد صالحة — تظهر كزر «استمع عبر ديسكورد» في الصفحة العامة.
+# بلا قيمة: الصفحة تعرض ملاحظة فقط بلا زر (مقصود — لا أزرار مزيّفة).
+DISCORD_INVITE_URL=
 ```
 
 ### 3. التشغيل
@@ -144,10 +147,20 @@ src/
 │   ├── cookies.js              # إدارة الكوكيز
 │   ├── community.js            # الحضور واللوحة
 │   └── scheduler.js            # جدولة التشغيل
+├── public/                      # الواجهات (تُقدَّم من القرص مباشرة)
+│   ├── live.html                # الصفحة العامة — هوية «البث الليلي»
+│   ├── index.html               # لوحة الإدارة
+│   ├── kiosk.html               # شاشة العرض
+│   ├── css/                     # theme (مشترك) + live (هوية المحطة) + effects
+│   └── js/
+│       ├── live-updates.js      # حلقة تحديث واحدة: منع التداخل + مهلة + تعافٍ
+│       └── playback-view.js     # عرض حالة المشغّل الفعلية
 └── utils/
     ├── database.js             # SQLite (better-sqlite3)
     ├── stats.js                # إحصائيات التشغيل
-    ├── status-page.js          # Dashboard + API
+    ├── status-page.js          # Dashboard + API (playbackState + دعوة مُتحقَّق منها)
+    ├── playback-state.ts       # استدلال صادق: playing/paused/buffering/disconnected/stopped/idle
+    ├── discord-invite.ts       # تحقق صارم من رابط الدعوة قبل عرضه للعامة
     ├── embeds.js               # رسائل ديسكورد
     ├── logger.js               # تسجيل مركزي
     ├── format.js               # تنسيق الأوقات
@@ -159,18 +172,22 @@ src/
     ├── webhook.js              # إشعارات Webhook
     ├── weekly-recap.js         # ملخص أسبوعي
     ├── ytdlp-update.js         # تحديث yt-dlp
-    └── tests.test.js           # 72 اختبار
+    └── tests.test.js           # 70 اختبار أساسي
 ```
+
+اختبارات الواجهة (`tests/`) تغطي سلوك الصفحات الحقيقية عبر jsdom: دورة التحديث، زر الإيقاف، مصباح الهواء، الـCTA المُتحقَّق منه، وتوست الفواصل.
 
 ---
 
 ## 🧪 الاختبارات
 
 ```bash
-npm test
+npm test   # يشغّل كل الأجنحة: الأساسية + الوحدات + واجهات jsdom
 ```
 
-- **72 اختبار** يغطي: formatTime, cookies, videoId, cooldown, queue, database, stats, session state, embeds, lang.js
+- **اختبارات أساسية** (src/utils): formatTime, cookies, videoId, cooldown, queue, database, stats, session state, embeds, lang.js
+- **اختبارات وحدات** (tests/unit-modules): استدلال حالة التشغيل، التحقق من الدعوات، عارض الحالة
+- **اختبارات واجهات** (tests/*.test.js): سلوك الصفحات الحقيقية عبر jsdom — تعافي الاتصال، مصباح «على الهواء» الصادق، CTA ديسكورد، زر الإيقاف، توست الفواصل
 - يستخدم **in-memory SQLite** — لا يلمس قاعدة الإنتاج
 
 ---

@@ -19,6 +19,7 @@ import { killProcesses } from '../streaming.js';
 import { clearNowPlayingMessage, triggerUiUpdate } from './ui-updater.js';
 import { notify } from '../../utils/webhook.js';
 import { getCachedTitleMap } from '../youtube.js';
+import { inferPlaybackState } from '../../utils/playback-state.js';
 
 const logger = createLogger('audio');
 
@@ -179,6 +180,7 @@ export function getQueue(guildId) {
 export function getSessionInfo(guildId) {
   const session = getSession(guildId);
   return {
+    playbackState:   inferPlaybackState(session),
     current:         session.current,
     mode:            session.mode,
     continuous:      session.continuous,
@@ -201,6 +203,7 @@ export function getAllSessions() {
     if (!session.connection && !session.current) continue;
     result.push({
       guildId,
+      playbackState:   inferPlaybackState(session),
       guildName:       session.guild?.name || guildId,
       channelName:     session.channel?.name || null,
       title:           session.current?.title      || null,

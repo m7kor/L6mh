@@ -9,181 +9,9 @@
   <meta property="og:description" content="استمع الآن معنا">
   <meta property="og:type" content="music.song">
   <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/live.css">
   <link rel="stylesheet" href="/css/effects.css">
   <script>function escapeHtml(s){const d=document.createElement('div');d.appendChild(document.createTextNode(s||''));return d.innerHTML;}</script>
-  <style>
-    .page{max-width:1100px;margin:0 auto;padding:24px 16px 100px;position:relative;z-index:1}
-    .fade-in{animation:fadeIn .5s ease}
-
-    /* ── Hero ── */
-    .hero{display:grid;grid-template-columns:320px 1fr;gap:32px;margin-bottom:48px;animation:slideUp .5s ease}
-    .hero-thumb{position:relative;border-radius:var(--radius);overflow:hidden;aspect-ratio:16/9;background:var(--surface-2);box-shadow:0 12px 40px rgba(0,0,0,0.5)}
-    .hero-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s ease}
-    .hero-thumb:hover img{transform:scale(1.03)}
-    .hero-thumb .live-badge{position:absolute;top:12px;right:12px;z-index:2}
-    .hero-thumb::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(0,0,0,0.7));pointer-events:none}
-    .hero-thumb .eq-overlay{position:absolute;bottom:12px;left:12px;z-index:2}
-
-    .hero-info{display:flex;flex-direction:column;justify-content:center;gap:14px}
-    .hero-tag{font-size:12px;font-weight:800;color:var(--cyan);font-family:var(--font-en);letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
-    .hero-tag::before{content:'';width:24px;height:2px;background:var(--cyan);border-radius:1px}
-    .hero-title{font-size:30px;font-weight:900;line-height:1.5;letter-spacing:-0.5px;background:linear-gradient(135deg,#fff 40%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .hero-meta{display:flex;gap:16px;font-size:13px;color:var(--text-2);font-family:var(--font-en);font-weight:600}
-    .hero-progress{margin-top:8px}
-    .hero-times{display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);font-family:var(--font-en);font-weight:600;margin-top:6px}
-
-    /* ── Stats ── */
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:48px;animation:slideUp .6s ease}
-    .stat{background:rgba(13,17,23,0.6);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:24px 16px;text-align:center;transition:all .3s ease;position:relative;overflow:hidden}
-    .stat::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,var(--cyan-glow),transparent 70%);opacity:0;transition:opacity .3s}
-    .stat:hover{border-color:rgba(0,229,255,0.2);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,229,255,0.08)}
-    .stat:hover::before{opacity:1}
-    .stat-icon{font-size:28px;margin-bottom:10px;position:relative;z-index:1}
-    .stat-num{font-family:var(--font-en);font-size:32px;font-weight:900;color:var(--cyan);font-variant-numeric:tabular-nums;position:relative;z-index:1}
-    .stat-lbl{font-size:12px;color:var(--text-2);margin-top:4px;font-weight:600;position:relative;z-index:1}
-
-    /* ── Sections ── */
-    .section{margin-bottom:40px;animation:slideUp .7s ease}
-    .section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-    .section-hdr h2{font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px}
-    .section-hdr h2 .icon{color:var(--cyan);font-size:16px}
-
-    /* ── Top Played ── */
-    .top-list{display:flex;flex-direction:column;gap:8px}
-    .top-item{display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(13,17,23,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);transition:all .25s ease;cursor:default}
-    .top-item:hover{border-color:rgba(0,229,255,0.3);background:rgba(0,229,255,0.04);transform:translateX(-4px)}
-    .top-rank{font-family:var(--font-en);font-size:14px;font-weight:900;color:var(--text-3);width:28px;text-align:center;flex-shrink:0}
-    .top-rank.gold{color:var(--yellow);text-shadow:0 0 12px rgba(234,179,8,0.3)}
-    .top-rank.silver{color:#C0C0C0}
-    .top-rank.bronze{color:var(--orange)}
-    .top-img{width:56px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0;transition:transform .2s}
-    .top-item:hover .top-img{transform:scale(1.1)}
-    .top-info{flex:1;min-width:0}
-    .top-info h4{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .top-plays{font-family:var(--font-en);font-size:12px;font-weight:800;color:var(--cyan);flex-shrink:0;background:var(--cyan-glow);padding:4px 10px;border-radius:20px}
-
-    /* ── History ── */
-    .history-list{display:flex;flex-direction:column;gap:6px}
-    .history-item{display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(13,17,23,0.4);border:1px solid rgba(255,255,255,0.04);border-radius:var(--radius-sm);font-size:13px;transition:all .2s}
-    .history-item:hover{border-color:rgba(255,255,255,0.1);background:rgba(13,17,23,0.6)}
-    .history-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex-shrink:0;opacity:0.5}
-    .history-time{font-family:var(--font-en);font-size:11px;color:var(--text-3);font-weight:600;flex-shrink:0;width:60px}
-    .history-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-
-    /* ── Leaderboard ── */
-    .leaderboard-list{display:flex;flex-direction:column;gap:8px}
-    .lb-item{display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(13,17,23,0.6);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);transition:all .25s}
-    .lb-item:hover{border-color:rgba(168,85,247,0.3);background:rgba(168,85,247,0.04)}
-    .lb-rank{font-family:var(--font-en);font-size:18px;font-weight:900;width:32px;text-align:center;color:var(--text-3);flex-shrink:0}
-    .lb-rank.gold{color:var(--yellow);text-shadow:0 0 12px rgba(234,179,8,0.3)}
-    .lb-rank.silver{color:#C0C0C0}
-    .lb-rank.bronze{color:#CD7F32}
-    .lb-name{flex:1;font-weight:700;font-size:14px}
-    .lb-time{font-family:var(--font-en);font-size:13px;font-weight:700;color:var(--cyan);background:var(--cyan-glow);padding:4px 12px;border-radius:20px}
-
-    /* ── Share ── */
-    .share-bar{display:flex;justify-content:center;gap:10px;margin-bottom:32px}
-    .share-btn{padding:10px 20px;background:rgba(13,17,23,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:8px;font-family:var(--font-ar)}
-    .share-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,0.06);transform:translateY(-1px)}
-    .share-btn.copied{border-color:var(--green);color:var(--green)}
-
-    /* ── Footer ── */
-    .footer{text-align:center;padding:32px;color:var(--text-3);font-size:12px;border-top:1px solid rgba(255,255,255,0.06);margin-top:40px}
-
-    /* ── Loading ── */
-    .loading{display:flex;align-items:center;justify-content:center;min-height:60vh}
-    .loading-spinner{width:40px;height:40px;border:3px solid var(--surface-3);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* ── Jingle Toast ── */
-    #jingleToast{position:fixed;bottom:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:center;gap:12px;background:linear-gradient(180deg,transparent,rgba(0,229,255,0.08));border-top:1px solid rgba(0,229,255,0.15);z-index:1000;transform:translateY(100%);transition:transform .4s cubic-bezier(0.34,1.56,0.64,1)}
-    #jingleToast.show{transform:translateY(0)}
-    #jingleToast .icon{font-size:28px;animation:jingleBounce .6s ease}
-    #jingleToast .text{font-size:14px;font-weight:700;color:var(--cyan)}
-    @keyframes jingleBounce{0%{transform:scale(0.5)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
-
-    /* ── Latma Flash ── */
-    #latmaFlash{position:fixed;inset:0;pointer-events:none;z-index:999;opacity:0;transition:opacity .15s}
-    #latmaFlash.active{opacity:1}
-    #latmaFlash.latma{background:radial-gradient(circle at center,rgba(255,107,53,0.25) 0%,transparent 60%)}
-    #latmaFlash.basmala{background:radial-gradient(circle at center,rgba(168,85,247,0.25) 0%,transparent 60%)}
-    #latmaFlash.general{background:radial-gradient(circle at center,rgba(0,229,255,0.2) 0%,transparent 60%)}
-
-    /* ── Responsive ── */
-    @media(max-width:1024px){
-      .hero{grid-template-columns:280px 1fr;gap:24px}
-      .hero-title{font-size:26px}
-    }
-    @media(max-width:768px){
-      .page{padding:20px 16px 100px}
-      .hero{grid-template-columns:1fr;gap:20px}
-      .hero-thumb{max-width:420px;margin:0 auto}
-      .hero-title{font-size:22px;line-height:1.4}
-      .hero-meta{flex-wrap:wrap;gap:10px}
-      .stats{grid-template-columns:repeat(2,1fr);gap:12px}
-      .stat{padding:20px 14px}
-      .stat-num{font-size:26px}
-      .stat-icon{font-size:24px}
-      .section-hdr h2{font-size:16px}
-      .top-item{padding:12px 14px;gap:10px}
-      .top-img{width:48px;height:28px}
-      .top-info h4{font-size:12px}
-      .lb-item{padding:12px 14px}
-      .share-bar{gap:8px}
-      .share-btn{padding:8px 16px;font-size:12px}
-    }
-    @media(max-width:480px){
-      .page{padding:14px 12px 90px}
-      .hero-thumb{max-width:100%;border-radius:12px}
-      .hero-title{font-size:20px}
-      .hero-tag{font-size:11px}
-      .hero-meta{font-size:12px}
-      .stats{grid-template-columns:1fr 1fr;gap:8px}
-      .stat{padding:16px 10px;border-radius:12px}
-      .stat-num{font-size:22px}
-      .stat-lbl{font-size:11px}
-      .stat-icon{font-size:22px;margin-bottom:6px}
-      .top-item{padding:10px 12px;gap:8px}
-      .top-rank{width:20px;font-size:12px}
-      .top-img{width:42px;height:24px;border-radius:4px}
-      .top-info h4{font-size:11px}
-      .top-plays{font-size:11px;padding:3px 8px}
-      .history-item{padding:8px 12px;font-size:12px}
-      .history-dot{width:5px;height:5px}
-      .history-time{width:50px;font-size:10px}
-      .lb-item{padding:10px 12px;gap:10px}
-      .lb-rank{font-size:16px;width:24px}
-      .lb-name{font-size:13px}
-      .lb-time{font-size:11px;padding:3px 8px}
-      .share-bar{flex-direction:column;align-items:stretch}
-      .share-btn{justify-content:center}
-      .footer{font-size:11px;padding:24px 16px}
-      .kiosk-footer{font-size:10px}
-    }
-    @media(max-width:360px){
-      .page{padding:10px 10px 80px}
-      .hero-title{font-size:18px}
-      .stats{gap:6px}
-      .stat{padding:12px 8px}
-      .stat-num{font-size:20px}
-    }
-    /* ── Touch-friendly tap targets ── */
-    @media(hover:none)and(pointer:coarse){
-      .share-btn{min-height:44px;min-width:44px}
-      .top-item{min-height:48px}
-      .history-item{min-height:40px}
-      .lb-item{min-height:48px}
-    }
-    /* ── Landscape phone ── */
-    @media(max-height:500px)and(orientation:landscape){
-      .hero{grid-template-columns:200px 1fr;gap:16px}
-      .hero-thumb{max-width:240px}
-      .hero-title{font-size:18px}
-      .stats{grid-template-columns:repeat(4,1fr);gap:8px}
-      .stat{padding:12px 8px}
-      .stat-num{font-size:20px}
-    }
-  </style>
 </head>
 <body>
 
@@ -203,6 +31,20 @@
   <span class="text" id="jingleText"></span>
 </div>
 
+<!-- رأس المحطة -->
+<header class="masthead">
+  <div class="station">
+    <div class="station-mark">و</div>
+    <div>
+      <div class="station-name">راديو وحيد عمر</div>
+      <div class="station-sub">WAHEEDTECH RADIO · ON AIR</div>
+      <h1 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">راديو وحيد عمر — بث مباشر عبر ديسكورد</h1>
+    </div>
+  </div>
+  <div class="clock" id="stationClock"></div>
+</header>
+<div class="masthead-rule"></div>
+
 <div class="page">
   <!-- Share -->
   <div class="share-bar">
@@ -210,8 +52,10 @@
     <button class="share-btn" onclick="shareTwitter()">𝕏 تويتر</button>
   </div>
 
+  <p id="connectionNotice" role="status" aria-live="polite" style="color:var(--yellow);margin-bottom:16px">جاري الاتصال بالمحطة…</p>
+
   <!-- Now Playing Hero -->
-  <div class="hero" id="hero">
+  <div class="hero" id="hero" data-state="idle">
     <div class="hero-thumb">
       <img id="npImg" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='225'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230D1117'/%3E%3Cstop offset='100%25' stop-color='%23161B22'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23g)' width='400' height='225'/%3E%3Ctext x='200' y='120' text-anchor='middle' fill='%2330363D' font-size='48'%3E♪%3C/text%3E%3C/svg%3E" alt="">
       <div class="live-badge" id="liveBadge"></div>
@@ -231,6 +75,11 @@
           <span id="npDur">0:00</span>
         </div>
       </div>
+      <div class="onair-row">
+        <span class="onair"><span class="onair-lamp"></span><span id="onairText">جاري الاتصال…</span></span>
+        <a id="joinCta" class="join-cta" href="#" hidden rel="noopener">🎧 استمع عبر ديسكورد</a>
+        <span id="joinNote" class="join-note" hidden>الاستماع يتم داخل سيرفرات ديسكورد — الصفحة تعرض حالة المحطة فقط.</span>
+      </div>
     </div>
   </div>
 
@@ -244,7 +93,7 @@
     <div class="stat">
       <div class="stat-icon">⏱️</div>
       <div class="stat-num count-up" id="sHours">—</div>
-      <div class="stat-lbl">ساعات البث</div>
+      <div class="stat-lbl">مدة تشغيل العملية</div>
     </div>
     <div class="stat">
       <div class="stat-icon">📺</div>
@@ -290,7 +139,7 @@
     <div class="leaderboard-list" id="leaderboardList">
       <div style="color:var(--text-3);text-align:center;padding:24px">جاري التحميل...</div>
     </div>
-    <p style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">الأسماء المعروضة علنية داخل الداشبورد. استخدم <code>/اخفاء_احصائياتي</code> للاستبعاد.</p>
+    <p style="font-size:11px;color:var(--text-3);margin-top:8px;text-align:center">الأسماء معروضة باقتضاب (عضو#آخر أرقام). استخدم <code>/اخفاء_احصائياتي</code> للاستبعاد.</p>
   </div>
 
   <!-- Channel Info -->
@@ -308,6 +157,7 @@
   <div class="footer">
     <div class="shimmer-line" style="margin-bottom:24px"></div>
     <p>راديو وحيد عمر — بث مباشر 24/7 🎙️</p>
+    <p class="sync" id="lastSync"></p>
   </div>
 </div>
 
@@ -323,32 +173,35 @@ function shareTwitter(){const t=encodeURIComponent('راديو وحيد عمر �
 const fmt=s=>{if(!s)return'0:00';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60);if(h>0)return`${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;return`${m}:${String(sec).padStart(2,'0')}`};
 const timeAgo=d=>{if(!d)return'';const diff=(Date.now()-new Date(d).getTime())/1000;if(diff<60)return'الآن';if(diff<3600)return`قبل ${Math.floor(diff/60)} دقيقة`;if(diff<86400)return`قبل ${Math.floor(diff/3600)} ساعة`;return`قبل ${Math.floor(diff/86400)} يوم`};
 
-function showJingle(name, category) {
-  const toast = document.getElementById('jingleToast');
-  const flash = document.getElementById('latmaFlash');
-  const icon = document.getElementById('jingleIcon');
-  const text = document.getElementById('jingleText');
+const STATE_LABELS = {
+  playing: 'على الهواء', paused: 'متوقف مؤقتاً', buffering: 'جاري تجهيز الصوت',
+  disconnected: 'انقطع اتصال الصوت', stopped: 'متوقف', idle: 'لا يوجد بث حالياً',
+  unknown: 'حالة التشغيل غير مؤكدة',
+};
+const BADGES = {
+  playing: '<span class="badge live">على الهواء</span>',
+  paused: '<span class="badge offline">متوقف مؤقتاً</span>',
+  buffering: '<span class="badge stat">جاري تجهيز الصوت</span>',
+  disconnected: '<span class="badge offline">انقطع اتصال الصوت</span>',
+  stopped: '<span class="badge offline">متوقف</span>',
+  idle: '<span class="badge offline">لا يوجد بث حالياً</span>',
+  unknown: '<span class="badge offline">حالة التشغيل غير مؤكدة</span>',
+};
 
-  const icons = { latma: '💥', basmala: '✨', general: '🎵' };
-  const labels = { latma: 'لطمة!', basmala: 'بسم الله', general: 'فواصل' };
-
-  icon.textContent = icons[category] || '🎵';
-  text.textContent = labels[category] || name;
-
-  // Flash
-  flash.className = 'active ' + category;
-  setTimeout(() => flash.className = '', 300);
-
-  // Toast
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
-}
-
-async function refresh() {
-  try {
-    const r = await fetch(API);
-    if (!r.ok) return;
+async function refresh(signal) {
+    const r = await fetch(API, { signal, cache: 'no-store' });
+    if (!r.ok) throw new Error(`Public status unavailable: ${r.status}`);
     const d = await r.json();
+
+    // Join CTA — only a validated invite from the backend, never a fabricated one
+    const cta = document.getElementById('joinCta');
+    const note = document.getElementById('joinNote');
+    if (d.discordInviteUrl) {
+      cta.href = d.discordInviteUrl; cta.target = '_blank'; cta.rel = 'noopener';
+      cta.hidden = false; note.hidden = false;
+    } else {
+      cta.hidden = true; note.hidden = false;
+    }
 
     // Now Playing
     if (d.nowPlaying) {
@@ -368,19 +221,19 @@ async function refresh() {
       document.getElementById('npServers').textContent = `📺 ${d.guilds || 1} سيرفر`;
       const el = np.elapsed || 0, dur = np.duration || 0;
       document.getElementById('npElapsed').textContent = fmt(el);
-      document.getElementById('npDur').textContent = dur ? fmt(dur) : 'مباشر';
-      document.getElementById('npFill').style.width = dur ? `${Math.min(100, el/dur*100)}%` : '100%';
-      const wave = document.getElementById('npWave');
-      wave.classList.toggle('off', !!np.paused);
-
-      const badge = document.getElementById('liveBadge');
-      badge.innerHTML = np.paused
-        ? '<span class="badge offline">متوقف مؤقتاً</span>'
-        : '<span class="badge live">مباشر الآن</span>';
+      document.getElementById('npDur').textContent = dur ? fmt(dur) : 'بث مستمر';
+      const state = np.playbackState || (np.paused ? 'paused' : 'unknown');
+      document.getElementById('npFill').style.width = (state === 'stopped' || state === 'idle') ? '0%' : (dur ? `${Math.min(100, el/dur*100)}%` : '0%');
+      document.getElementById('npWave').classList.toggle('off', state !== 'playing');
+      document.getElementById('hero').dataset.state = state;
+      document.getElementById('onairText').textContent = STATE_LABELS[state] || STATE_LABELS.unknown;
+      document.getElementById('liveBadge').innerHTML = BADGES[state] || BADGES.unknown;
     } else {
       document.getElementById('npTitle').textContent = 'لا يوجد بث حالياً';
+      document.getElementById('hero').dataset.state = 'idle';
       document.getElementById('npWave').classList.add('off');
-      document.getElementById('liveBadge').innerHTML = '<span class="badge offline">offline</span>';
+      document.getElementById('onairText').textContent = 'لا يوجد بث حالياً';
+      document.getElementById('liveBadge').innerHTML = BADGES.idle;
     }
 
     // Stats
@@ -435,7 +288,25 @@ async function refresh() {
       lbList.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:24px">لا توجد بيانات بعد</div>';
     }
 
-  } catch (e) { console.error('Refresh failed:', e); }
+}
+
+function showJingle(name, category) {
+  const toast = document.getElementById('jingleToast');
+  const flash = document.getElementById('latmaFlash');
+  const icon = document.getElementById('jingleIcon');
+  const text = document.getElementById('jingleText');
+
+  const icons = { latma: '💥', basmala: '✨', general: '🎵' };
+  const labels = { latma: 'لطمة!', basmala: 'بسم الله', general: 'فواصل' };
+
+  icon.textContent = icons[category] || '🎵';
+  text.textContent = labels[category] || name;
+
+  flash.className = 'active ' + category;
+  setTimeout(() => flash.className = '', 300);
+
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
 // Check for jingle events via activity state endpoint
@@ -454,21 +325,38 @@ async function checkJingles() {
   } catch {}
 }
 
-refresh();
-let pollInterval = setInterval(refresh, 5000);
-let checkInterval = setInterval(checkJingles, 2000);
-
-// SSE with auto-reconnect — disable polling when connected
-let sseConnected = false;
-function connectSSE() {
-  if (typeof EventSource === 'undefined') return;
-  const sse = new EventSource('/api/sse');
-  let delay = 1000;
-  sse.onopen = () => { delay = 1000; sseConnected = true; clearInterval(pollInterval); clearInterval(checkInterval); };
-  sse.onmessage = () => { refresh(); checkJingles(); };
-  sse.onerror = () => { sseConnected = false; sse.close(); pollInterval = setInterval(refresh, 5000); checkInterval = setInterval(checkJingles, 2000); setTimeout(connectSSE, Math.min(delay, 30000)); delay *= 2; };
+function tickClock() {
+  const el = document.getElementById('stationClock');
+  if (el) el.textContent = new Date().toLocaleTimeString('ar');
 }
-connectSSE();
+tickClock();
+setInterval(tickClock, 30000);
+
+</script>
+<script type="module">
+import { startLiveUpdates } from '/js/live-updates.js';
+let lastUpdated = null;
+const updates = startLiveUpdates({
+  refresh: async signal => { await refresh(signal); void checkJingles(); },
+  onConnectionChange(connected) {
+    const notice = document.getElementById('connectionNotice');
+    const sync = document.getElementById('lastSync');
+    if (connected) {
+      lastUpdated = new Date();
+      notice.textContent = '';
+      if (sync) sync.textContent = 'آخر تحديث: ' + lastUpdated.toLocaleTimeString('ar');
+    } else {
+      notice.textContent = 'تعذّر تحديث حالة المحطة. نحاول الاتصال مجدداً.' +
+        (lastUpdated ? ' آخر تحديث: ' + lastUpdated.toLocaleTimeString('ar') : '');
+      document.getElementById('hero').dataset.state = 'unknown';
+      document.getElementById('onairText').textContent = 'حالة الاتصال غير مؤكدة';
+      document.getElementById('liveBadge').innerHTML = '<span class="badge offline">الحالة غير مؤكدة</span>';
+      document.getElementById('npWave').classList.add('off');
+    }
+  },
+});
+window.addEventListener('pagehide', () => updates.stop(), { once: true });
+window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 </script>
 </body>
 </html>
