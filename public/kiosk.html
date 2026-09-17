@@ -11,25 +11,22 @@
 
     /* ── Animated Background ── */
     .bg-layer{position:fixed;inset:0;pointer-events:none;z-index:0}
-    .bg-layer::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,0.12),transparent 70%);top:-15%;right:-10%;animation:bgOrb1 15s ease-in-out infinite alternate;filter:blur(40px)}
-    .bg-layer::after{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.1),transparent 70%);bottom:-15%;left:-10%;animation:bgOrb2 18s ease-in-out infinite alternate;filter:blur(40px)}
+    .bg-layer::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(233,184,110,0.10),transparent 70%);top:-15%;right:-10%;animation:bgOrb1 15s ease-in-out infinite alternate;filter:blur(40px)}
+    .bg-layer::after{content:'';position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.08),transparent 70%);bottom:-15%;left:-10%;animation:bgOrb2 18s ease-in-out infinite alternate;filter:blur(40px)}
     @keyframes bgOrb1{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-40px,30px) scale(1.15)}100%{transform:translate(30px,-20px) scale(0.9)}}
     @keyframes bgOrb2{0%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-40px) scale(1.1)}100%{transform:translate(-20px,20px) scale(0.95)}}
-
-    .extra-orb{position:fixed;border-radius:50%;filter:blur(50px);opacity:0.3;animation:orbFloat 20s ease-in-out infinite;pointer-events:none;z-index:0}
-    .extra-orb:nth-child(1){width:300px;height:300px;background:rgba(0,229,255,0.08);top:15%;left:8%;animation-duration:22s}
-    .extra-orb:nth-child(2){width:250px;height:250px;background:rgba(255,107,53,0.06);bottom:15%;right:12%;animation-duration:25s;animation-delay:-8s}
 
     /* ── Main Content ── */
     .kiosk{position:relative;z-index:1;text-align:center;max-width:900px;width:90vw}
 
     .kiosk-live{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px}
-    .kiosk-live-dot{width:10px;height:10px;border-radius:50%;background:#ef4444;animation:pulse 2s infinite;box-shadow:0 0 12px rgba(239,68,68,0.5)}
+    .kiosk-live-dot{width:10px;height:10px;border-radius:50%;background:var(--onair,#E9B86E);animation:pulse 2s infinite;box-shadow:0 0 12px rgba(233,184,110,0.5)}
     .kiosk-live-dot.off{background:#555;animation:none;box-shadow:none}
     .kiosk-live-text{font-size:13px;color:var(--text-2);font-family:var(--font-en);text-transform:uppercase;letter-spacing:2px;font-weight:700}
 
     .kiosk-title{font-size:14px;color:var(--cyan);font-family:var(--font-en);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;font-weight:800}
     .kiosk-now{font-size:42px;font-weight:900;line-height:1.6;margin-bottom:32px;min-height:56px;background:linear-gradient(135deg,#fff 30%,var(--cyan) 70%,var(--purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:200% auto;animation:textShine 5s linear infinite}
+    body[data-state="idle"] .kiosk-now,body[data-state="stopped"] .kiosk-now,body[data-state="unknown"] .kiosk-now{animation:none;-webkit-text-fill-color:var(--text-2);background:none}
     @keyframes textShine{0%{background-position:0% center}100%{background-position:200% center}}
 
     /* ── Waveform ── */
@@ -58,13 +55,14 @@
 
     /* ── Footer ── */
     .kiosk-footer{font-size:11px;color:var(--text-3);margin-top:24px;letter-spacing:0.5px}
+    .kiosk-sync{font-family:var(--font-en);font-size:11px;color:var(--text-3);margin-top:8px;min-height:14px}
 
     /* ── Jingle Flash ── */
     #kioskFlash{position:fixed;inset:0;pointer-events:none;z-index:100;opacity:0;transition:opacity .15s}
     #kioskFlash.active{opacity:1}
     #kioskFlash.latma{background:radial-gradient(circle at center,rgba(255,107,53,0.3) 0%,transparent 50%)}
     #kioskFlash.basmala{background:radial-gradient(circle at center,rgba(168,85,247,0.3) 0%,transparent 50%)}
-    #kioskFlash.general{background:radial-gradient(circle at center,rgba(0,229,255,0.25) 0%,transparent 50%)}
+    #kioskFlash.general{background:radial-gradient(circle at center,rgba(233,184,110,0.25) 0%,transparent 50%)}
 
     /* ── Responsive ── */
     @media(max-width:768px){
@@ -86,7 +84,6 @@
       .kiosk-live-text{font-size:11px;letter-spacing:1px}
       .kiosk-time{font-size:12px;margin-top:24px}
       .kiosk-footer{font-size:9px;margin-top:16px}
-      .extra-orb{display:none}
     }
     @media(max-width:360px){
       .kiosk-now{font-size:20px}
@@ -107,22 +104,24 @@
       .kiosk-stat-num{font-size:64px}
       .kiosk-wave{height:56px}
     }
+    @media (prefers-reduced-motion: reduce){
+      .bg-layer,.bg-layer::before,.bg-layer::after{display:none}
+      *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important}
+    }
   </style>
 </head>
-<body>
+<body data-state="loading">
 
 <!-- Animated Background -->
 <div class="bg-layer"></div>
-<div class="extra-orb"></div>
-<div class="extra-orb"></div>
 
 <!-- Jingle Flash -->
 <div id="kioskFlash"></div>
 
 <div class="kiosk">
   <div class="kiosk-live">
-    <div class="kiosk-live-dot" id="liveDot"></div>
-    <div class="kiosk-live-text" id="liveText">مباشر الآن</div>
+    <div class="kiosk-live-dot off" id="liveDot"></div>
+    <div class="kiosk-live-text" id="liveText">جاري الاتصال…</div>
   </div>
 
   <div class="kiosk-title">🎙️ راديو وحيد عمر</div>
@@ -143,7 +142,7 @@
     </div>
     <div class="kiosk-stat">
       <div class="kiosk-stat-num" id="statUptime">0</div>
-      <div class="kiosk-stat-lbl">ساعة تشغيل</div>
+      <div class="kiosk-stat-lbl">تشغيل العملية</div>
     </div>
     <div class="kiosk-stat">
       <div class="kiosk-stat-num" id="statVideos">0</div>
@@ -153,69 +152,46 @@
 
   <div class="kiosk-time" id="kioskTime"></div>
   <div class="kiosk-footer">بث مباشر 24/7 — مقاطع عشوائية من قناة وحيد عمر</div>
+  <div class="kiosk-sync" id="kioskSync"></div>
 </div>
 
-<script>
-let lastJingleAt = 0;
+<script type="module">
+import { startLiveUpdates } from '/js/live-updates.js';
+import { createKioskView, checkKioskJingles } from '/js/kiosk-view.js';
 
-const refresh = async () => {
-  try {
-    const r = await fetch('/api/public');
-    if (!r.ok) return;
-    const d = await r.json();
-    const np = d.nowPlaying;
-    document.getElementById('nowTitle').textContent = np ? np.title : 'لا يوجد بث حالياً';
-    const dot = document.getElementById('liveDot');
-    const text = document.getElementById('liveText');
-    const wave = document.getElementById('kioskWave');
-    if (np && !np.paused) {
-      dot.className = 'kiosk-live-dot';
-      text.textContent = 'مباشر الآن';
-      wave.classList.remove('off');
-    } else {
-      dot.className = 'kiosk-live-dot off';
-      text.textContent = np ? 'متوقف مؤقتاً' : 'offline';
-      wave.classList.add('off');
-    }
-    document.getElementById('statPlays').textContent = d.totalPlays || 0;
-    document.getElementById('statUptime').textContent = d.uptimeHours || 0;
-    document.getElementById('statVideos').textContent = d.totalVideos || 0;
-    document.getElementById('kioskTime').textContent = new Date().toLocaleString('ar-SA');
-  } catch {}
-};
+const view = createKioskView(document);
+const jingleState = { since: 0 };
+let lastUpdated = null;
 
-async function checkJingles() {
-  try {
-    const r = await fetch(`/api/activity/state?since=${lastJingleAt}`);
-    if (!r.ok) return;
-    const d = await r.json();
-    if (d.jingles && d.jingles.length > 0) {
-      for (const j of d.jingles) {
-        const flash = document.getElementById('kioskFlash');
-        flash.className = 'active ' + j.category;
-        setTimeout(() => flash.className = '', 400);
-        lastJingleAt = Math.max(lastJingleAt, j.at);
+async function refresh(signal) {
+  const r = await fetch('/api/public', { signal, cache: 'no-store' });
+  if (!r.ok) throw new Error('kiosk status unavailable: ' + r.status);
+  view.apply(await r.json());
+  document.getElementById('kioskTime').textContent = new Date().toLocaleString('ar-SA');
+}
+
+const updates = startLiveUpdates({
+  refresh: async signal => {
+    await refresh(signal);
+    // Secondary concern: jingle polling must never flip the primary connection
+    // state to "unknown" — a missing or failing jingle checker is logged, not fatal.
+    if (typeof checkKioskJingles === 'function') {
+      try {
+        await checkKioskJingles(document, fetch, jingleState);
+      } catch (err) {
+        console.debug('kiosk jingle check skipped:', err && err.message);
       }
     }
-    if (d.timestamp) lastJingleAt = Math.max(lastJingleAt, d.timestamp);
-  } catch {}
-}
-
-refresh();
-let pollInterval = setInterval(refresh, 5000);
-let checkInterval = setInterval(checkJingles, 2000);
-
-// SSE with auto-reconnect
-let sseConnected = false;
-function connectSSE() {
-  if (typeof EventSource === 'undefined') return;
-  const sse = new EventSource('/api/sse');
-  let delay = 1000;
-  sse.onopen = () => { delay = 1000; sseConnected = true; clearInterval(pollInterval); clearInterval(checkInterval); };
-  sse.onmessage = () => { refresh(); checkJingles(); };
-  sse.onerror = () => { sseConnected = false; sse.close(); pollInterval = setInterval(refresh, 5000); checkInterval = setInterval(checkJingles, 2000); setTimeout(connectSSE, Math.min(delay, 30000)); delay *= 2; };
-}
-connectSSE();
+    lastUpdated = new Date();
+    const sync = document.getElementById('kioskSync');
+    if (sync) sync.textContent = 'آخر تحديث: ' + lastUpdated.toLocaleTimeString('ar');
+  },
+  onConnectionChange(connected) {
+    if (!connected) view.markUnknown(lastUpdated);
+  },
+});
+window.addEventListener('pagehide', () => updates.stop(), { once: true });
+window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 </script>
 </body>
 </html>
