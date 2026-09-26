@@ -112,8 +112,30 @@ export function playSoundEffect(guild, channel, filePath) {
 }
 
 // ---------------------------------------------------------------------------
-// تشغيل جينغل عشوائي بين المقاطع
+// Station ID — يُشغّل كل 30د لإعلان استمرار البث
 // ---------------------------------------------------------------------------
+
+const STATION_ID_INTERVAL_MS = 30 * 60 * 1000;
+const lastStationIdAt = new Map();
+
+export function playStationId(guild, channel) {
+  const now = Date.now();
+  const last = lastStationIdAt.get(guild.id) || 0;
+  if (now - last < STATION_ID_INTERVAL_MS) return false;
+
+  const sounds = listSounds();
+  const candidate = sounds.find((s) => s.toLowerCase().includes('station-id'));
+  if (!candidate) return false;
+
+  const path = resolveSoundPath(candidate);
+  if (!path) return false;
+
+  lastStationIdAt.set(guild.id, now);
+  playSoundEffect(guild, channel, path).catch((err) =>
+    logger.warn(`[jingles] station-ID failed: ${err.message}`),
+  );
+  return true;
+}
 
 /**
  * @param {import('discord.js').Guild} guild

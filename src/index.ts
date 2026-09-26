@@ -17,6 +17,7 @@ import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
 import { startHeartbeat, setProcessCounter } from './utils/heartbeat.js';
 import { startStatusPage, broadcastTrackChange, setDiscordClient } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
+import { getProgrammingMode, MODE_LABELS } from './utils/programming-mode.js';
 import { onVoiceJoin, onVoiceLeave, backfillUsernames } from './services/community.js';
 import {
   stopAllSessions,
@@ -90,13 +91,16 @@ playerEvents.on('trackChange', ({ guildId, video, paused }) => {
     ? Math.floor((Date.now() - session.segmentStartedAt) / 1000)
     : 0;
 
+  const mode = getProgrammingMode();
+  const modeLabel = MODE_LABELS[mode];
+
   const activity = {
     name: video.title || '—',
     type: ActivityType.Listening,
     state: `🎙️ راديو وحيد عمر • #${channelName}`,
     details: paused
-      ? '⏸️ متوقف مؤقتاً'
-      : `▶️ ${formatTime(elapsed)}${video.durationSeconds ? ' / ' + formatTime(video.durationSeconds) : ''}`,
+      ? `⏸️ ${modeLabel} — متوقف مؤقتاً`
+      : `${modeLabel} • ▶️ ${formatTime(elapsed)}${video.durationSeconds ? ' / ' + formatTime(video.durationSeconds) : ''}`,
   };
 
   if (!paused && session?.segmentStartedAt) {

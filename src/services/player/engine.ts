@@ -36,7 +36,7 @@ import {
   restoreLastVideo, addFailedId,
 } from '../session.js';
 import { playerEvents, stopPlayback } from './controls.js';
-import { playRandomJingle } from './jingles.js';
+import { playRandomJingle, playStationId } from './jingles.js';
 import { triggerUiUpdate } from './ui-updater.js';
 import { spawn } from 'node:child_process';
 import { NOTIFY } from '../../lang.js';
@@ -327,6 +327,11 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
   // ── جينغل (اختياري) ──
   if (countPlay) {
     await playRandomJingle(guild, channel);
+  }
+
+  // ── Station ID ──
+  if (countPlay) {
+    playStationId(guild, channel).catch(() => {});
   }
 
   // ── إنشاء بث الصوت ──
