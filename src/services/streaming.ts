@@ -173,7 +173,13 @@ export async function isLiveStream(url) {
   });
 }
 
-export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume = 100) {
+export function createAudioStream(
+  session,
+  youtubeUrl,
+  startSeconds = 0,
+  volume = 100,
+  durationSeconds = null,
+) {
   return new Promise((resolve, reject) => {
     const STREAM_TIMEOUT_MS = 45_000;
     let resolved = false;
@@ -226,6 +232,25 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       youtubeUrl,
     );
 
+    // 오디오 필터: volume + loudness 정규화 + fade-in + fade-out + 리샘플러
+    const fadeInSec  = 3;
+    const fadeOutSec = 3;
+    const volNorm    = volume / 100;
+
+    let afadeOut = '';
+    if (durationSeconds != null && durationSeconds > fadeOutSec) {
+      const fadeOutStart = durationSeconds - fadeOutSec;
+      afadeOut = `,afade=t=out:st=${fadeOutStart.toFixed(2)}:d=${fadeOutSec}`;
+    }
+
+    const afFilter = [
+      `volume=${volNorm}`,
+      'loudnorm=I=-16:TP=-1.5:LRA=11',
+      `afade=t=in:ss=0:d=${fadeInSec}`,
+      afadeOut,
+      'aresample=48000',
+    ].join('');
+
     const ffmpegArgs = [];
     if (startSeconds > 0) {
       ffmpegArgs.push('-ss', String(startSeconds));
@@ -235,7 +260,7 @@ export function createAudioStream(session, youtubeUrl, startSeconds = 0, volume 
       '-analyzeduration', '0',
       '-i', 'pipe:0',
       '-bufsize', '512k',
-      '-af', `volume=${volume / 100},afade=t=in:ss=0:d=0.4,aresample=48000`,
+      '-af', afFilter,
       '-vn',
       '-f', 's16le',
       '-ar', '48000',

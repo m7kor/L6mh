@@ -331,7 +331,9 @@ export async function connectAndPlay(guild, channel, video, { countPlay = true }
 
   // ── إنشاء بث الصوت ──
   const startSeconds = Math.max(0, Math.floor(video.progressSeconds || 0));
-  const { stream, ffmpegProcess } = await createAudioStream(session, video.url, startSeconds, session.volume);
+  const { stream, ffmpegProcess } = await createAudioStream(
+    session, video.url, startSeconds, session.volume, video.durationSeconds,
+  );
   session.ffmpegProcess = ffmpegProcess;
 
   // ── Dead stream detection — dynamic timeout based on video duration ──
