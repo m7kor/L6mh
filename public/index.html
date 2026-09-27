@@ -1047,6 +1047,26 @@ const render = q => {
 let searchTimer = null;
 vSearch.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { vidPage = 1; render(vSearch.value); }, 150); });
 
+// Polling lifecycle — one owner, so intervals can never multiply.
+//
+// Every path that starts an interval used to go through a bare setInterval
+// that only cleared its own timer on the `document.hidden` branch. Returning to
+// the tab stacked a fresh interval on top of the live one each time, so ten
+// tab toggles meant ten concurrent 2s pollers against /api/status. The health
+// interval was never cleared at all once SSE took over.
+const startPolling = (ms) => {
+  if (statusInterval) clearInterval(statusInterval);
+  statusInterval = setInterval(refresh, ms);
+};
+const startHealthPolling = () => {
+  if (healthInterval) clearInterval(healthInterval);
+  healthInterval = setInterval(refreshHealth, 30000);
+};
+const stopPolling = () => {
+  if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+  if (healthInterval) { clearInterval(healthInterval); healthInterval = null; }
+};
+
 const initDashboard = async () => {
   try {
     const r = await authFetch('/api/videos');
@@ -1054,8 +1074,8 @@ const initDashboard = async () => {
   } catch (e) { console.debug('Video list fetch failed:', e.message); }
   refresh();
   refreshHealth();
-  statusInterval = setInterval(refresh, 5000);
-  healthInterval = setInterval(refreshHealth, 30000);
+  startPolling(5000);
+  startHealthPolling();
   // Queue search
   const qSearch = document.getElementById('qSearch');
   if (qSearch) {
@@ -1069,17 +1089,41 @@ const initDashboard = async () => {
 
 // Refresh indicator logic
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { if (statusInterval) clearInterval(statusInterval); if (healthInterval) clearInterval(healthInterval); }
-  else { if (!sseConnected) statusInterval = setInterval(refresh, 2000); healthInterval = setInterval(refreshHealth, 30000); refresh(); refreshHealth(); }
+  if (document.hidden) {
+    stopPolling();
+  } else {
+    if (!sseConnected) startPolling(2000);
+    startHealthPolling();
+    refresh();
+    refreshHealth();
+  }
 });
 
 // SSE — disable polling when connected
 let sseConnected = false;
 if (typeof EventSource !== 'undefined') {
   const sse = new EventSource('/api/sse');
-  sse.onopen = () => { sseConnected = true; if (statusInterval) { clearInterval(statusInterval); statusInterval = null; } };
+  // SSE is only available on an authenticated route, so a 401 closes the stream
+  // immediately and this handler would otherwise restart polling in a tight
+  // loop. Stop after a few failures and fall back to the slow poll.
+  let sseFailures = 0;
+  sse.onopen = () => {
+    sseConnected = true;
+    sseFailures = 0;
+    if (statusInterval) { clearInterval(statusInterval); statusInterval = null; }
+  };
   sse.onmessage = () => refresh();
-  sse.onerror = () => { sseConnected = false; if (!statusInterval && !document.hidden) statusInterval = setInterval(refresh, 15_000); };
+  sse.onerror = () => {
+    sseConnected = false;
+    sseFailures += 1;
+    if (sseFailures > 5) {
+      if (sseFailures === 6) console.debug('SSE unavailable — falling back to polling.');
+      if (sse.close) sse.close();
+      if (!statusInterval && !document.hidden) startPolling(15000);
+      return;
+    }
+    if (!statusInterval && !document.hidden) startPolling(15000);
+  };
 }
 
 // Keyboard shortcuts (when not focused on input)

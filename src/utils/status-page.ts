@@ -1,7 +1,7 @@
-// @ts-nocheck
 import express from 'express';
 import cors from 'cors';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { createLogger } from './logger.js';
@@ -27,6 +27,43 @@ const PORT = Number(process.env.STATUS_PORT) || 0;
 const HOST = process.env.STATUS_HOST || '127.0.0.1';
 const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || '';
 
+/**
+ * Resolve the public directory from this module's own location.
+ *
+ * `process.cwd()` is whatever directory the supervisor happened to start the
+ * process in, so serving static files from there meant the dashboard silently
+ * 404s when pm2 or Docker started the bot from anywhere else.
+ */
+const PUBLIC_DIR = fileURLToPath(new URL('../../public', import.meta.url));
+
+/**
+ * Cached `yt-dlp --version`.
+ *
+ * `/health` is unauthenticated, is the Docker healthcheck target, and used to
+ * spawn a fresh `yt-dlp` process on every single call. At a 30s healthcheck
+ * interval that is a child process every 30 seconds, forever — and an
+ * unauthenticated request loop is a trivial way to force it at any rate.
+ */
+let ytdlpVersionCache: { value: string; ok: boolean; at: number } | null = null;
+const YTDLP_VERSION_TTL_MS = 5 * 60 * 1000;
+
+function getYtdlpVersion(): Promise<{ value: string; ok: boolean }> {
+  if (ytdlpVersionCache && Date.now() - ytdlpVersionCache.at < YTDLP_VERSION_TTL_MS) {
+    return Promise.resolve({ value: ytdlpVersionCache.value, ok: ytdlpVersionCache.ok });
+  }
+  return new Promise((resolve) => {
+    execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
+      const result = err
+        ? { value: 'unavailable', ok: false }
+        : { value: stdout.trim(), ok: true };
+      // Only a successful probe is worth caching: a transient failure should
+      // not keep reporting "unavailable" for the next five minutes.
+      ytdlpVersionCache = { ...result, at: Date.now() };
+      resolve({ value: result.value, ok: result.ok });
+    });
+  });
+}
+
 let getSessionInfoFn = null;
 let getAllSessionsFn = null;
 let executeCommandFn = null;
@@ -37,8 +74,26 @@ export function setDiscordClient(client) {
   discordClient = client;
 }
 
+/**
+ * Whether the gateway is actually connected.
+ *
+ * Nothing in the shipped observability could tell a live bot from a deaf one.
+ * The heartbeat wrote `alive: true` on a timer that keeps ticking regardless of
+ * connectivity, and the healthcheck only tested the `yt-dlp` binary — so a bot
+ * that had lost its gateway, or a voice connection that never reached `Ready`,
+ * reported perfectly healthy indefinitely. `ws.ping` going stale is the one
+ * signal that distinguishes "quiet" from "disconnected".
+ */
+function getGatewayHealth(): { connected: boolean; ping: number | null } {
+  const ping = discordClient?.ws?.ping;
+  return {
+    connected: Boolean(discordClient?.ws?.ping != null && discordClient.isReady()),
+    ping: typeof ping === 'number' && Number.isFinite(ping) ? ping : null,
+  };
+}
+
 // In-memory error log (last 1000 errors, auto-rotated)
-const errorLog = [];
+const errorLog: { message: string; level: string; time: string }[] = [];
 const MAX_ERROR_LOG = 1000;
 
 export function logDashboardError(message, level = 'error') {
@@ -46,7 +101,18 @@ export function logDashboardError(message, level = 'error') {
   if (errorLog.length > MAX_ERROR_LOG) errorLog.length = MAX_ERROR_LOG;
 }
 
-const sseClients = new Set();
+const sseClients = new Set<express.Response>();
+/**
+ * How often to emit a comment frame on an idle stream.
+ *
+ * Only `trackChange` events were ever written, so a stream with no track
+ * changes produced no bytes at all. Any reverse proxy with an idle timeout
+ * closed the connection, and the client then churned reconnect-then-refetch
+ * cycles against `/api/status` — turning a quiet radio into the chatty one.
+ */
+const SSE_KEEPALIVE_MS = 25_000;
+const MAX_SSE_CLIENTS = 50;
+
 export function broadcastTrackChange() {
   for (const client of sseClients) {
     try {
@@ -57,8 +123,23 @@ export function broadcastTrackChange() {
   }
 }
 
+function startSseKeepalive() {
+  const timer = setInterval(() => {
+    for (const client of sseClients) {
+      try {
+        client.write(': ping\n\n');
+      } catch {
+        sseClients.delete(client);
+      }
+    }
+  }, SSE_KEEPALIVE_MS);
+  // Never hold the process open just to say "still here".
+  timer.unref?.();
+  return timer;
+}
+
 // Simple plays cache — avoids hitting SQLite on every request
-let playsCache = { data: null as any, ts: 0 };
+let playsCache: { data: Record<string, any> | null; ts: number } = { data: null, ts: 0 };
 const PLAYS_CACHE_TTL_MS = 5_000;
 
 async function getApiData() {
@@ -182,21 +263,37 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   getQueueFn = getQueueFnArg || null;
 
   const app = express();
-  
-  // CORS: allow all origins for local dev, restrict in production
-  const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : [];
+
+  // The rate limiter keys on `req.ip`, which is the socket address unless the
+  // proxy hop is declared. Behind the reverse proxy this deployment implies
+  // (CORS_ORIGINS, STATUS_HOST), every client collapses into a single bucket:
+  // the limit becomes a global 30 mutations/minute for everyone while giving
+  // any one caller no protection at all.
+  app.set('trust proxy', process.env.TRUST_PROXY === 'false' ? false : 1);
+
+  // CORS: only the configured origins, if any. An unset CORS_ORIGINS used to
+  // fall through to `origin: undefined`, which the cors package renders as
+  // `Access-Control-Allow-Origin: *` — so the public endpoints handed now
+  // playing titles, play history, uptime, the leaderboard and the invite URL
+  // to any origin on the internet. These routes carry no credentials, so this
+  // was disclosure rather than CSRF, but it needed no configuration to happen.
+  const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (allowedOrigins.length === 0) {
+    logger.warn('CORS_ORIGINS is not set — cross-origin requests will be refused. Set it to the dashboard\'s public origin.');
+  }
   app.use(cors({
-    origin: allowedOrigins.length > 0 ? (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-      else callback(new Error('Not allowed by CORS'));
-    } : undefined,
+    origin(origin, callback) {
+      // Same-origin and non-browser callers send no Origin header.
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
   }));
   app.use(express.json({ limit: '16kb' }));
-  app.use(express.static(join(process.cwd(), 'public')));
-  
+  app.use(express.static(PUBLIC_DIR));
+
   // Custom static fallbacks
-  app.get('/live', (req, res) => res.sendFile(join(process.cwd(), 'public', 'live.html')));
-  app.get('/admin/kiosk', (req, res) => res.sendFile(join(process.cwd(), 'public', 'kiosk.html')));
+  app.get('/live', (req, res) => res.sendFile(join(PUBLIC_DIR, 'live.html')));
+  app.get('/admin/kiosk', (req, res) => res.sendFile(join(PUBLIC_DIR, 'kiosk.html')));
 
   // Security Headers Middleware
   app.use((req, res, next) => {
@@ -209,7 +306,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   });
 
   // Simple in-memory rate limiter for mutation endpoints
-  const rateLimits = new Map();
+  const rateLimits = new Map<string, { start: number; count: number }>();
   const RATE_WINDOW_MS = 60_000;
   const RATE_MAX = 30;
   function checkRateLimit(ip) {
@@ -228,10 +325,12 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     for (const [ip, entry] of rateLimits) {
       if (now - entry.start > RATE_WINDOW_MS * 2) rateLimits.delete(ip);
     }
-  }, 300_000);
+  }, 300_000).unref?.();
+
+  const sseKeepalive = startSseKeepalive();
 
   // Request logging middleware — logs all API requests with timing
-  const apiLog = [];
+  const apiLog: any[] = [];
   const MAX_API_LOG = 500;
   app.use('/api', (req, res, next) => {
     const start = Date.now();
@@ -250,15 +349,19 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   // Public Endpoints
   app.get('/health', async (req, res) => {
-    const checks = { ok: true, uptime: Math.floor(process.uptime()) };
-    await new Promise(resolve => {
-      execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
-        checks.ytdlp = err ? 'unavailable' : stdout.trim();
-        if (err) checks.ok = false;
-        resolve();
-      });
+    // The Docker healthcheck hits this every 30s and it is unauthenticated,
+    // so it shares the same per-IP budget as the mutation endpoints.
+    const ip = req.ip || req.socket.remoteAddress || '';
+    if (!checkRateLimit(ip)) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
+    }
+    const ytdlp = await getYtdlpVersion();
+    res.status(ytdlp.ok ? 200 : 503).json({
+      ok: ytdlp.ok,
+      uptime: Math.floor(process.uptime()),
+      ytdlp: ytdlp.value,
+      gateway: getGatewayHealth(),
     });
-    res.status(checks.ok ? 200 : 503).json(checks);
   });
 
   app.get('/api/public', async (req, res) => {
@@ -270,7 +373,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   });
 
   app.get('/api/sse', (req, res) => {
-    if (sseClients.size > 50) {
+    if (sseClients.size >= MAX_SSE_CLIENTS) {
       return res.status(429).json({ error: 'Too many SSE connections' });
     }
     res.writeHead(200, {
@@ -279,6 +382,10 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
+    // Tell the browser how long to wait before reconnecting, and prove the pipe
+    // works before the client starts polling for the initial state.
+    res.write('retry: 5000\n\n');
+    res.write('data: update\n\n');
     sseClients.add(res);
     req.on('close', () => sseClients.delete(res));
   });
@@ -328,17 +435,14 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
 
   app.get('/api/health', async (req, res) => {
     try {
-      const health = { ytdlp: {}, pot: {}, cookie: {}, db: {}, processes: {} };
-      await new Promise(resolve => {
-        execFile('yt-dlp', ['--version'], { timeout: 5000, windowsHide: true }, (err, stdout) => {
-          health.ytdlp.version = err ? 'unavailable' : stdout.trim();
-          health.ytdlp.ok = !err;
-          resolve();
-        });
-      });
+      const health: Record<string, any> = { ytdlp: {}, pot: {}, cookie: {}, db: {}, processes: {}, gateway: getGatewayHealth() };
+      const ytdlp = await getYtdlpVersion();
+      health.ytdlp.version = ytdlp.value;
+      health.ytdlp.ok = ytdlp.ok;
       try {
-        const { getActiveProcessCount } = await import('../services/streaming.js');
+        const { getActiveProcessCount, getOrphanProcessCount } = await import('../services/streaming.js');
         health.processes.active = getActiveProcessCount();
+        health.processes.orphans = getOrphanProcessCount();
       } catch { health.processes.active = -1; }
       try {
         const r = await fetch(getActiveProvider(), { signal: AbortSignal.timeout(3000) });
@@ -425,7 +529,7 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     try {
       const videos = await getVideos();
       const plays = await loadPlays();
-      let queuePosMap = {};
+      const queuePosMap: Record<string, number> = {};
       if (getQueueFn && getAllSessionsFn) {
         const sessions = getAllSessionsFn();
         for (const ses of sessions) {
@@ -496,6 +600,12 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   // Backfill usernames from Discord
   app.post('/api/backfill-usernames', async (req, res) => {
     try {
+      // This one fans out into one Discord REST call per row in the table, so
+      // it was the only mutation endpoint with no rate limit at all.
+      const ip = req.ip || req.socket.remoteAddress || '';
+      if (!checkRateLimit(ip)) {
+        return res.status(429).json({ error: 'Rate limit exceeded. Try again later.' });
+      }
       if (!discordClient) return res.status(503).json({ error: 'Discord client not available' });
       const total = await backfillUsernames(discordClient);
       res.json({ ok: true, updated: total });
@@ -545,6 +655,9 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
   app.delete('/api/favorites/:videoId', (req, res) => {
     try {
       const { videoId } = req.params;
+      if (!isValidVideoId(videoId)) {
+        return res.status(400).json({ error: 'Invalid videoId' });
+      }
       const userId = (req.query.user_id as string) || 'dashboard';
       const db = getDb();
       db.prepare('DELETE FROM favorites WHERE video_id = ? AND user_id = ?').run(videoId, userId);
@@ -604,5 +717,6 @@ export function startStatusPage(getSessionInfoFnArg, getAllSessionsFnArg, execut
     logger.info(`Dashboard running on http://${HOST}:${PORT}`);
   }).on('error', (err) => {
     logger.warn('Dashboard failed to start:', err.message);
+    clearInterval(sseKeepalive);
   });
 }

@@ -22,3 +22,22 @@ export function parseVolumeInput(input: string | number): number | null {
   if (Number.isNaN(num)) return null;
   return clampVolume(num);
 }
+
+/**
+ * Make untrusted input safe to place inside a quoted message body.
+ *
+ * Angle brackets and control characters are removed and the result is capped.
+ * The dashboard renders command replies into the DOM, so echoing a command
+ * back verbatim is a reflected-input primitive that only needs one careless
+ * future renderer to become stored XSS. Stripping the characters that let a
+ * string break out of a text context is cheaper than auditing every renderer.
+ */
+export function forDisplay(value: unknown, maxLength = 40): string {
+  const stripped = String(value ?? '')
+    .replace(/[<>]/g, '')
+    // eslint-disable-next-line no-control-regex -- stripping control characters is the point
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .trim();
+  if (stripped.length <= maxLength) return stripped;
+  return `${stripped.slice(0, maxLength)}…`;
+}

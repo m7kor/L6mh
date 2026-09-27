@@ -5,7 +5,12 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
     },
-    max_memory_restart: '500M',
+    // Must sit above the 300MB warning threshold in utils/heartbeat.ts, or a
+    // genuine leak is reported as a warning while the supervisor silently
+    // restarts the bot instead. `max_restarts` is deliberately high enough that
+    // a leak-driven crash loop does not end in a permanently stopped bot —
+    // check `processes` in heartbeat.json, which is now reported alongside it.
+    max_memory_restart: '1G',
     autorestart: true,
     restart_delay: 5000,
     max_restarts: 10,

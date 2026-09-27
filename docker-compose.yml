@@ -16,6 +16,9 @@ services:
     environment:
       - NODE_ENV=production
       - POT_PROVIDER_URL=http://pot-provider:4416
+      # STATUS_HOST defaults to 127.0.0.1, which is correct behind a reverse
+      # proxy but means the published port below receives nothing at all.
+      - STATUS_HOST=0.0.0.0
     depends_on:
       - pot-provider
     healthcheck:
