@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * discord-yt-audio-bot — main entry point.
  *
@@ -6,19 +5,20 @@
  * Commands: /كمل, /عشوائي
  */
 
-import { readdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { Client, GatewayIntentBits, Events, Collection, ActivityType } from 'discord.js';
+import type { ActivitiesOptions } from 'discord.js';
 import { config } from './config.js';
+import { loadCommandModules } from './utils/load-commands.js';
 import { createLogger } from './utils/logger.js';
 import { notify } from './utils/webhook.js';
 import { checkForYtdlpUpdate } from './utils/ytdlp-update.js';
-import { startHeartbeat, setProcessCounter } from './utils/heartbeat.js';
-import { startStatusPage, broadcastTrackChange, setDiscordClient } from './utils/status-page.js';
+import { startHeartbeat, setProcessCounter, setHealthProbe } from './utils/heartbeat.js';
+import { startStatusPage, broadcastTrackChange, setDiscordClient, logDashboardError } from './utils/status-page.js';
 import { checkWeeklyRecap } from './utils/weekly-recap.js';
 import { getProgrammingMode, MODE_LABELS } from './utils/programming-mode.js';
-import { onVoiceJoin, onVoiceLeave, backfillUsernames } from './services/community.js';
+import { onVoiceJoin, onVoiceLeave, backfillUsernames, sweepPresence } from './services/community.js';
+import { reapOrphanProcessesAndReport } from './services/streaming.js';
+import { sweepJingleState } from './services/player/jingles.js';
 import {
   stopAllSessions,
   stopPlayback,
@@ -32,19 +32,46 @@ import {
   getQueue,
 } from './services/player/index.js';
 import { sessions, saveState, getSession } from './services/session.js';
+import { releaseSessionAudio } from './services/player/engine.js';
+import { forgetJingleState } from './services/player/jingles.js';
 import { closeDb } from './utils/database.js';
 import { migrateJsonToSqlite } from './utils/migration.js';
 import { formatTime } from './utils/format.js';
-import { isValidVideoId } from './utils/validators.js';
+import { isValidVideoId, forDisplay } from './utils/validators.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const logger = createLogger('bot');
 const soundsEnabled = (process.env.SOUND_EFFECTS_ENABLED || 'false') === 'true';
 
-// Optional Sentry error tracking — SENTRY_DSN must be set in .env
+/**
+ * The bot's "listening to" presence. `timestamps` is only attached while
+ * actually playing, so the shape is widened beyond the base activity type.
+ */
+type ClientActivity = ActivitiesOptions & { timestamps?: { start: Date } };
+
+/**
+ * Anything that could be a voice channel. Kept structural on purpose: discord.js
+ * exposes `members` as a `Collection` for voice channels and a manager for stage
+ * channels, and the union defeats `.filter()` typing. Both shapes expose `filter`.
+ */
+type VoiceChannelLike = {
+  id?: string;
+  name?: string;
+  members?: { filter(fn: (m: any) => boolean): { size: number } };
+};
+
+/** Count non-bot members in a voice channel, tolerating both member container types. */
+function countHumans(channel: unknown): number {
+  const members = (channel as VoiceChannelLike | null | undefined)?.members;
+  if (!members || typeof members.filter !== 'function') return 0;
+  return members.filter((m: any) => !m.user?.bot).size;
+}
+
+// Optional Sentry error tracking — SENTRY_DSN must be set in .env, and the
+// SDK is an optional dependency, so the import is resolved at runtime.
 if (process.env.SENTRY_DSN) {
   try {
-    const Sentry = await import('@sentry/node');
+    const sentryModule = '@sentry/node';
+    const Sentry = await import(sentryModule);
     Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.1 });
     logger.info('Sentry error tracking enabled.');
   } catch {
@@ -59,22 +86,55 @@ if (process.env.SENTRY_DSN) {
 const voiceActionTimeouts = new Map();
 const VOICE_DEBOUNCE_MS = 4_000;
 
+/**
+ * Run the username backfill at most once at a time.
+ *
+ * The backoff loop used to `Promise.race` a 30s timeout against a task that
+ * fetches one Discord user per row. Losing the race does not cancel it, so the
+ * work kept running for minutes after the boot moved on — and the dashboard's
+ * `POST /api/backfill-usernames` could start a second one on top, doubling the
+ * REST traffic.
+ */
+let backfillInFlight: Promise<number> | null = null;
+function backfillOnce(c: any): Promise<number> {
+  if (backfillInFlight) return backfillInFlight;
+  backfillInFlight = backfillUsernames(c)
+    .catch(() => 0)
+    .finally(() => { backfillInFlight = null; });
+  return backfillInFlight;
+}
+
+/**
+ * Stop everything for a guild and drop its session.
+ *
+ * Stopping alone is not enough: the session would keep its queue, its playedIds
+ * and its voice connection, and the housekeeping sweep only reclaims sessions
+ * that never had a connection. A guild the bot is no longer in will never be
+ * reclaimed by that path.
+ */
+async function releaseGuildSession(guildId: string): Promise<void> {
+  const session = sessions.get(guildId);
+  if (session) releaseSessionAudio(session);
+  await stopPlayback(guildId, { manual: true }).catch((err) => {
+    logger.debug(`[${guildId}] Stop during release failed: ${err.message}`);
+  });
+  sessions.delete(guildId);
+  forgetJingleState(guildId);
+  logDashboardError(`[${guildId}] Bot was removed from this guild; session released.`, 'warn');
+}
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
 });
 
 client.commands = new Collection();
 
-const commandsDir = join(__dirname, 'commands');
-const commandFiles = readdirSync(commandsDir).filter((file) => file.endsWith('.js'));
+for (const { module } of await loadCommandModules((msg) => logger.warn(msg))) {
+  client.commands.set(module.data.name, module);
+}
 
-for (const file of commandFiles) {
-  const commandModule = await import(`./commands/${file}`);
-  if (commandModule.data && commandModule.execute) {
-    client.commands.set(commandModule.data.name, commandModule);
-  } else {
-    logger.warn(`Skipped ${file}: missing "data" or "execute" export.`);
-  }
+if (client.commands.size === 0) {
+  logger.error('No slash commands loaded — /help-style commands will be unavailable.');
 }
 
 playerEvents.on('trackChange', ({ guildId, video, paused }) => {
@@ -94,13 +154,15 @@ playerEvents.on('trackChange', ({ guildId, video, paused }) => {
   const mode = getProgrammingMode();
   const modeLabel = MODE_LABELS[mode];
 
-  const activity = {
-    name: video.title || '—',
+  // Discord renders only `name` and `state` for a Listening activity — a
+  // `details` field here was accepted by the API but never displayed, so the
+  // progress line was invisible. Everything goes into `state`.
+  const activity: ClientActivity = {
+    name: `🎙️ راديو وحيد عمر — ${video.title || '—'}`,
     type: ActivityType.Listening,
-    state: `🎙️ راديو وحيد عمر • #${channelName}`,
-    details: paused
-      ? `⏸️ ${modeLabel} — متوقف مؤقتاً`
-      : `${modeLabel} • ▶️ ${formatTime(elapsed)}${video.durationSeconds ? ' / ' + formatTime(video.durationSeconds) : ''}`,
+    state: paused
+      ? `⏸️ ${modeLabel} — متوقف مؤقتاً • #${channelName}`
+      : `${modeLabel} • #${channelName} • ▶️ ${formatTime(elapsed)}${video.durationSeconds ? ' / ' + formatTime(video.durationSeconds) : ''}`,
   };
 
   if (!paused && session?.segmentStartedAt) {
@@ -112,31 +174,63 @@ playerEvents.on('trackChange', ({ guildId, video, paused }) => {
 });
 
 client.once(Events.ClientReady, async (c) => {
+  // Every subsystem below is started independently.
+  //
+  // This handler used to be one long unguarded `async` function, so a single
+  // rejection — a database that would not open, a migration that threw — took
+  // the rest of it with it. The rejection was then swallowed by the
+  // unhandledRejection handler, and the result was a bot that reported itself
+  // online with no heartbeat, no scheduler, no dashboard and no auto-join, and
+  // nothing anywhere reporting why.
+  const bootStep = async (name: string, fn: () => unknown) => {
+    try {
+      await fn();
+    } catch (err: any) {
+      logger.error(`Startup step "${name}" failed: ${err.message}`);
+      logDashboardError(`Startup step "${name}" failed: ${err.message}`);
+    }
+  };
+
   logger.info(`Logged in as ${c.user.tag}`);
   logger.info(`Channel ID: ${config.channelId}`);
   logger.info(`Commands loaded: /${[...client.commands.keys()].join(', /')}`);
 
-  // Migrate old JSON data to SQLite if needed
-  await migrateJsonToSqlite();
+  await bootStep('migrate-json', () => migrateJsonToSqlite());
 
   const guildCount = c.guilds.cache.size;
-  notify('🟢 Bot Started', `Logged in as **${c.user.tag}**\nServers: ${guildCount}\nCommands: /${[...client.commands.keys()].join(', /')}`, 'ok');
-  const { getActiveProcessCount } = await import('./services/streaming.js');
-  setProcessCounter(getActiveProcessCount);
-  startHeartbeat();
+  await bootStep('notify-started', () => notify(
+    '🟢 Bot Started',
+    `Logged in as **${c.user.tag}**\nServers: ${guildCount}\nCommands: /${[...client.commands.keys()].join(', /')}`,
+    'ok',
+  ));
 
-  // Backfill usernames (non-blocking, with timeout)
-  Promise.race([
-    backfillUsernames(c),
-    new Promise(resolve => setTimeout(() => resolve(0), 30_000)),
-  ]).then(total => {
-    if (total > 0) logger.info(`Backfilled ${total} usernames`);
-  }).catch(() => {});
+  await bootStep('process-counter', async () => {
+    const { getActiveProcessCount, getOrphanProcessCount } = await import('./services/streaming.js');
+    setProcessCounter(getActiveProcessCount);
+    setHealthProbe(() => ({
+      // A count well above 2-4 is the signature of a preloaded stream that was
+      // abandoned without being killed: ffmpeg blocked on a full pipe, still
+      // in the process table, never read and never closed.
+      processes: getActiveProcessCount(),
+      orphans: getOrphanProcessCount(),
+      gatewayPing: c.ws?.ping ?? null,
+      ready: c.isReady(),
+      sessions: sessions.size,
+    }));
+    startHeartbeat();
+  });
 
-  // Start the scheduler
-  import('./services/scheduler.js').then(({ startScheduler }) => {
+  // Backfill usernames in the background. The race bounds how long the boot
+  // waits, but it cannot cancel the loser, so the work itself is guarded
+  // against running twice concurrently.
+  backfillOnce(c)
+    .then(total => { if (total > 0) logger.info(`Backfilled ${total} usernames`); })
+    .catch(() => {});
+
+  await bootStep('scheduler', async () => {
+    const { startScheduler } = await import('./services/scheduler.js');
     startScheduler(c);
-  }).catch(err => logger.error('Failed to start scheduler:', err));
+  });
 
   // Dashboard command handler
   async function handleDashboardCommand(cmd, targetGuildId = null) {
@@ -214,7 +308,9 @@ client.once(Events.ClientReady, async (c) => {
       const { setVolume } = await import('./services/player/controls.js');
       let done = 0;
       for (const s of all) {
-        try { setVolume(s.guildId, val, connectAndPlay); done++; } catch (e) { logger.debug(`volume ${s.guildId} failed: ${e.message}`); }
+        // Awaited: this restarts the track, so a floating call reported
+        // success for a volume change that may not have been applied.
+        try { await setVolume(s.guildId, val, connectAndPlay); done++; } catch (e) { logger.debug(`volume ${s.guildId} failed: ${e.message}`); }
       }
       return done > 0 ? `Volume set to ${val}% on ${done} server(s).` : 'No active servers found.';
     }
@@ -264,7 +360,7 @@ client.once(Events.ClientReady, async (c) => {
       const { getVideos } = await import('./services/youtube.js');
       const catalog = await getVideos();
       const matches = catalog.filter(v => (v.title || '').toLowerCase().includes(query.toLowerCase())).slice(0, 10);
-      if (matches.length === 0) return `No results for "${query}".`;
+      if (matches.length === 0) return `No results for "${forDisplay(query, 40)}".`;
       return matches.map((v, i) => `${i + 1}. ${v.title} (${v.videoId})`).join('\n');
     }
     if (lower.startsWith('sleeptimer ')) {
@@ -278,14 +374,23 @@ client.once(Events.ClientReady, async (c) => {
       for (const s of all) setTimer(s.guildId, mins);
       return `Sleep timer set: ${mins} minutes.`;
     }
-    return `Unknown command: "${cmd}". Type help for commands list.`;
+    // The raw command is not echoed back. These replies are JSON today, so it
+    // is not exploitable — but the dashboard renders `reply` into the DOM, and
+    // reflecting unvalidated input into a message body is a primitive that only
+    // needs one careless future renderer to become stored XSS. Truncate as
+    // well: an unbounded echo has no use in an error message.
+    return `Unknown command: "${forDisplay(cmd, 40)}". Type help for commands list.`;
   }
 
   setDiscordClient(c);
-  startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand, getQueue);
+  await bootStep('status-page', () => startStatusPage(getSessionInfo, getAllSessions, handleDashboardCommand, getQueue));
 
-  // Weekly recap — check daily
-  setInterval(checkWeeklyRecap, 60 * 60 * 1000);
+  // Weekly recap — check daily. Wrapped because an unhandled rejection from a
+  // timer callback is invisible: nothing ever sees the error and the interval
+  // keeps running, so the failure looks like the recap simply never fires.
+  setInterval(() => {
+    checkWeeklyRecap().catch((err) => logger.error('Weekly recap failed:', err.message));
+  }, 60 * 60 * 1000);
 
   checkForYtdlpUpdate().catch((err) => logger.warn('yt-dlp update check failed:', err.message));
   setInterval(() => {
@@ -295,22 +400,39 @@ client.once(Events.ClientReady, async (c) => {
   // Periodic state backup — save all sessions every 60s
   setInterval(() => {
     for (const [guildId] of sessions) {
-      try { saveState(getSession(guildId)); } catch {}
+      try { saveState(getSession(guildId)); } catch (err: any) { logger.debug(`State save failed for ${guildId}: ${err.message}`); }
     }
   }, 60_000);
 
-  // Session cleanup — remove idle sessions after 1 hour
+  // Session cleanup — reclaim sessions that are holding nothing
   setInterval(() => {
     const now = Date.now();
     for (const [guildId, session] of sessions) {
-      if (!session.connection && !session.current && !session.manualStop) {
-        const lastActivity = session.segmentStartedAt || session.cycleStartedAt;
-        if (lastActivity && (now - new Date(lastActivity).getTime()) > 3600_000) {
-          sessions.delete(guildId);
-          logger.info(`[${guildId}] Cleaned up idle session.`);
-        }
+      if (session.connection || session.player || session.activeHandle) continue;
+      // A session that is mid-`connectAndPlay` also has no player yet, since
+      // the teardown runs before the stream is spawned. The in-flight flags are
+      // what distinguish "waiting on yt-dlp" from "finished and idle".
+      if (session.advancing || session.recovering || session.rejoinTimer) continue;
+      // A manually stopped session used to be exempt from this sweep entirely,
+      // so any guild the bot had ever played in kept its queue, its playedIds
+      // and its Discord object references for the life of the process. A stop
+      // already empties the queue, so there is nothing left to preserve.
+      const lastActivity = session.segmentStartedAt || session.cycleStartedAt;
+      const idleFor = lastActivity ? now - new Date(lastActivity).getTime() : Infinity;
+      if (idleFor > 3600_000) {
+        sessions.delete(guildId);
+        forgetJingleState(guildId);
+        logger.info(`[${guildId}] Cleaned up idle session.`);
       }
     }
+  }, 300_000);
+
+  // Housekeeping — reap orphaned child processes and bound the per-guild maps
+  // that are only ever written to.
+  setInterval(() => {
+    void reapOrphanProcessesAndReport();
+    sweepPresence();
+    sweepJingleState(new Set(sessions.keys()));
   }, 300_000);
 
   for (const guild of c.guilds.cache.values()) {
@@ -321,7 +443,7 @@ client.once(Events.ClientReady, async (c) => {
       let maxHumans = 0;
 
       for (const ch of voiceChannels.values()) {
-        const humans = ch.members.filter((m) => !m.user.bot).size;
+        const humans = countHumans(ch);
         if (humans > maxHumans) {
           maxHumans = humans;
           targetChannel = ch;
@@ -372,6 +494,26 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
+client.on(Events.GuildDelete, (guild) => {
+  // The bot was removed. Nothing else notices: the rejoin ladder keeps
+  // retrying a channel it can no longer reach, burning a 60s timeout each
+  // cycle, while the session keeps its queue, its playedIds and its connection
+  // object in memory forever.
+  logger.warn(`[${guild.id}] Removed from guild — releasing session.`);
+  releaseGuildSession(guild.id);
+  for (const [key, timeout] of voiceActionTimeouts) {
+    if (key.endsWith(guild.id)) {
+      clearTimeout(timeout);
+      voiceActionTimeouts.delete(key);
+    }
+  }
+});
+
+client.on(Events.Error, (err) => {
+  logger.error('Discord client error:', redactSecrets(err?.stack || String(err)));
+  logDashboardError(`Discord client error: ${err?.message}`);
+});
+
 client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
   try {
     const guild = newState.guild;
@@ -395,7 +537,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
         voiceActionTimeouts.delete(debounceKey);
       }, VOICE_DEBOUNCE_MS));
 
-      const humanCount = joinedChannel.members.filter((m) => !m.user.bot).size;
+      const humanCount = countHumans(joinedChannel);
       const isBotIdle = !session.connected;
 
       // Bot was idle → start playing in the newly joined channel
@@ -429,7 +571,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       if (session.connected && humanCount >= 1) {
         const botChannel = guild.members.me?.voice?.channel;
         if (botChannel && botChannel.id !== joinedChannel.id) {
-          const currentHumans = botChannel.members.filter((m) => !m.user.bot).size;
+          const currentHumans = countHumans(botChannel);
           // Only move if joined channel now has strictly more humans
           if (humanCount > currentHumans) {
             const moveKey = `move-${guild.id}`;
@@ -439,8 +581,8 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
                 // Re-verify situation hasn't changed
                 const freshJoined = guild.channels.cache.get(joinedChannel.id);
                 if (!freshJoined) return;
-                const freshHumans = freshJoined.members.filter((m) => !m.user.bot).size;
-                const freshCurrent = guild.members.me?.voice?.channel?.members.filter((m) => !m.user.bot).size || 0;
+                const freshHumans = countHumans(freshJoined);
+                const freshCurrent = countHumans(guild.members.me?.voice?.channel);
                 if (freshHumans > freshCurrent) {
                   logger.info(`[${guild.id}] Auto-moving to #${joinedChannel.name} (${freshHumans} humans vs ${freshCurrent}).`);
                   try {
@@ -467,7 +609,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     if (oldState.channel && !newState.channel) {
       const botChannel = guild.members.me?.voice?.channel;
       if (botChannel && botChannel.id === oldState.channelId) {
-        const remaining = botChannel.members.filter((m) => !m.user.bot).size;
+        const remaining = countHumans(botChannel);
         if (remaining === 0) {
           logger.info(`[${guild.id}] Channel #${botChannel.name} is now empty. Bot stays but will auto-move when someone joins.`);
         }
@@ -541,34 +683,66 @@ function redactSecrets(str) {
     .replace(/[A-Za-z0-9._-]{20,}/g, '[REDACTED]');
 }
 
+/** The shape of the values Node hands to the process-level error handlers. */
+interface ErrorLike {
+  code?: string;
+  message?: string;
+  stack?: string;
+}
+
+/**
+ * Transient failures that discord.js and the voice layer recover from on their
+ * own. Restarting on these would turn a momentary network blip into downtime.
+ */
+const TRANSIENT_CODES = new Set([
+  'EPIPE', 'EAI_AGAIN', 'ENOTFOUND', 'ETIMEDOUT', 'ECONNRESET',
+  'ECONNREFUSED', 'ECONNABORTED', 'ERR_SOCKET_CLOSED', 'ERR_STREAM_DESTROYED',
+]);
+
+function isTransient(err: unknown): boolean {
+  const e = err as ErrorLike | null | undefined;
+  if (!e) return false;
+  if (e.code && TRANSIENT_CODES.has(e.code)) return true;
+  const message = e.message || '';
+  return /EPIPE|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ERR_SOCKET_CLOSED|Cannot perform IP discovery|Opening handshake/i.test(message);
+}
+
 process.on('unhandledRejection', (reason) => {
-  // EPIPE errors from broken pipes are non-fatal — Discord voice sockets close abruptly
-  if (reason?.code === 'EPIPE' || reason?.message?.includes('EPIPE')) return;
-  if (reason?.message?.includes('Cannot perform IP discovery')) return;
-  if (reason?.code === 'EAI_AGAIN' || reason?.code === 'ENOTFOUND' || reason?.code === 'ETIMEDOUT') return;
+  if (isTransient(reason)) return;
   logger.error('Unhandled promise rejection:', redactSecrets(reason));
+  logDashboardError(`Unhandled rejection: ${String((reason as ErrorLike)?.message ?? reason).slice(0, 300)}`);
 });
 
-process.on('uncaughtException', (err) => {
-  // EPIPE = broken pipe (e.g. ffmpeg/Discord UDP socket closed) — safe to ignore
-  if (err?.code === 'EPIPE' || err?.message?.includes('EPIPE')) {
-    logger.warn('Ignored EPIPE (broken pipe) error.');
-    return;
-  }
-  // IP discovery failure on voice reconnect — recoverable, no restart needed
-  if (err?.message?.includes('Cannot perform IP discovery')) {
-    logger.warn('Ignored IP discovery error (voice reconnect in progress).');
-    return;
-  }
-  // DNS/network transient errors — wait and let Discord.js reconnect naturally
-  if (err?.code === 'EAI_AGAIN' || err?.code === 'ENOTFOUND' || err?.code === 'ETIMEDOUT') {
-    logger.warn(`Ignored transient network error (${err.code}): ${err.message}`);
+/**
+ * Flush state, then let the supervisor restart us.
+ *
+ * The old version called `stopAllSessions()` without awaiting it and exited
+ * 500ms later, so a crash could land mid-write on the SQLite state — which is
+ * exactly the moment losing the queue hurts most. The recorded crashes here
+ * are all network handshakes, so this path is not theoretical.
+ */
+process.on('uncaughtException', (err: Error) => {
+  if (isTransient(err)) {
+    logger.warn(`Ignored transient error (${(err as ErrorLike).code || 'no-code'}): ${err.message}`);
     return;
   }
   logger.error('Uncaught exception — restarting:', redactSecrets(err?.stack || err));
+  logDashboardError(`Uncaught exception: ${err?.message}`);
   notify('🔴 Uncaught Exception — Restarting', `\`\`\`${redactSecrets(String(err?.stack || err)).slice(0, 1500)}\`\`\``, 'error').catch(() => {});
-  stopAllSessions();
-  setTimeout(() => process.exit(1), 500);
+
+  const hardExit = setTimeout(() => {
+    logger.error('State flush did not finish in time — exiting anyway.');
+    process.exit(1);
+  }, 8_000);
+  hardExit.unref?.();
+
+  stopAllSessions()
+    .catch((flushErr) => logger.error('State flush failed:', flushErr?.message))
+    .finally(() => {
+      clearTimeout(hardExit);
+      try { closeDb(); } catch { /* already closed */ }
+      process.exit(1);
+    });
 });
 
 function gracefulShutdown(signal) {
@@ -608,8 +782,26 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK'));
 
-client.login(config.discordToken).catch(async (err) => {
-  logger.error('Login failed:', err.message);
-  await notify('🔴 Login Failed', `\`\`\`${err.message}\`\`\``, 'error');
+/**
+ * Log in.
+ *
+ * `config.discordToken` is read *inside* this async function, not as an
+ * argument. Passing it as an argument would evaluate the lazy config proxy
+ * before the promise existed, so a missing `.env` produced a raw stack trace
+ * with no explanation and no webhook. The notification is guarded too: the
+ * error path used to read `config.healthWebhookUrl` from the same throwing
+ * proxy, turning a clear config error into an unhandled rejection.
+ */
+async function login(): Promise<void> {
+  const token = config.discordToken;
+  await client.login(token);
+}
+
+login().catch(async (err) => {
+  logger.error('Login failed:', redactSecrets(err?.message || String(err)));
+  logDashboardError(`Login failed: ${err?.message || String(err)}`);
+  try {
+    await notify('🔴 Login Failed', `\`\`\`${redactSecrets(String(err?.message || err)).slice(0, 500)}\`\`\``, 'error');
+  } catch { /* webhook is best-effort */ }
   process.exit(1);
 });

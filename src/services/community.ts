@@ -10,6 +10,43 @@ const logger = createLogger('community');
 
 const presenceMap = new Map();
 
+/**
+ * How long a presence entry may sit before it is considered abandoned.
+ *
+ * Entries are added on join and removed on leave, so any leave event that is
+ * missed — a member force-disconnected, or a resume across which the gateway
+ * did not replay the state change — leaves the entry behind permanently. The
+ * map is keyed by `userId:guildId`, so it grows with every distinct listener
+ * the bot has ever seen and nothing ever brings it back down.
+ */
+const PRESENCE_TTL_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * Drop presence entries nobody has left.
+ *
+ * The abandoned entry is also credited with its minutes, so a stuck presence
+ * ends up in the leaderboard rather than silently vanishing.
+ */
+export function sweepPresence(): number {
+  const now = Date.now();
+  let dropped = 0;
+
+  for (const [key, joinTime] of presenceMap) {
+    if (now - joinTime < PRESENCE_TTL_MS) continue;
+    presenceMap.delete(key);
+    dropped += 1;
+
+    const separator = key.lastIndexOf(':');
+    const userId = key.slice(0, separator);
+    const guildId = key.slice(separator + 1);
+    const minutes = Math.round((now - joinTime) / 60000);
+    if (minutes > 0) addMinutes(userId, guildId, minutes);
+  }
+
+  if (dropped > 0) logger.info(`Swept ${dropped} abandoned presence entries.`);
+  return dropped;
+}
+
 export function onVoiceJoin(userId: string, guildId: string, username?: string, avatarUrl?: string): void {
   const key = `${userId}:${guildId}`;
   if (!presenceMap.has(key)) {
