@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatTime } from './format.js';
@@ -177,11 +176,9 @@ describe('buildNewQueue', () => {
 
   it('returns shuffled order (not always sorted)', () => {
     const q = buildNewQueue(catalog);
-    const ids = q.map(v => v.videoId);
-    const original = catalog.map(v => v.videoId).join(',');
-    const shuffled = ids.join(',');
-    // Very unlikely to be identical for 6 elements
-    assert.ok(q.length === catalog.length);
+    // Every catalog entry appears exactly once.
+    assert.equal(q.length, catalog.length);
+    assert.deepStrictEqual([...q].sort(), catalog.map(v => v.videoId).sort());
   });
 
   it('handles empty catalog', () => {
@@ -286,30 +283,29 @@ describe('isPotProviderError', () => {
 });
 
 describe('killProcesses', () => {
-  it('kills and nulls ffmpegProcess', () => {
+  // These previously asserted on `ffmpegProcess` and `resolveProcess`. Both
+  // fields were never assigned — each handle owns its own child processes — so
+  // the tests passed while covering two branches that could not run. The
+  // contract is now the single thing that actually happens: the handle is
+  // killed and the reference cleared.
+  it('kills the active handle and clears the reference', () => {
     let killed = false;
-    const session = { ffmpegProcess: { kill: () => { killed = true; } }, resolveProcess: null };
+    const session: any = { activeHandle: { kill: () => { killed = true; } } };
     killProcesses(session);
     assert.equal(killed, true);
-    assert.equal(session.ffmpegProcess, null);
+    assert.equal(session.activeHandle, null);
   });
 
-  it('kills and nulls resolveProcess', () => {
-    let killed = false;
-    const session = { ffmpegProcess: null, resolveProcess: { kill: () => { killed = true; } } };
-    killProcesses(session);
-    assert.equal(killed, true);
-    assert.equal(session.resolveProcess, null);
+  it('is a no-op when the handle is already gone', () => {
+    const session: any = { activeHandle: null };
+    assert.doesNotThrow(() => killProcesses(session));
+    assert.equal(session.activeHandle, null);
   });
 
-  it('handles kill errors gracefully', () => {
-    const session = { ffmpegProcess: { kill: () => { throw new Error('already dead'); } }, resolveProcess: null };
-    killProcesses(session); // should not throw
-    assert.equal(session.ffmpegProcess, null);
-  });
-
-  it('handles null processes gracefully', () => {
-    killProcesses({ ffmpegProcess: null, resolveProcess: null }); // should not throw
+  it('clears the reference even when kill throws', () => {
+    const session: any = { activeHandle: { kill: () => { throw new Error('already dead'); } } };
+    assert.doesNotThrow(() => killProcesses(session));
+    assert.equal(session.activeHandle, null, 'a failed kill must not leave a stale reference behind');
   });
 });
 

@@ -2,7 +2,29 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { inferPlaybackState, selectPublicSession } from '../src/utils/playback-state.ts';
 import { validateDiscordInviteUrl } from '../src/utils/discord-invite.js';
+import { forDisplay, isValidVideoId } from '../src/utils/validators.ts';
 import { renderPlaybackState } from '../public/js/playback-view.js';
+
+// The dashboard renders command replies into the DOM, so the bot must not echo
+// untrusted input verbatim back into one.
+test('forDisplay neutralises reflected input', () => {
+  assert.equal(forDisplay('<script>alert(1)</script>'), 'scriptalert(1)/script');
+  assert.equal(forDisplay('<img src=x onerror=alert(1)>'), 'img src=x onerror=alert(1)');
+  assert.equal(forDisplay('a\u0000b\u001fc'), 'a b c', 'control characters become spaces');
+});
+
+test('forDisplay truncates and handles non-strings', () => {
+  assert.equal(forDisplay('x'.repeat(100), 10).length, 11, '10 chars plus the ellipsis');
+  assert.equal(forDisplay(null), '');
+  assert.equal(forDisplay(undefined), '');
+  assert.equal(forDisplay('  padded  '), 'padded');
+});
+
+test('isValidVideoId accepts only real ids', () => {
+  assert.equal(isValidVideoId('dQw4w9WgXcQ'), true);
+  assert.equal(isValidVideoId('<script>'), false);
+  assert.equal(isValidVideoId(''), false);
+});
 
 // ── inferPlaybackState ──
 const base = {
@@ -77,11 +99,13 @@ test('accepts only https discord.gg / discord.com invites', () => {
 
 // ── renderPlaybackState ──
 function fakeDoc() {
-  const bars = Array.from({ length: 5 }, () => ({ className: '', classList: {
-    toggle(name, on) { this._set(name, on); },
-    _set: {}, _set(name, on) { this[name] = on; },
-    contains(name) { return !!this[name]; },
-  } }));
+  const bars = Array.from({ length: 5 }, () => {
+    const state = new Map();
+    return { className: '', classList: {
+      toggle(name, on) { state.set(name, on); },
+      contains(name) { return !!state.get(name); },
+    } };
+  });
   const els = {
     npTag: { textContent: '' },
     npFill: { style: {} },
