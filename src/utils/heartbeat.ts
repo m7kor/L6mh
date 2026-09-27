@@ -78,10 +78,3 @@ export function startHeartbeat() {
   timer = setInterval(writeHeartbeat, INTERVAL_MS);
   logger.info(`Heartbeat started (every ${INTERVAL_MS / 1000}s)`);
 }
-
-export function stopHeartbeat() {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-}

@@ -13,16 +13,6 @@ export function clampVolume(vol: number, min = 0, max = 200): number {
   return Math.max(min, Math.min(max, Math.round(vol)));
 }
 
-export function isValidVolumeRange(vol: number): boolean {
-  return Number.isInteger(vol) && vol >= 0 && vol <= 200;
-}
-
-export function parseVolumeInput(input: string | number): number | null {
-  const num = typeof input === 'string' ? parseInt(input, 10) : input;
-  if (Number.isNaN(num)) return null;
-  return clampVolume(num);
-}
-
 /**
  * Make untrusted input safe to place inside a quoted message body.
  *
