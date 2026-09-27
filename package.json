@@ -29,8 +29,7 @@
     "dotenv": "^16.4.0",
     "express": "^5.2.1",
     "opusscript": "^0.0.8",
-    "prism-media": "^1.0.5",
-    "sodium-native": "^4.1.0"
+    "prism-media": "^1.0.5"
   },
   "engines": {
     "node": ">=18.0.0"
