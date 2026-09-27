@@ -70,6 +70,12 @@ function initTables() {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS session_progress (
+      guild_id TEXT PRIMARY KEY,
+      current TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS member_stats (
       user_id TEXT NOT NULL,
       guild_id TEXT NOT NULL,

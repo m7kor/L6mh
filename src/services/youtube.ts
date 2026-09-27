@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * YouTube Data API v3 integration.
  * Fetches videos from the channel's "uploads" playlist for random/latest
@@ -15,6 +14,7 @@ import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
+import { TtlCache } from '../utils/ttl-cache.js';
 import { notify } from '../utils/webhook.js';
 
 const logger = createLogger('youtube');
@@ -49,7 +49,11 @@ const VIDEO_CACHE_FILE = join(process.cwd(), 'video-cache.json');
 
 let uploadsPlaylistCache = { id: null, channelId: null };
 let listCache = { items: null, fetchedAt: 0 };
-const detailsCache = new Map(); // videoId -> { data, fetchedAt }
+/**
+ * Bounded: the old Map checked expiry on read but never evicted, so it grew to
+ * the size of the catalog and stayed there for the life of the process.
+ */
+const detailsCache = new TtlCache<any>(DETAILS_CACHE_TTL_MS, 5_000);
 
 function loadDiskCache() {
   if (!existsSync(VIDEO_CACHE_FILE)) return;
@@ -80,7 +84,7 @@ async function callApi(endpoint, params) {
       const res = await fetch(`https://www.googleapis.com/youtube/v3/${endpoint}?${params}`);
       if (res.status === 429) {
         if (attempt === 2) throw new Error(`YouTube API rate limited after 3 retries on ${endpoint}`);
-        const retryAfter = res.headers.get('retry-after') || (attempt + 1) * 2;
+        const retryAfter = Number(res.headers.get('retry-after')) || (attempt + 1) * 2;
         await new Promise(r => setTimeout(r, retryAfter * 1000));
         continue;
       }
@@ -225,13 +229,9 @@ function parseIsoDuration(iso) {
  * @returns {Promise<{durationSeconds: number|null, thumbnail: string|null, viewCount: number|null, publishedAt: string|null} | null>}
  */
 export async function getVideoDetails(videoId: string, apiKey = config.youtubeApiKey) {
-  const now = Date.now();
-  
   // First, check in-memory cache
   const memCached = detailsCache.get(videoId);
-  if (memCached && (now - memCached.fetchedAt < DETAILS_CACHE_TTL_MS)) {
-    return memCached.data;
-  }
+  if (memCached) return memCached;
 
   // Second, check SQLite database
   try {
@@ -247,7 +247,7 @@ export async function getVideoDetails(videoId: string, apiKey = config.youtubeAp
         publishedAt: row.published_at,
       };
       // Populate memory cache to save DB hits
-      detailsCache.set(videoId, { data: details, fetchedAt: now });
+      detailsCache.set(videoId, details);
       return details;
     }
   } catch (err) {
@@ -275,7 +275,7 @@ export async function getVideoDetails(videoId: string, apiKey = config.youtubeAp
       viewCount: item.statistics?.viewCount ? Number(item.statistics.viewCount) : null,
       publishedAt: item.snippet?.publishedAt || null,
     };
-    detailsCache.set(videoId, { data: details, fetchedAt: now });
+    detailsCache.set(videoId, details);
     
     // Save to SQLite for permanent storage across restarts
     try {
