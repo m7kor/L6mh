@@ -8,16 +8,20 @@
 import { EventEmitter } from 'node:events';
 import { createLogger } from '../../utils/logger.js';
 import {
-  getSession, sessions,
+  getSession, peekSession, sessions, GuildSession,
   saveState,
   getElapsedSeconds,
   freezeProgress,
   startProgressAutosave,
   stopProgressAutosave,
+  clearCrossfade,
+  discardPreload,
+  discardPending,
+  clearPreloadTimer,
+  releaseTape,
 } from '../session.js';
 import { killProcesses } from '../streaming.js';
-import { clearNowPlayingMessage, triggerUiUpdate } from './ui-updater.js';
-import { notify } from '../../utils/webhook.js';
+import { clearNowPlayingMessage, stopNowPlayingRefresh, triggerUiUpdate } from './ui-updater.js';
 import { getCachedTitleMap } from '../youtube.js';
 import { inferPlaybackState } from '../../utils/playback-state.js';
 
@@ -37,25 +41,62 @@ export async function stopPlayback(guildId, { manual = true } = {}) {
   session.manualStop  = manual;
   session.queue       = [];
   session.paused      = false;
+  session.crossfading = false;
+  // Cancel any in-flight `connectAndPlay`. It can be up to 60s into a voice
+  // connection and 45s into a stream spawn at this point, and it commits
+  // unconditionally once it gets there — so without this, a /stop issued while
+  // a track was still starting would be silently overwritten by it.
+  session.playToken += 1;
+
 
   freezeProgress(session);
   stopProgressAutosave(session);
 
+  // Cancel any scheduled transition and drop the buffered next track, so
+  // stopping never leaves an ffmpeg/yt-dlp pair alive.
+  clearCrossfade(session);
+  clearPreloadTimer(session);
+  discardPreload(session);
+  discardPending(session);
+  releaseTape(session);
+
+  // The periodic embed refresh has to stop on *any* stop, not just a manual
+  // one. A non-manual stop leaves the message on screen, so the reference
+  // stays — but a running timer would keep editing a message about a track
+  // that is no longer playing, twice a minute, indefinitely.
   if (manual) {
     clearNowPlayingMessage(session);
+  } else {
+    stopNowPlayingRefresh(session);
+  }
+
+  if (session.rejoinTimer) {
+    clearTimeout(session.rejoinTimer);
+    session.rejoinTimer = null;
+  }
+
+  // The player that a crossfade left behind is no longer subscribed, but still
+  // holds a resource — stop it so its stream is released.
+  if (session.outgoingPlayer) {
+    try { session.outgoingPlayer.stop(true); } catch { /* already gone */ }
+    session.outgoingPlayer = null;
+  }
+  if (session.streamWatchdog) {
+    clearInterval(session.streamWatchdog);
+    session.streamWatchdog = null;
   }
 
   const player = session.player;
   session.player = null;
   if (player) {
-    try { player.stop(true); } catch {}
+    try { player.stop(true); } catch { /* already gone */ }
   }
 
   if (manual) {
     const conn = session.connection;
     session.connection = null;
     if (conn) {
-      try { conn.destroy(); } catch {}
+      try { conn.destroy(); } catch { /* already gone */ }
     }
   }
 
@@ -77,8 +118,15 @@ export async function stopAllSessions() {
 export function skipTrack(guildId) {
   const session = getSession(guildId);
   if (!session.player) return;
+  // A pending crossfade would otherwise fire mid-skip and start the track the
+  // user just skipped past.
+  clearCrossfade(session);
   killProcesses(session);
-  try { session.player.stop(true); } catch {}
+  if (session.outgoingPlayer) {
+    try { session.outgoingPlayer.stop(true); } catch { /* already gone */ }
+    session.outgoingPlayer = null;
+  }
+  try { session.player.stop(true); } catch { /* already gone */ }
   logger.info(`[${guildId}] Track skipped.`);
 }
 
@@ -169,16 +217,25 @@ export async function moveToTopQueue(guildId: string, index: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Getters
+// Getters — read-only, so they must not create a session as a side effect
 // ---------------------------------------------------------------------------
 
+/**
+ * A throwaway stand-in for a guild with no session.
+ *
+ * Fresh per call rather than shared: it is a real mutable object, and a shared
+ * instance would let one guild's read corrupt another's.
+ */
+function emptySession(): GuildSession {
+  return new GuildSession('unknown');
+}
+
 export function getQueue(guildId) {
-  const session = getSession(guildId);
-  return session.queue || [];
+  return (peekSession(guildId) || emptySession()).queue || [];
 }
 
 export function getSessionInfo(guildId) {
-  const session = getSession(guildId);
+  const session = peekSession(guildId) || emptySession();
   return {
     playbackState:   inferPlaybackState(session),
     current:         session.current,

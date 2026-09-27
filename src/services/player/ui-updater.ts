@@ -6,11 +6,9 @@
  * - التحديث الفوري مرتبط بأحداث (بداية مقطع، إيقاف، استكمال) بدلاً من الانتظار.
  */
 
-import { createLogger } from '../../utils/logger.js';
 import { buildNowPlayingMessage } from '../../utils/embeds.js';
 import { getElapsedSeconds, getSession } from '../session.js';
 
-const logger = createLogger('audio');
 
 /**
  * تحديث شريط التقدم كل 30 ثانية (بدل 15).
@@ -24,12 +22,9 @@ const UI_REFRESH_MS = 30_000;
 
 /**
  * ربط رسالة "الآن يعمل" بالجلسة وتشغيل التحديث الدوري.
- * @param {string} guildId
- * @param {import('discord.js').Message} message
- * @param {import('../session.js').GuildSession} session
+ * @param guildId مطلوب فقط عندما لا تُمرَّر الجلسة
  */
-export function attachNowPlayingMessage(guildId, message, session) {
-  if (!session) session = getSession(guildId);
+export function attachNowPlayingMessage(guildId, message, session = getSession(guildId)) {
   session.nowPlayingMessage = message;
   startUiRefresh(session);
   updateNowPlayingMessage(session).catch(() => {});
@@ -50,6 +45,18 @@ export async function triggerUiUpdate(session) {
 export function clearNowPlayingMessage(session) {
   stopUiRefresh(session);
   session.nowPlayingMessage = null;
+}
+
+/**
+ * إيقاف التحديث الدوري فقط، مع الإبقاء على مرجع الرسالة.
+ *
+ * A non-manual stop (track end, failed rejoin, scheduler) leaves the message
+ * on screen, so the reference has to survive — but the refresh must not. Left
+ * running, it edits a message about a track that is no longer playing, once
+ * every 30 seconds, forever.
+ */
+export function stopNowPlayingRefresh(session) {
+  stopUiRefresh(session);
 }
 
 // ---------------------------------------------------------------------------
