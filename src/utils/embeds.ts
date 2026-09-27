@@ -10,8 +10,13 @@ import { formatTime } from './format.js';
 import { MODE_LABELS, randomPersonalityLine } from '../lang.js';
 
 const RADIO_CYAN   = 0x00E5FF;
-const RADIO_ORANGE = 0xFF6B35;
 const PAUSED_COLOR = 0x2B2D31;
+
+/** Shape returned to `interaction.editReply` / `interaction.reply`. */
+export interface NowPlayingMessage {
+  embeds: EmbedBuilder[];
+  components: ActionRowBuilder<any>[];
+}
 
 function progressBar(elapsed, duration, isLive) {
   if (isLive) return '🔴 **بث مباشر**';
@@ -23,7 +28,7 @@ function progressBar(elapsed, duration, isLive) {
   return `\`${formatTime(elapsed)}\` ${bar} \`${formatTime(duration)}\``;
 }
 
-export function buildNowPlayingMessage(video, state) {
+export function buildNowPlayingMessage(video, state): NowPlayingMessage {
   const modeLabel = MODE_LABELS[state.mode] || '▶️ تشغيل';
   const color = state.paused ? PAUSED_COLOR : RADIO_CYAN;
   const personality = randomPersonalityLine();

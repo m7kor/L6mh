@@ -9,12 +9,9 @@
  */
 
 import 'dotenv/config';
-import { readdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { REST, Routes } from 'discord.js';
+import { loadCommandModules } from './utils/load-commands.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;
 
 if (!DISCORD_TOKEN || !CLIENT_ID) {
@@ -22,17 +19,21 @@ if (!DISCORD_TOKEN || !CLIENT_ID) {
   process.exit(1);
 }
 
-const commandsDir = join(__dirname, 'commands');
-const commandFiles = readdirSync(commandsDir).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+// Same discovery path as the runtime, so the registered set always matches
+// the set the bot actually serves.
+interface RestCommand {
+  name: string;
+  [key: string]: unknown;
+}
 
-const commands = [];
-for (const file of commandFiles) {
-  const commandModule = await import(`./commands/${file}`);
-  if (commandModule.data) {
-    commands.push(commandModule.data.toJSON());
-  } else {
-    console.warn(`Skipped ${file}: missing "data" export.`);
-  }
+const loaded = await loadCommandModules((msg) => console.warn(msg));
+const commands = (loaded
+  .map(({ module }) => module.data.toJSON()) as RestCommand[])
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+if (commands.length === 0) {
+  console.error('No commands found — refusing to register an empty set.');
+  process.exit(1);
 }
 
 const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);

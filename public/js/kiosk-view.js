@@ -56,5 +56,7 @@ export async function checkKioskJingles(document, fetchFn, state) {
       state.since = Math.max(state.since, j.at || 0);
     }
     if (d.timestamp) state.since = Math.max(state.since, d.timestamp);
-  } catch {}
+  } catch {
+    // A failed poll just means no new jingle to show; the next one will retry.
+  }
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { buildNowPlayingMessage } from '../utils/embeds.js';
 import { isOnCooldown, setCooldown, getRemainingCooldown } from '../utils/cooldown.js';
 import { requireDjRole } from '../utils/permissions.js';
@@ -33,9 +32,11 @@ export async function executePlayCommand(interaction, playFn, commandName) {
       elapsedSeconds: info.elapsedSeconds,
     });
 
-    const message = await interaction.editReply(msg);
+    // Spread so the embeds/components are matched against the reply overload
+    // rather than the `editReply(content, options)` signature.
+    const message = await interaction.editReply({ ...msg });
     attachNowPlayingMessage(interaction.guild.id, message);
-  } catch (err) {
-    await interaction.editReply(`❌ خطأ: ${err.message}`);
+  } catch (err: any) {
+    await interaction.editReply({ content: `❌ خطأ: ${err.message}` });
   }
 }

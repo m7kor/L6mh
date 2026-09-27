@@ -4,10 +4,7 @@
  */
 
 import { getDb } from '../utils/database.js';
-import { createLogger } from '../utils/logger.js';
 import { getLevel } from '../lang.js';
-
-const logger = createLogger('points');
 
 const POINTS_PER_MINUTE = 1;
 const DAILY_BONUS = 10;

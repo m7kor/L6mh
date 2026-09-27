@@ -1,5 +1,4 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { getBalance, getLevelInfo } from '../services/points.js';
 import { CMD, getLevel, LEVELS } from '../lang.js';
 import { getDb } from '../utils/database.js';
 

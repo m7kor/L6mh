@@ -1,19 +1,39 @@
-// @ts-nocheck
 /**
  * Play-count persistence using SQLite.
  * Crash-safe, atomic writes via WAL mode.
  */
 
 import { getDb } from './database.js';
-import { createLogger } from './logger.js';
 
-const logger = createLogger('stats');
+/** Per-video play statistics, as loaded from the `play_counts` table. */
+export interface PlayRecord {
+  title: string | null;
+  playCount: number;
+  firstPlayedAt: string | null;
+  lastPlayedAt: string | null;
+  lastCompleted: boolean;
+  failCount: number;
+  /** Legacy key kept for older callers. */
+  count?: number;
+}
 
-/** Load all play counts as { videoId: { title, playCount, ... } }. */
-export async function loadPlays() {
+/** A video as far as stats are concerned. */
+export interface PlayableVideo {
+  videoId: string;
+  title?: string | null;
+  guildId?: string | null;
+}
+
+export interface RecordPlayOptions {
+  completed?: boolean;
+  failed?: boolean;
+}
+
+/** Load all play counts as { videoId: PlayRecord }. */
+export async function loadPlays(): Promise<Record<string, PlayRecord>> {
   const db = getDb();
   const rows = db.prepare('SELECT * FROM play_counts').all();
-  const result = {};
+  const result: Record<string, PlayRecord> = {};
   for (const row of rows) {
     result[row.video_id] = {
       title: row.title,
@@ -29,12 +49,11 @@ export async function loadPlays() {
 
 /**
  * Record a play event.
- * @param {object} video - { videoId, title, url }
- * @param {object} [opts]
- * @param {boolean} [opts.completed]
- * @param {boolean} [opts.failed]
+ *
+ * A plain call (no flags) counts as a new play. `completed`/`failed` update
+ * the outcome of the current play without incrementing the play count.
  */
-export async function recordPlay(video, opts = {}) {
+export async function recordPlay(video: PlayableVideo | null | undefined, opts: RecordPlayOptions = {}): Promise<void> {
   if (!video?.videoId) return;
   const db = getDb();
   const now = new Date().toISOString();

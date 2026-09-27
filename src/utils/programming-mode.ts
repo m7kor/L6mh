@@ -1,4 +1,3 @@
-// @ts-nocheck
 /** 시간-of-day programming mode. 서버 로컬 시간 기준. */
 
 export type ProgrammingMode = 'morning' | 'afternoon' | 'evening' | 'night';

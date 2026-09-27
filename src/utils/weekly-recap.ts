@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Weekly recap — posts top 5 most-played videos to health webhook.
  *

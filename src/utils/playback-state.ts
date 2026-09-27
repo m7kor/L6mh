@@ -40,8 +40,15 @@ export function inferPlaybackState(session: PlaybackSnapshot): PlaybackState {
   }
 }
 
+/** The subset of a session summary the public page needs. */
+export interface PublicSessionLike {
+  playbackState?: string;
+  title?: string | null;
+  [key: string]: unknown;
+}
+
 /** Keep retained metadata available, but prefer genuinely active sessions. */
-export function selectPublicSession<T extends { playbackState?: string; title?: string | null }>(sessions: readonly T[]): T | null {
+export function selectPublicSession<T extends PublicSessionLike>(sessions: readonly T[]): T | null {
   return sessions.find(s => s.playbackState === 'playing')
     || sessions.find(s => s.playbackState === 'paused')
     || sessions.find(s => s.playbackState === 'buffering')

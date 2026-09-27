@@ -7,6 +7,7 @@ import { createKioskView, checkKioskJingles } from '../public/js/kiosk-view.js';
 
 // Inject the real production modules as globals so the page script's imports resolve.
 const kioskViewForPage = { startLiveUpdates: opts => startLiveUpdates(opts), createKioskView, checkKioskJingles };
+void kioskViewForPage;
 
 // The kiosk must never fake playback: no red lamp or waves without a real 'playing' state.
 test('kiosk never shows live before data, only on genuine playing state, and dims on unknown', async () => {

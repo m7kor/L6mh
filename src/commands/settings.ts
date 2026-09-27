@@ -1,7 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
-import { getSessionInfo, getAllSessions, connectAndPlay } from '../services/player/index.js';
-import { getSession, saveState } from '../services/session.js';
-
+import { getSessionInfo, connectAndPlay } from '../services/player/index.js';
+import { getSession } from '../services/session.js';
 export const data = new SlashCommandBuilder()
   .setName('اعدادات')
   .setDescription('عرض وإعدادات البوت')
@@ -54,7 +53,8 @@ export async function execute(interaction) {
     }
 
     const { setVolume } = await import('../services/player/controls.js');
-    setVolume(interaction.guildId, level, connectAndPlay);
+    // Awaited — this restarts the track, it is not a background write.
+    await setVolume(interaction.guildId, level, connectAndPlay);
     await interaction.reply(`🔊 تم ضبط الصوت على ${level}%`);
   }
 }

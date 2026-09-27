@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { SlashCommandBuilder } from 'discord.js';
 import { setVolume, getSessionInfo, connectAndPlay } from '../services/player/index.js';
 
@@ -29,7 +28,11 @@ export async function execute(interaction) {
       return;
     }
 
-    setVolume(interaction.guildId, level, connectAndPlay);
+    // Awaited: applying a volume restarts the track, so this is not a
+    // fire-and-forget write. Left floating, a failure became an unhandled
+    // rejection, and the user was told the volume had changed when the
+    // restart had not happened.
+    await setVolume(interaction.guildId, level, connectAndPlay);
     await interaction.reply(`🔊 تم ضبط الصوت على ${level}%`);
   } catch (err) {
     await interaction.reply(`❌ خطأ: ${err.message}`);
